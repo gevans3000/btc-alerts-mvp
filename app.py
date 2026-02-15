@@ -87,6 +87,15 @@ class AlertStateStore:
         self.path.write_text(json.dumps(self.state))
 
 
+
+
+def _latest_spx_price(spx_tf, timeframe: str) -> float:
+    candles = spx_tf.get(timeframe, [])
+    if not candles:
+        return 0.0
+    return candles[-1].close
+
+
 def _format_alert(score: AlertScore) -> str:
     payload = {
         "symbol": score.symbol,
@@ -170,6 +179,7 @@ def run():
             )
 
     for alert in alerts:
+        px = btc_price.price if alert.symbol == "BTC" else _latest_spx_price(spx_tf, alert.timeframe)
         px = btc_price.price if alert.symbol == "BTC" else alert.tp1
         if not state.should_send(alert, px):
             continue

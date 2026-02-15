@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import time
 from typing import Dict, List
 
 from collectors.derivatives import DerivativesSnapshot
@@ -138,6 +139,19 @@ def _detectors(candles: List[Candle]) -> tuple[int, str, List[str], List[str]]:
     return score, strategy, reasons, codes
 
 
+
+
+def _is_stale(candles: List[Candle], timeframe: str) -> bool:
+    if not candles:
+        return True
+    max_age_seconds = {"5m": 12 * 60, "15m": 35 * 60, "1h": 130 * 60}.get(timeframe, 12 * 60)
+    try:
+        last_ts = int(float(candles[-1].ts))
+    except (TypeError, ValueError):
+        return True
+    return (time.time() - last_ts) > max_age_seconds
+
+
 def _tier_and_action(score: int, blockers: List[str]) -> tuple[str, str]:
     if blockers:
         return "NO-TRADE", "SKIP"
@@ -165,6 +179,9 @@ def compute_score(
     breakdown = {"trend_alignment": 0, "momentum": 0, "volatility": 0, "volume": 0, "htf": 0, "penalty": 0}
     if len(candles) < 40:
         degraded.append("candles")
+    if _is_stale(candles, timeframe):
+        degraded.append("stale")
+        blockers.append("Stale market data")
 
     reg, reg_pts, reg_codes = _regime(candles)
     breakdown["volatility"] += reg_pts
@@ -219,6 +236,14 @@ def compute_score(
     if reg == "vol_chop":
         breakdown["penalty"] -= 6
         blockers.append("Chop regime")
+
+    for hl in news:
+        text = hl.title.lower()
+        for kws in GROUPS.values():
+            for keyword, weight in kws.items():
+                if keyword in text:
+                    breakdown["momentum"] += int(weight * 2)
+                    codes.append(f"NEWS_{keyword.replace(' ', '_').upper()}")
 
     net = sum(breakdown.values())
     score = int(min(100, max(0, 50 + net)))
