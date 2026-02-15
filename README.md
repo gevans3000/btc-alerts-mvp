@@ -10,6 +10,57 @@ High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy*
 - **Confluence Gating**: Tier A+ alerts now require higher confluence (e.g., trend + momentum + vol + pattern).
 - **Macro Risk Filter**: VIX-aware gating (spikes or extreme levels block breakouts).
 
+## Usage 🚀
+
+**The fastest way to get a market snapshot:**
+
+```bash
+./run.sh
+```
+
+This command will:
+1.  Fetch the latest data (sequentially to respect API limits).
+2.  Analyze Bitcoin on 5m, 15m, and 1h timeframes.
+3.  Print a **Market Overview** table comparing all timeframes.
+4.  Print the **Best Setup** found, including specific Entry, Targets, and Stop Loss levels.
+5.  Show a **Timeframe Guide** to help you choose the right chart for your trading style.
+
+**Example Output:**
+
+```text
+==================================================
+  MARKET OVERVIEW: BTC
+==================================================
+  TIMEFRAME  | ACTION     | DIRECTION  | SCORE
+--------------------------------------------------
+  5m         | SKIP       | SHORT      | 23   
+  15m        | SKIP       | SHORT      | 28   
+  1h         | TRADE      | LONG       | 85   
+==================================================
+
+==================================================
+  BEST SETUP: BTC (1h)
+==================================================
+  • ACTION:      TRADE (A+)
+  • DIRECTION:   LONG
+  • CONFIDENCE:  85/100
+  • STRATEGY:    TREND_CONTINUATION
+--------------------------------------------------
+  • ENTRY ZONE:  95,200-95,400
+  • TARGET 1:    $96,800.00
+  • TARGET 2:    $98,500.00
+  • STOP LOSS:   $94,500.00
+  • R:R RATIO:   2.30
+--------------------------------------------------
+  • REASONS:     Momentum supports LONG setup, RSI_DIVERGENCE
+==================================================
+```
+
+**Timeframe Guide:**
+*   **5m**: Scalping (Fast action, 15-60 min hold)
+*   **15m**: Day Trading (Balanced, 1-4 hour hold)
+*   **1h**: Swing Trading (Trend following, 4-24 hour hold)
+
 ## Features
 - **Regime classifier**: trend vs range vs volatility-chop gating.
 - **4 base strategy detectors**: breakout, trend continuation, mean reversion, volatility expansion.
