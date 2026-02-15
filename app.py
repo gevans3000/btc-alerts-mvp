@@ -22,10 +22,6 @@ from collectors.price import (
 )
 from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
 from config import COOLDOWN_SECONDS, validate_config
-from config import COOLDOWN_SECONDS
-    fetch_spx_multi_timeframe_candles,
-)
-from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
 from engine import AlertScore, compute_score
 
 load_dotenv()
@@ -82,7 +78,6 @@ class AlertStateStore:
         now = int(time.time())
         s = self.state.get(score.symbol, {}).get(score.timeframe, {})
         cooldown = COOLDOWN_SECONDS.get(score.tier, COOLDOWN_SECONDS["B"])
-        cooldown = 10 * 60 if score.tier == "A+" else 20 * 60
         if s.get("lifecycle_key") != score.lifecycle_key or s.get("tier") != score.tier:
             return True
         if now - int(s.get("last_sent", 0)) > cooldown:
@@ -117,7 +112,6 @@ def _latest_spx_price(spx_tf, timeframe: str) -> float:
 
 
 def _format_alert(score: AlertScore, provider_context: dict) -> str:
-def _format_alert(score: AlertScore) -> str:
     payload = {
         "symbol": score.symbol,
         "timeframe": score.timeframe,
@@ -141,10 +135,6 @@ def _format_alert(score: AlertScore) -> str:
         "score_breakdown": score.score_breakdown,
         "blockers": score.blockers,
         "decision_trace": score.decision_trace,
-        "context": {"regime": score.regime, "session": score.session, "quality": score.quality},
-        "reason_codes": score.reason_codes,
-        "score_breakdown": score.score_breakdown,
-        "blockers": score.blockers,
     }
     return f"*{score.symbol} {score.timeframe} {score.action} ({score.tier})*\n```{json.dumps(payload, indent=2)}```"
 
@@ -159,7 +149,6 @@ def run():
         f_price = executor.submit(fetch_btc_price, bm)
         f_btc = executor.submit(fetch_btc_multi_timeframe_candles, bm)
         f_spx = executor.submit(fetch_spx_multi_timeframe_bundle, bm)
-        f_spx = executor.submit(fetch_spx_multi_timeframe_candles, bm)
         f_fg = executor.submit(fetch_fear_greed, bm)
         f_news = executor.submit(fetch_news, bm)
         f_deriv = executor.submit(fetch_derivatives_context, bm)
@@ -169,7 +158,6 @@ def run():
         btc_price = f_price.result()
         btc_tf = f_btc.result()
         spx_tf, spx_source_map = f_spx.result()
-        spx_tf = f_spx.result()
         fg = f_fg.result()
         news = f_news.result()
         derivatives = f_deriv.result()
@@ -208,8 +196,6 @@ def run():
                     [],
                     DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False, source="none", meta={"provider": "none"}),
                     FlowSnapshot(1.0, 1.0, 0.0, healthy=False, source="none", meta={"provider": "none"}),
-                    DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False),
-                    FlowSnapshot(1.0, 1.0, 0.0, healthy=False),
                     macro,
                 )
             )
@@ -226,10 +212,6 @@ def run():
             logger.info("Filtered %s %s: %s", alert.symbol, alert.timeframe, json.dumps(alert.decision_trace))
             continue
         notif.send(_format_alert(alert, provider_context))
-        px = btc_price.price if alert.symbol == "BTC" else alert.tp1
-        if not state.should_send(alert, px):
-            continue
-        notif.send(_format_alert(alert))
         state.save(alert, px)
 
 

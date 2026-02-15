@@ -10,7 +10,7 @@ import httpx
 
 from config import HTTP_RETRY
 
-from typing import Dict, List
+
 
 
 @dataclass
@@ -81,7 +81,6 @@ def _is_retriable_status(code: int) -> bool:
 
 
 def _request(url: str, params: Optional[dict], timeout: float) -> httpx.Response:
-def request_json(url: str, params: Optional[dict] = None, timeout: float = 10.0) -> dict:
     last_exc: Optional[Exception] = None
     for attempt in range(HTTP_RETRY["attempts"]):
         try:
@@ -90,8 +89,7 @@ def request_json(url: str, params: Optional[dict] = None, timeout: float = 10.0)
             return resp
         except httpx.HTTPStatusError as exc:
             last_exc = exc
-            code = exc.response.status_code
-            if not _is_retriable_status(code) or attempt == HTTP_RETRY["attempts"] - 1:
+            if not _is_retriable_status(exc.response.status_code) or attempt == HTTP_RETRY["attempts"] - 1:
                 raise
         except (httpx.RequestError, httpx.TimeoutException) as exc:
             last_exc = exc
@@ -108,10 +106,3 @@ def request_json(url: str, params: Optional[dict] = None, timeout: float = 10.0)
 
 def request_text(url: str, params: Optional[dict] = None, timeout: float = 10.0) -> str:
     return _request(url, params, timeout).text
-            return resp.json()
-        except Exception as exc:  # pragma: no cover - exercised via callers
-            last_exc = exc
-            if attempt < HTTP_RETRY["attempts"] - 1:
-                sleep_s = HTTP_RETRY["backoff_seconds"] * (2**attempt) + random.uniform(0, HTTP_RETRY["jitter_seconds"])
-                time.sleep(sleep_s)
-    raise last_exc if last_exc else RuntimeError("request_json failed")

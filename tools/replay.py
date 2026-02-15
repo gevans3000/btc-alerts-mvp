@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
-from typing import Dict, List
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
@@ -85,8 +84,6 @@ def replay_symbol_timeframe(symbol: str, timeframe: str, candles: List[Candle]) 
         c15, c1h, _ = _context_streams(c, timeframe)
         px = PriceSnapshot(price=c[-1].close, timestamp=0, source="replay", healthy=True)
         score = compute_score(symbol, timeframe, px, c, c15, c1h, fg, [], deriv, flow, {"spx": c, "vix": c, "nq": c})
-        px = PriceSnapshot(price=c[-1].close, timestamp=0, source="replay", healthy=True)
-        score = compute_score(symbol, timeframe, px, c, c, c, fg, [], deriv, flow, {"spx": c, "vix": c, "nq": c})
         if score.action == "SKIP":
             continue
         fired.append(score)

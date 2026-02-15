@@ -2,18 +2,24 @@
 
 High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy** (secondary), optimized for **5m / 15m / 1h**.
 
+## New in v1.1 (Phase 1 & 2 Improvements)
+- **Advanced Indicators**: Added VWAP, RTI (Relative Trend), RSI Divergence, and Volume Delta.
+- **Pattern Recognition**: Bullish/Bearish Engulfing and Hammer/Shooting Star pin bars.
+- **Dynamic S/R Levels**: Support and Resistance detected from swing points for smart TP/SL placement.
+- **Session-Aware Weighting**: Different strategy weights for Asia, Europe, US, and Weekend sessions.
+- **Confluence Gating**: Tier A+ alerts now require higher confluence (e.g., trend + momentum + vol + pattern).
+- **Macro Risk Filter**: VIX-aware gating (spikes or extreme levels block breakouts).
+
 ## Features
 - **Regime classifier**: trend vs range vs volatility-chop gating.
-- **4 strategy detectors**: breakout, trend continuation, mean reversion, volatility expansion.
-- **Conflict arbitration**: opposing setup suppression with `CONFLICT_SUPPRESSED` reason code.
-- **Multi-timeframe alignment**: 5m/15m entries validated against 1h bias.
+- **4 base strategy detectors**: breakout, trend continuation, mean reversion, volatility expansion.
+- **Conflict arbitration**: opposing setup suppression with `CONFLICT_SUPPRESSED` and HTF tie-breaking.
+- **Multi-timeframe alignment**: entries validated against HTF (15m/1h) bias.
 - **Confidence model (0-100)** with per-factor breakdown and reason codes.
-- **ATR-normalized trade plan**: entry zone, invalidation, TP1/TP2, R:R.
-- **Stateful dedupe/cooldowns** for low-noise alerts.
-- **Transport-ready JSON payloads** (Telegram-ready, integration optional).
-- **Decision traces** for fired/filtered alert diagnostics.
+- **Smart Trade Plan**: entry zone, invalidation, TP1/TP2, R:R adjusted by regime and S/R levels.
+- **Stateful dedupe/cooldowns**: smart cooldowns and TP1 transition logic to minimize noise.
 
-## Free Data Sources (No Binance)
+## Free Data Sources
 - Kraken public API (spot ticker + OHLC)
 - Bybit public API (spot candles, derivatives, account-ratio flow)
 - OKX public API (derivatives fallback)
@@ -23,8 +29,7 @@ High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy*
 - CoinDesk + Cointelegraph RSS feeds
 
 ## Provider + Fallback Policy
-- Shared HTTP retry/backoff wrapper is used for collectors (retries 429/5xx/network errors, fails fast on non-retriable 4xx).
-- Shared HTTP retry/backoff wrapper is used for collectors.
+- Shared HTTP retry/backoff wrapper for collectors.
 - BTC price: Kraken → CoinGecko.
 - BTC candles: Kraken → Bybit.
 - Derivatives: Bybit → OKX.
@@ -35,55 +40,22 @@ Tune thresholds centrally in `config.py`:
 - regime thresholds (`REGIME`)
 - detector thresholds (`DETECTORS`)
 - timeframe gates and R:R (`TIMEFRAME_RULES`)
-- stale limits (`STALE_SECONDS`)
-- cooldowns (`COOLDOWN_SECONDS`)
+- session weights (`SESSION_WEIGHTS`)
+- confluence requirements (`CONFLUENCE_RULES`)
+- dynamic TP multipliers (`TP_MULTIPLIERS`)
 
-Recommended loop:
+Recommended tuning loop:
 1. Replay on historical candles (`tools/replay.py`)
 2. Adjust `config.py`
-3. Run tests
+3. Run tests (`tests/test_utils_engine.py`)
 4. Run `app.py --once`
 
-## SPX Notes
-- Engine requests direct `^GSPC` data first.
-- If unavailable, it uses **SPY as `SPX_PROXY`** and labels alerts accordingly.
-
-## Alert Output Shape
-Each alert includes:
-- `symbol`, `timeframe`, `action`, `tier`, `direction`, `strategy_type`
-- `confidence_score`
-- `entry_zone`, `invalidation_level`, `tp1`, `tp2`, `rr_ratio`
-- `context` (regime/session/quality/providers)
-- `reason_codes`, `score_breakdown`, `blockers`
-- `decision_trace` (`trace_version` included for downstream compatibility)
-- replay summary now includes `horizon_bars` and `htf_mode` metadata
-- `decision_trace`
-- `context` (regime/session/quality)
-- `reason_codes`, `score_breakdown`, `blockers`
-
-## Getting Started
-1. Optional Telegram env vars:
-   ```env
-   TELEGRAM_BOT_TOKEN=your_token
-   TELEGRAM_CHAT_ID=your_chat_id
-   ```
-2. Run once:
-   ```bash
-   ./run.sh --install --once
-   ```
-3. Run continuously (5m loop):
-   ```bash
-   ./run.sh
-   ```
-
-`run.sh` installs dependencies only on first run or when `requirements.txt` changes. Use `--install` to force reinstall; this flag is consumed by the script and not passed to `app.py`.
-`run.sh` installs dependencies only on first run or when `requirements.txt` changes. Use `--install` to force reinstall.
-
 ## Testing
-- `pytest -q`
-- `python -m unittest discover -s tests -q`
+```bash
+PYTHONPATH=. python3 tests/test_utils_engine.py
+```
 
 ## Requirements
-- Python 3.12+
+- Python 3.9+
 - `httpx`
 - `python-dotenv`

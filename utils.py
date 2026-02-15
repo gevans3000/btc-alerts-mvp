@@ -1,7 +1,7 @@
 """Minimal utilities for the standalone alert system."""
 from dataclasses import dataclass
 from math import sqrt
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -131,3 +131,126 @@ def vwap(candles: List[Candle]) -> Optional[float]:
         cum_pv += typical * c.volume
         cum_vol += c.volume
     return cum_pv / cum_vol if cum_vol > 0 else None
+
+
+def rsi_divergence(candles: List[Candle], period: int = 14, lookback: int = 30) -> Tuple[Optional[str], float]:
+    if len(candles) < lookback + period:
+        return None, 0.0
+
+    closes = [c.close for c in candles]
+    rsis = []
+    for i in range(len(candles) - lookback - 1, len(candles)):
+        val = rsi(closes[: i + 1], period)
+        rsis.append(val if val is not None else 50.0)
+
+    def find_swings(data: List[float], start_idx: int, is_low: bool):
+        swings = []
+        for i in range(len(data) - 2, 1, -1):
+            if is_low:
+                if data[i] < data[i - 1] and data[i] < data[i + 1]:
+                    swings.append(i)
+            else:
+                if data[i] > data[i - 1] and data[i] > data[i + 1]:
+                    swings.append(i)
+            if len(swings) >= 2:
+                break
+        return swings
+
+    price_recent = closes[-lookback:]
+    rsi_recent = rsis[-lookback:]
+
+    lows = find_swings(price_recent, lookback, True)
+    if len(lows) >= 2:
+        i2, i1 = lows[0], lows[1]
+        if price_recent[i2] < price_recent[i1] and rsi_recent[i2] > rsi_recent[i1]:
+            return "bullish", rsi_recent[i2] - rsi_recent[i1]
+
+    highs = find_swings(price_recent, lookback, False)
+    if len(highs) >= 2:
+        i2, i1 = highs[0], highs[1]
+        if price_recent[i2] > price_recent[i1] and rsi_recent[i2] < rsi_recent[i1]:
+            return "bearish", rsi_recent[i1] - rsi_recent[i2]
+
+    return None, 0.0
+
+
+def is_engulfing(candles: List[Candle]) -> Optional[str]:
+    if len(candles) < 3:
+        return None
+    c1, c2 = candles[-3], candles[-2]
+    c1_high_body = max(c1.open, c1.close)
+    c1_low_body = min(c1.open, c1.close)
+    c2_high_body = max(c2.open, c2.close)
+    c2_low_body = min(c2.open, c2.close)
+
+    if c2_high_body > c1_high_body and c2_low_body < c1_low_body:
+        if c2.close > c2.open:
+            return "bullish"
+        if c2.close < c2.open:
+            return "bearish"
+    return None
+
+
+def is_pin_bar(candle: Candle) -> Optional[str]:
+    body = abs(candle.close - candle.open)
+    high_wick = candle.high - max(candle.open, candle.close)
+    low_wick = min(candle.open, candle.close) - candle.low
+    total_range = candle.high - candle.low
+    if total_range == 0:
+        return None
+    if low_wick >= 2 * body and high_wick < 0.5 * body:
+        return "bullish"
+    if high_wick >= 2 * body and low_wick < 0.5 * body:
+        return "bearish"
+    return None
+
+
+def candle_patterns(candles: List[Candle]) -> List[Tuple[str, str]]:
+    patterns = []
+    eng = is_engulfing(candles)
+    if eng:
+        patterns.append(("engulfing", eng))
+    pin = is_pin_bar(candles[-2])
+    if pin:
+        patterns.append(("pin_bar", pin))
+    return patterns
+
+
+def volume_delta(candles: List[Candle], period: int = 20) -> Tuple[float, float]:
+    if len(candles) < period:
+        return 0.0, 0.0
+    deltas = []
+    for c in candles[-period:]:
+        max_range = max(c.high - c.low, 1e-8)
+        deltas.append(c.volume * (c.close - c.open) / max_range)
+    return sum(deltas), deltas[-1] - deltas[0]
+
+
+def swing_levels(candles: List[Candle], lookback: int = 50, tolerance: float = 0.002) -> Tuple[List[float], List[float]]:
+    if len(candles) < lookback + 5:
+        return [], []
+    supports, resistances = [], []
+    completed = candles[-lookback - 1 : -1]
+    for i in range(1, len(completed) - 1):
+        c, p, n = completed[i], completed[i - 1], completed[i + 1]
+        if c.high > p.high and c.high > n.high:
+            resistances.append(c.high)
+        if c.low < p.low and c.low < n.low:
+            supports.append(c.low)
+
+    def cluster(levels: List[float]):
+        if not levels:
+            return []
+        levels.sort()
+        clustered = []
+        curr = levels[0]
+        for l in levels[1:]:
+            if (l - curr) / curr > tolerance:
+                clustered.append(curr)
+                curr = l
+            else:
+                curr = (curr + l) / 2
+        clustered.append(curr)
+        return clustered
+
+    return cluster(supports), cluster(resistances)

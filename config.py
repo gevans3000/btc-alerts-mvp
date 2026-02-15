@@ -29,6 +29,23 @@ COOLDOWN_SECONDS = {"A+": 10 * 60, "B": 20 * 60, "NO-TRADE": 20 * 60}
 
 HTTP_RETRY = {"attempts": 3, "backoff_seconds": 0.35, "jitter_seconds": 0.2}
 
+SESSION_WEIGHTS = {
+    "asia": {"BREAKOUT": 0.5, "MEAN_REVERSION": 1.3, "TREND_CONTINUATION": 0.7, "VOLATILITY_EXPANSION": 0.6},
+    "europe": {"BREAKOUT": 1.2, "MEAN_REVERSION": 0.9, "TREND_CONTINUATION": 1.0, "VOLATILITY_EXPANSION": 1.1},
+    "us": {"BREAKOUT": 1.1, "MEAN_REVERSION": 0.8, "TREND_CONTINUATION": 1.3, "VOLATILITY_EXPANSION": 1.2},
+    "weekend": {"BREAKOUT": 0.6, "MEAN_REVERSION": 1.1, "TREND_CONTINUATION": 0.7, "VOLATILITY_EXPANSION": 0.5},
+    "unknown": {"BREAKOUT": 1.0, "MEAN_REVERSION": 1.0, "TREND_CONTINUATION": 1.0, "VOLATILITY_EXPANSION": 1.0},
+}
+
+CONFLUENCE_RULES = {"A+": 3, "B": 2}
+
+TP_MULTIPLIERS = {
+    "trend": {"tp1": 1.8, "tp2": 3.0, "inv": 1.1},
+    "range": {"tp1": 1.2, "tp2": 2.0, "inv": 0.9},
+    "vol_chop": {"tp1": 1.0, "tp2": 1.6, "inv": 0.8},
+    "default": {"tp1": 1.6, "tp2": 2.8, "inv": 1.1},
+}
+
 
 def validate_config() -> None:
     for tf, cfg in TIMEFRAME_RULES.items():
