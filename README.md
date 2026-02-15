@@ -5,11 +5,13 @@ High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy*
 ## Features
 - **Regime classifier**: trend vs range vs volatility-chop gating.
 - **4 strategy detectors**: breakout, trend continuation, mean reversion, volatility expansion.
+- **Conflict arbitration**: opposing setup suppression with `CONFLICT_SUPPRESSED` reason code.
 - **Multi-timeframe alignment**: 5m/15m entries validated against 1h bias.
 - **Confidence model (0-100)** with per-factor breakdown and reason codes.
 - **ATR-normalized trade plan**: entry zone, invalidation, TP1/TP2, R:R.
 - **Stateful dedupe/cooldowns** for low-noise alerts.
 - **Transport-ready JSON payloads** (Telegram-ready, integration optional).
+- **Decision traces** for fired/filtered alert diagnostics.
 
 ## Free Data Sources (No Binance)
 - Kraken public API (spot ticker + OHLC)
@@ -20,6 +22,27 @@ High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy*
 - Alternative.me Fear & Greed API
 - CoinDesk + Cointelegraph RSS feeds
 
+## Provider + Fallback Policy
+- Shared HTTP retry/backoff wrapper is used for collectors.
+- BTC price: Kraken → CoinGecko.
+- BTC candles: Kraken → Bybit.
+- Derivatives: Bybit → OKX.
+- SPX: direct `^GSPC` first, fallback to `SPY` proxy by timeframe.
+
+## Config + Tuning
+Tune thresholds centrally in `config.py`:
+- regime thresholds (`REGIME`)
+- detector thresholds (`DETECTORS`)
+- timeframe gates and R:R (`TIMEFRAME_RULES`)
+- stale limits (`STALE_SECONDS`)
+- cooldowns (`COOLDOWN_SECONDS`)
+
+Recommended loop:
+1. Replay on historical candles (`tools/replay.py`)
+2. Adjust `config.py`
+3. Run tests
+4. Run `app.py --once`
+
 ## SPX Notes
 - Engine requests direct `^GSPC` data first.
 - If unavailable, it uses **SPY as `SPX_PROXY`** and labels alerts accordingly.
@@ -29,6 +52,9 @@ Each alert includes:
 - `symbol`, `timeframe`, `action`, `tier`, `direction`, `strategy_type`
 - `confidence_score`
 - `entry_zone`, `invalidation_level`, `tp1`, `tp2`, `rr_ratio`
+- `context` (regime/session/quality/providers)
+- `reason_codes`, `score_breakdown`, `blockers`
+- `decision_trace`
 - `context` (regime/session/quality)
 - `reason_codes`, `score_breakdown`, `blockers`
 
@@ -46,6 +72,10 @@ Each alert includes:
    ```bash
    ./run.sh
    ```
+
+## Testing
+- `pytest -q`
+- `python -m unittest discover -s tests -q`
 
 ## Requirements
 - Python 3.12+

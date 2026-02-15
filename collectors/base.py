@@ -67,3 +67,18 @@ class BudgetManager:
             if source in self._buckets:
                 self._buckets[source].record()
                 self._save()
+
+
+def request_json(url: str, params: Optional[dict] = None, timeout: float = 10.0) -> dict:
+    last_exc: Optional[Exception] = None
+    for attempt in range(HTTP_RETRY["attempts"]):
+        try:
+            resp = httpx.get(url, params=params, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:  # pragma: no cover - exercised via callers
+            last_exc = exc
+            if attempt < HTTP_RETRY["attempts"] - 1:
+                sleep_s = HTTP_RETRY["backoff_seconds"] * (2**attempt) + random.uniform(0, HTTP_RETRY["jitter_seconds"])
+                time.sleep(sleep_s)
+    raise last_exc if last_exc else RuntimeError("request_json failed")

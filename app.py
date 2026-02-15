@@ -18,6 +18,10 @@ from collectors.price import (
     fetch_btc_multi_timeframe_candles,
     fetch_btc_price,
     fetch_macro_context,
+    fetch_spx_multi_timeframe_bundle,
+)
+from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
+from config import COOLDOWN_SECONDS
     fetch_spx_multi_timeframe_candles,
 )
 from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
@@ -62,6 +66,7 @@ class AlertStateStore:
             return False
         now = int(time.time())
         s = self.state.get(score.symbol, {}).get(score.timeframe, {})
+        cooldown = COOLDOWN_SECONDS.get(score.tier, COOLDOWN_SECONDS["B"])
         cooldown = 10 * 60 if score.tier == "A+" else 20 * 60
         if s.get("lifecycle_key") != score.lifecycle_key or s.get("tier") != score.tier:
             return True
@@ -96,6 +101,7 @@ def _latest_spx_price(spx_tf, timeframe: str) -> float:
     return candles[-1].close
 
 
+def _format_alert(score: AlertScore, provider_context: dict) -> str:
 def _format_alert(score: AlertScore) -> str:
     payload = {
         "symbol": score.symbol,
@@ -135,6 +141,7 @@ def run():
 
         btc_price = f_price.result()
         btc_tf = f_btc.result()
+        spx_tf, spx_source_map = f_spx.result()
         spx_tf = f_spx.result()
         fg = f_fg.result()
         news = f_news.result()

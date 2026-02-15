@@ -1,11 +1,9 @@
 import logging
 import time
-from dataclasses import dataclass
-from typing import Dict, List
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
 
-import httpx
-
-from collectors.base import BudgetManager
+from collectors.base import BudgetManager, request_json
 from utils import Candle
 
 
@@ -15,6 +13,7 @@ class PriceSnapshot:
     timestamp: float
     source: str = "kraken"
     healthy: bool = True
+    meta: Dict[str, str] = field(default_factory=dict)
 
 
 def fetch_btc_price(budget: BudgetManager, timeout: float = 10.0) -> PriceSnapshot:
@@ -31,17 +30,20 @@ def fetch_btc_price(budget: BudgetManager, timeout: float = 10.0) -> PriceSnapsh
     if budget.can_call("coingecko"):
         try:
             budget.record_call("coingecko")
-            response = httpx.get(
+            payload = request_json(
                 "https://api.coingecko.com/api/v3/simple/price",
                 params={"ids": "bitcoin", "vs_currencies": "usd"},
                 timeout=timeout,
             )
-            response.raise_for_status()
-            return PriceSnapshot(float(response.json()["bitcoin"]["usd"]), time.time(), source="coingecko")
+            return PriceSnapshot(float(payload["bitcoin"]["usd"]), time.time(), source="coingecko", meta={"provider": "coingecko"})
         except Exception as exc:
             logging.error(f"CoinGecko price fetch failed: {exc}")
 
-    return PriceSnapshot(0.0, time.time(), healthy=False)
+    return PriceSnapshot(0.0, time.time(), source="none", healthy=False, meta={"provider": "none"})
+
+
+def _from_ohlc_rows(raw: List[List], limit: int) -> List[Candle]:
+    return [Candle(str(r[0]), float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[6])) for r in raw][-limit:]
 
 
 def _from_ohlc_rows(raw: List[List], limit: int) -> List[Candle]:
@@ -53,7 +55,7 @@ def _fetch_kraken_ohlc(budget: BudgetManager, interval: int, limit: int) -> List
         return []
     try:
         budget.record_call("kraken")
-        response = httpx.get(
+        payload = request_json(
             "https://api.kraken.com/0/public/OHLC",
             params={"pair": "XXBTZUSD", "interval": interval},
             timeout=10,
@@ -98,13 +100,12 @@ def _fetch_yahoo_symbol_candles(budget: BudgetManager, symbol: str, interval: st
         return []
     try:
         budget.record_call("yahoo")
-        response = httpx.get(
+        payload = request_json(
             f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
             params={"interval": interval, "range": lookback},
             timeout=10,
         )
-        response.raise_for_status()
-        result = response.json()["chart"]["result"][0]
+        result = payload["chart"]["result"][0]
         ts = result.get("timestamp", [])
         quote = result["indicators"]["quote"][0]
         candles: List[Candle] = []

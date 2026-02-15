@@ -1,12 +1,16 @@
+import json
 import tempfile
 import time
 import unittest
 from unittest.mock import Mock, patch
 
+from app import AlertStateStore, _format_alert
 from collectors.derivatives import fetch_derivatives_context
 from collectors.flows import fetch_flow_context
 from collectors.price import PriceSnapshot
 from collectors.social import FearGreedSnapshot, Headline
+from engine import compute_score
+from tools.replay import replay_symbol_timeframe
 from app import AlertStateStore
 from engine import compute_score
 from utils import Candle, adx, atr, ema, percentile_rank, rsi
@@ -28,6 +32,10 @@ class UtilsTests(unittest.TestCase):
 class EngineTests(unittest.TestCase):
     def _candles(self, start=100, n=90, step=0.8):
         rows, px = [], start
+        now = int(time.time()) - (n * 300)
+        for i in range(n):
+            op, cl = px, px + step
+            rows.append(Candle(str(now + (i * 300)), op, max(op, cl) + 0.4, min(op, cl) - 0.4, cl, 100 + i))
         for i in range(n):
             op, cl = px, px + step
             rows.append(Candle(str(1700000000 + (i * 300)), op, max(op, cl) + 0.4, min(op, cl) - 0.4, cl, 100 + i))
@@ -52,6 +60,7 @@ class EngineTests(unittest.TestCase):
         self.assertGreaterEqual(score.confidence, 0)
         self.assertLessEqual(score.confidence, 100)
         self.assertTrue(isinstance(score.reason_codes, list))
+        self.assertIn("candidates", score.decision_trace)
 
 
     def test_news_changes_confidence(self):
@@ -84,6 +93,21 @@ class EngineTests(unittest.TestCase):
     def test_stale_candles_block_signal(self):
         stale_end = int(time.time()) - (4 * 3600)
         stale_start = stale_end - (89 * 300)
+        c5 = [Candle(str(stale_start + (i * 300)), 100 + i, 101 + i, 99 + i, 100.5 + i, 100 + i) for i in range(90)]
+        macro = {"spx": c5, "vix": list(reversed(c5)), "nq": c5}
+
+        score = compute_score(
+            "BTC",
+            "5m",
+            PriceSnapshot(price=c5[-1].close, timestamp=0),
+            c5,
+            c5,
+            c5,
+            FearGreedSnapshot(value=30, label="Fear", healthy=True),
+            [],
+            fetch_derivatives_context(_OffBudget()),
+            fetch_flow_context(_OffBudget()),
+            macro,
         c5 = [
             Candle(str(stale_start + (i * 300)), 100 + i, 101 + i, 99 + i, 100.5 + i, 100 + i)
             for i in range(90)
@@ -120,6 +144,62 @@ class AlertStateTests(unittest.TestCase):
             self.assertFalse(store.should_send(mock_score, 5000.0))
             self.assertTrue(store.should_send(mock_score, 5011.0))
 
+    def test_payload_contract(self):
+        score = Mock()
+        score.symbol = "BTC"
+        score.timeframe = "5m"
+        score.action = "WATCH"
+        score.tier = "B"
+        score.direction = "LONG"
+        score.strategy_type = "BREAKOUT"
+        score.confidence = 61
+        score.entry_zone = "1-2"
+        score.invalidation = 1.0
+        score.tp1 = 2.0
+        score.tp2 = 3.0
+        score.rr_ratio = 1.4
+        score.regime = "trend"
+        score.session = "us"
+        score.quality = "ok"
+        score.reason_codes = ["EMA_BULL"]
+        score.score_breakdown = {"momentum": 1}
+        score.blockers = []
+        score.decision_trace = {"candidates": {"BREAKOUT_LONG": 12}}
+
+        body = _format_alert(score, {"price": "kraken", "derivatives": "bybit", "flows": "bybit", "spx_mode": "n/a"})
+        payload = json.loads(body.split("```", maxsplit=2)[1])
+        for key in [
+            "symbol",
+            "timeframe",
+            "action",
+            "tier",
+            "direction",
+            "strategy_type",
+            "confidence_score",
+            "entry_zone",
+            "invalidation_level",
+            "tp1",
+            "tp2",
+            "rr_ratio",
+            "context",
+            "reason_codes",
+            "score_breakdown",
+            "blockers",
+            "decision_trace",
+        ]:
+            self.assertIn(key, payload)
+
+
+class ReplayTests(unittest.TestCase):
+    def test_replay_outputs_metrics(self):
+        now = int(time.time()) - (120 * 300)
+        candles = [
+            Candle(str(now + (i * 300)), 100 + i * 0.1, 101 + i * 0.1, 99 + i * 0.1, 100.4 + i * 0.1, 100 + i)
+            for i in range(130)
+        ]
+        metrics = replay_symbol_timeframe("BTC", "5m", candles)
+        self.assertGreaterEqual(metrics.alerts, 0)
+        self.assertGreaterEqual(metrics.trades, 0)
 
 class _OffBudget:
     def can_call(self, source):
@@ -138,6 +218,12 @@ class _OffBudget:
 
 
 class CollectorTests(unittest.TestCase):
+    @patch("collectors.derivatives.request_json")
+    def test_derivatives_bybit_parse(self, mock_request_json):
+        mock_request_json.side_effect = [
+            {"result": {"list": [{"markPrice": "60000", "indexPrice": "59800", "fundingRate": "0.0005"}]}},
+            {"result": {"list": [{"openInterest": "110"}, {"openInterest": "100"}]}},
+        ]
     @patch("collectors.derivatives.httpx.get")
     def test_derivatives_bybit_parse(self, mock_get):
         ticker_resp = Mock()
