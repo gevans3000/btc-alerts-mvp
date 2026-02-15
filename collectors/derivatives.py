@@ -20,7 +20,8 @@ def _safe_pct_change(old: float, new: float) -> float:
     return ((new - old) / abs(old)) * 100.0
 
 
-def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
+def _fetch_bybit(budget: BudgetManager, timeout: float) -> DerivativesSnapshot:
+    budget.record_call("bybit")
     ticker_payload = request_json(
         "https://api.bybit.com/v5/market/tickers",
         params={"category": "linear", "symbol": "BTCUSDT"},
@@ -35,6 +36,7 @@ def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
     index = float(row.get("indexPrice", 0.0))
     basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
 
+    budget.record_call("bybit")
     oi_payload = request_json(
         "https://api.bybit.com/v5/market/open-interest",
         params={"category": "linear", "symbol": "BTCUSDT", "intervalTime": "5min", "limit": 2},
@@ -56,7 +58,8 @@ def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
     )
 
 
-def _fetch_okx(timeout: float) -> DerivativesSnapshot:
+def _fetch_okx(budget: BudgetManager, timeout: float) -> DerivativesSnapshot:
+    budget.record_call("okx")
     ticker_payload = request_json(
         "https://www.okx.com/api/v5/market/ticker",
         params={"instId": "BTC-USDT-SWAP"},
@@ -69,6 +72,7 @@ def _fetch_okx(timeout: float) -> DerivativesSnapshot:
     row = rows[0]
     mark = float(row.get("last", 0.0))
 
+    budget.record_call("okx")
     index_payload = request_json(
         "https://www.okx.com/api/v5/market/index-tickers",
         params={"instId": "BTC-USDT"},
@@ -77,9 +81,10 @@ def _fetch_okx(timeout: float) -> DerivativesSnapshot:
     idx_rows = index_payload.get("data", [])
     index = float(idx_rows[0].get("idxPx", 0.0)) if idx_rows else 0.0
 
+    budget.record_call("okx")
     oi_payload = request_json(
         "https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-history",
-        params={"ccy": "BTC", "period": "5m", "limit": 2},
+        params={"instId": "BTC-USDT-SWAP", "period": "5m", "limit": 2},
         timeout=timeout,
     )
     oi_rows = oi_payload.get("data", [])
@@ -95,15 +100,13 @@ def _fetch_okx(timeout: float) -> DerivativesSnapshot:
 def fetch_derivatives_context(budget: BudgetManager, timeout: float = 10.0) -> DerivativesSnapshot:
     if budget.can_call("bybit"):
         try:
-            budget.record_call("bybit")
-            return _fetch_bybit(timeout)
+            return _fetch_bybit(budget, timeout)
         except Exception:
             pass
 
     if budget.can_call("okx"):
         try:
-            budget.record_call("okx")
-            return _fetch_okx(timeout)
+            return _fetch_okx(budget, timeout)
         except Exception:
             pass
 

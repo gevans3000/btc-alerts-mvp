@@ -82,21 +82,57 @@ def _is_retriable_status(code: int) -> bool:
 
 def _request(url: str, params: Optional[dict], timeout: float) -> httpx.Response:
     last_exc: Optional[Exception] = None
+    user_agents = [
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/115.0",
+    ]
+    
     for attempt in range(HTTP_RETRY["attempts"]):
+        headers = {
+            "User-Agent": random.choice(user_agents),
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        # Add Referer for specific domains if needed
+        if "bybit.com" in url:
+            headers["Referer"] = "https://www.bybit.com/"
+            headers["Origin"] = "https://www.bybit.com"
+        if "okx.com" in url:
+            headers["Referer"] = "https://www.okx.com/"
+        if "yahoo.com" in url:
+            headers["Referer"] = "https://finance.yahoo.com/"
+
         try:
-            resp = httpx.get(url, params=params, timeout=timeout)
+            resp = httpx.get(url, params=params, headers=headers, timeout=timeout)
             resp.raise_for_status()
             return resp
         except httpx.HTTPStatusError as exc:
             last_exc = exc
             if not _is_retriable_status(exc.response.status_code) or attempt == HTTP_RETRY["attempts"] - 1:
                 raise
+            
+            # Handle Retry-After header
+            retry_after = exc.response.headers.get("Retry-After")
+            if retry_after:
+                try:
+                    sleep_s = float(retry_after) + 1.0  # Add slight buffer
+                except ValueError:
+                    # Parse HTTP-date if needed, but usually seconds for APIs
+                    sleep_s = HTTP_RETRY["backoff_seconds"] * (2**attempt)
+            else:
+                sleep_s = HTTP_RETRY["backoff_seconds"] * (2**attempt) + random.uniform(0, HTTP_RETRY["jitter_seconds"])
+            
+            time.sleep(sleep_s)
+            
         except (httpx.RequestError, httpx.TimeoutException) as exc:
             last_exc = exc
             if attempt == HTTP_RETRY["attempts"] - 1:
                 raise
-        sleep_s = HTTP_RETRY["backoff_seconds"] * (2**attempt) + random.uniform(0, HTTP_RETRY["jitter_seconds"])
-        time.sleep(sleep_s)
+            sleep_s = HTTP_RETRY["backoff_seconds"] * (2**attempt) + random.uniform(0, HTTP_RETRY["jitter_seconds"])
+            time.sleep(sleep_s)
+            
     raise last_exc if last_exc else RuntimeError("request failed")
 
 

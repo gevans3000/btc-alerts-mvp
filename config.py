@@ -27,7 +27,7 @@ STALE_SECONDS = {"5m": 12 * 60, "15m": 35 * 60, "1h": 130 * 60}
 
 COOLDOWN_SECONDS = {"A+": 10 * 60, "B": 20 * 60, "NO-TRADE": 20 * 60}
 
-HTTP_RETRY = {"attempts": 3, "backoff_seconds": 0.35, "jitter_seconds": 0.2}
+HTTP_RETRY = {"attempts": 4, "backoff_seconds": 2.0, "jitter_seconds": 1.0}
 
 SESSION_WEIGHTS = {
     "asia": {"BREAKOUT": 0.5, "MEAN_REVERSION": 1.3, "TREND_CONTINUATION": 0.7, "VOLATILITY_EXPANSION": 0.6},
