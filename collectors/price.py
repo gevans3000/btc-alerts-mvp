@@ -21,11 +21,7 @@ def fetch_btc_price(budget: BudgetManager, timeout: float = 10.0) -> PriceSnapsh
     if budget.can_call("kraken"):
         try:
             budget.record_call("kraken")
-            response = httpx.get(
-                "https://api.kraken.com/0/public/Ticker",
-                params={"pair": "XXBTZUSD"},
-                timeout=timeout,
-            )
+            response = httpx.get("https://api.kraken.com/0/public/Ticker", params={"pair": "XXBTZUSD"}, timeout=timeout)
             response.raise_for_status()
             price = float(response.json()["result"]["XXBTZUSD"]["c"][0])
             return PriceSnapshot(price, time.time(), source="kraken")
@@ -48,6 +44,10 @@ def fetch_btc_price(budget: BudgetManager, timeout: float = 10.0) -> PriceSnapsh
     return PriceSnapshot(0.0, time.time(), healthy=False)
 
 
+def _from_ohlc_rows(raw: List[List], limit: int) -> List[Candle]:
+    return [Candle(str(r[0]), float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[6])) for r in raw][-limit:]
+
+
 def _fetch_kraken_ohlc(budget: BudgetManager, interval: int, limit: int) -> List[Candle]:
     if not budget.can_call("kraken"):
         return []
@@ -59,37 +59,48 @@ def _fetch_kraken_ohlc(budget: BudgetManager, interval: int, limit: int) -> List
             timeout=10,
         )
         response.raise_for_status()
-        raw = response.json()["result"].get("XXBTZUSD", [])
-        candles = [
-            Candle(str(row[0]), float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[6]))
-            for row in raw
-        ]
-        return candles[-limit:]
+        return _from_ohlc_rows(response.json()["result"].get("XXBTZUSD", []), limit)
     except Exception as exc:
         logging.error(f"Kraken candle fetch failed for {interval}m: {exc}")
         return []
 
 
-def fetch_btc_candles(budget: BudgetManager, interval: int = 5, limit: int = 100) -> List[Candle]:
-    return _fetch_kraken_ohlc(budget, interval=interval, limit=limit)
+def _fetch_bybit_ohlc(budget: BudgetManager, interval: str, limit: int) -> List[Candle]:
+    if not budget.can_call("bybit"):
+        return []
+    try:
+        budget.record_call("bybit")
+        response = httpx.get(
+            "https://api.bybit.com/v5/market/kline",
+            params={"category": "spot", "symbol": "BTCUSDT", "interval": interval, "limit": limit},
+            timeout=10,
+        )
+        response.raise_for_status()
+        rows = response.json().get("result", {}).get("list", [])
+        candles = [Candle(str(int(r[0]) // 1000), float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[5])) for r in rows]
+        return list(reversed(candles))[-limit:]
+    except Exception as exc:
+        logging.error(f"Bybit candle fetch failed for {interval}: {exc}")
+        return []
 
 
 def fetch_btc_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
-    return {
-        "5m": _fetch_kraken_ohlc(budget, interval=5, limit=limit),
-        "15m": _fetch_kraken_ohlc(budget, interval=15, limit=limit),
-        "1h": _fetch_kraken_ohlc(budget, interval=60, limit=limit),
-    }
+    frames = {"5m": (5, "5"), "15m": (15, "15"), "1h": (60, "60")}
+    out = {}
+    for label, (kraken_i, bybit_i) in frames.items():
+        candles = _fetch_kraken_ohlc(budget, interval=kraken_i, limit=limit)
+        out[label] = candles or _fetch_bybit_ohlc(budget, interval=bybit_i, limit=limit)
+    return out
 
 
-def _fetch_yahoo_symbol_candles(budget: BudgetManager, symbol: str, limit: int = 120) -> List[Candle]:
+def _fetch_yahoo_symbol_candles(budget: BudgetManager, symbol: str, interval: str, lookback: str, limit: int = 120) -> List[Candle]:
     if not budget.can_call("yahoo"):
         return []
     try:
         budget.record_call("yahoo")
         response = httpx.get(
             f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
-            params={"interval": "5m", "range": "5d"},
+            params={"interval": interval, "range": lookback},
             timeout=10,
         )
         response.raise_for_status()
@@ -98,13 +109,8 @@ def _fetch_yahoo_symbol_candles(budget: BudgetManager, symbol: str, limit: int =
         quote = result["indicators"]["quote"][0]
         candles: List[Candle] = []
         for i, tstamp in enumerate(ts):
-            o, h, l, c, v = (
-                quote["open"][i],
-                quote["high"][i],
-                quote["low"][i],
-                quote["close"][i],
-                quote.get("volume", [0] * len(ts))[i],
-            )
+            o, h, l, c = quote["open"][i], quote["high"][i], quote["low"][i], quote["close"][i]
+            v = quote.get("volume", [0] * len(ts))[i]
             if None in (o, h, l, c):
                 continue
             candles.append(Candle(str(tstamp), float(o), float(h), float(l), float(c), float(v or 0.0)))
@@ -114,13 +120,21 @@ def _fetch_yahoo_symbol_candles(budget: BudgetManager, symbol: str, limit: int =
         return []
 
 
-def fetch_spx_candles(budget: BudgetManager, limit: int = 120) -> List[Candle]:
-    return _fetch_yahoo_symbol_candles(budget, "%5EGSPC", limit)
+def fetch_spx_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
+    symbol = "%5EGSPC"
+    maps = {"5m": ("5m", "5d"), "15m": ("15m", "1mo"), "1h": ("1h", "3mo")}
+    out: Dict[str, List[Candle]] = {}
+    for tf, (interval, rng) in maps.items():
+        candles = _fetch_yahoo_symbol_candles(budget, symbol, interval, rng, limit=limit)
+        if not candles:
+            candles = _fetch_yahoo_symbol_candles(budget, "SPY", interval, rng, limit=limit)
+        out[tf] = candles
+    return out
 
 
 def fetch_macro_context(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
     return {
-        "spx": _fetch_yahoo_symbol_candles(budget, "%5EGSPC", limit),
-        "vix": _fetch_yahoo_symbol_candles(budget, "%5EVIX", limit),
-        "nq": _fetch_yahoo_symbol_candles(budget, "NQ%3DF", limit),
+        "spx": _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit) or _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit),
+        "vix": _fetch_yahoo_symbol_candles(budget, "%5EVIX", "5m", "5d", limit),
+        "nq": _fetch_yahoo_symbol_candles(budget, "NQ%3DF", "5m", "5d", limit),
     }
