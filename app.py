@@ -173,6 +173,13 @@ def run():
     news = fetch_news(bm)
 
     alerts = []
+    
+    # Check Bitcoin Status
+    if btc_price.healthy and btc_tf.get("5m") and btc_tf.get("15m") and btc_tf.get("1h"):
+        print(f"\n[✓] Bitcoin market data collected successfully (Price: ${btc_price.price:,.2f})")
+    else:
+        print(f"\n[!] Warning: Bitcoin market data is incomplete. (Price Healthy: {btc_price.healthy})")
+
     for tf in ["5m", "15m", "1h"]:
         if btc_tf.get(tf):
             alerts.append(
@@ -190,6 +197,9 @@ def run():
                     macro,
                 )
             )
+        else:
+            logger.warning(f"Skipping BTC {tf} analysis due to missing candles")
+
         if spx_tf.get(tf):
             spx_price = PriceSnapshot(price=spx_tf[tf][-1].close, timestamp=time.time(), source="yahoo", healthy=True)
             alerts.append(
@@ -208,6 +218,8 @@ def run():
                 )
             )
 
+    print(f"[i] Generated {len(alerts)} alerts. Processing filters...")
+
     for alert in alerts:
         px = btc_price.price if alert.symbol == "BTC" else _latest_spx_price(spx_tf, alert.timeframe)
         provider_context = {
@@ -217,9 +229,12 @@ def run():
             "spx_mode": "direct" if spx_source_map.get(alert.timeframe) == "^GSPC" else "proxy" if alert.symbol != "BTC" else "n/a",
         }
         if not state.should_send(alert, px):
-            logger.info("Filtered %s %s: %s", alert.symbol, alert.timeframe, json.dumps(alert.decision_trace))
+            # logger.info("Filtered %s %s", alert.symbol, alert.timeframe)
             continue
-        notif.send(_format_alert(alert, provider_context))
+        
+        msg = _format_alert(alert, provider_context)
+        print(f"\n>>> SENDING ALERT ({alert.symbol} {alert.timeframe}) <<<\n")
+        notif.send(msg)
         state.save(alert, px)
 
 
