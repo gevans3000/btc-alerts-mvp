@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Dict
 
-import httpx
-
-from collectors.base import BudgetManager
+from collectors.base import BudgetManager, request_json
 
 
 @dataclass
@@ -12,6 +11,7 @@ class DerivativesSnapshot:
     basis_pct: float
     source: str = "none"
     healthy: bool = True
+    meta: Dict[str, str] = field(default_factory=dict)
 
 
 def _safe_pct_change(old: float, new: float) -> float:
@@ -20,89 +20,78 @@ def _safe_pct_change(old: float, new: float) -> float:
     return ((new - old) / abs(old)) * 100.0
 
 
-def _fetch_binance(timeout: float) -> DerivativesSnapshot:
-    funding_resp = httpx.get(
-        "https://fapi.binance.com/fapi/v1/premiumIndex",
-        params={"symbol": "BTCUSDT"},
-        timeout=timeout,
-    )
-    funding_resp.raise_for_status()
-    funding_data = funding_resp.json()
-
-    oi_resp = httpx.get(
-        "https://fapi.binance.com/futures/data/openInterestHist",
-        params={"symbol": "BTCUSDT", "period": "5m", "limit": 2},
-        timeout=timeout,
-    )
-    oi_resp.raise_for_status()
-    oi_rows = oi_resp.json()
-
-    if len(oi_rows) < 2:
-        return DerivativesSnapshot(0.0, 0.0, 0.0, source="binance", healthy=False)
-
-    old_oi = float(oi_rows[0].get("sumOpenInterest", 0.0))
-    new_oi = float(oi_rows[1].get("sumOpenInterest", 0.0))
-    oi_change_pct = _safe_pct_change(old_oi, new_oi)
-
-    mark = float(funding_data.get("markPrice", 0.0))
-    index = float(funding_data.get("indexPrice", 0.0))
-    basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
-
-    return DerivativesSnapshot(
-        funding_rate=float(funding_data.get("lastFundingRate", 0.0)),
-        oi_change_pct=oi_change_pct,
-        basis_pct=basis_pct,
-        source="binance",
-        healthy=True,
-    )
-
-
 def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
-    ticker_resp = httpx.get(
+    ticker_payload = request_json(
         "https://api.bybit.com/v5/market/tickers",
         params={"category": "linear", "symbol": "BTCUSDT"},
         timeout=timeout,
     )
-    ticker_resp.raise_for_status()
-    ticker_rows = ticker_resp.json().get("result", {}).get("list", [])
+    ticker_rows = ticker_payload.get("result", {}).get("list", [])
     if not ticker_rows:
-        return DerivativesSnapshot(0.0, 0.0, 0.0, source="bybit", healthy=False)
+        return DerivativesSnapshot(0.0, 0.0, 0.0, source="bybit", healthy=False, meta={"provider": "bybit"})
 
     row = ticker_rows[0]
     mark = float(row.get("markPrice", 0.0))
     index = float(row.get("indexPrice", 0.0))
     basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
 
-    kl_resp = httpx.get(
+    oi_payload = request_json(
         "https://api.bybit.com/v5/market/open-interest",
         params={"category": "linear", "symbol": "BTCUSDT", "intervalTime": "5min", "limit": 2},
         timeout=timeout,
     )
-    kl_resp.raise_for_status()
-    oi_rows = kl_resp.json().get("result", {}).get("list", [])
+    oi_rows = oi_payload.get("result", {}).get("list", [])
     if len(oi_rows) < 2:
-        return DerivativesSnapshot(float(row.get("fundingRate", 0.0)), 0.0, basis_pct, source="bybit", healthy=True)
+        return DerivativesSnapshot(float(row.get("fundingRate", 0.0)), 0.0, basis_pct, source="bybit", healthy=True, meta={"provider": "bybit"})
 
     old_oi = float(oi_rows[-1].get("openInterest", 0.0))
     new_oi = float(oi_rows[0].get("openInterest", 0.0))
-
     return DerivativesSnapshot(
         funding_rate=float(row.get("fundingRate", 0.0)),
         oi_change_pct=_safe_pct_change(old_oi, new_oi),
         basis_pct=basis_pct,
         source="bybit",
         healthy=True,
+        meta={"provider": "bybit"},
     )
 
 
-def fetch_derivatives_context(budget: BudgetManager, timeout: float = 10.0) -> DerivativesSnapshot:
-    if budget.can_call("binance"):
-        try:
-            budget.record_call("binance")
-            return _fetch_binance(timeout)
-        except Exception:
-            pass
+def _fetch_okx(timeout: float) -> DerivativesSnapshot:
+    ticker_payload = request_json(
+        "https://www.okx.com/api/v5/market/ticker",
+        params={"instId": "BTC-USDT-SWAP"},
+        timeout=timeout,
+    )
+    rows = ticker_payload.get("data", [])
+    if not rows:
+        return DerivativesSnapshot(0.0, 0.0, 0.0, source="okx", healthy=False, meta={"provider": "okx"})
 
+    row = rows[0]
+    mark = float(row.get("last", 0.0))
+    index_payload = request_json(
+        "https://www.okx.com/api/v5/market/index-tickers",
+        params={"instId": "BTC-USDT"},
+        timeout=timeout,
+    )
+    idx_rows = index_payload.get("data", [])
+    index = float(idx_rows[0].get("idxPx", 0.0)) if idx_rows else 0.0
+
+    oi_payload = request_json(
+        "https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-history",
+        params={"ccy": "BTC", "period": "5m", "limit": 2},
+        timeout=timeout,
+    )
+    oi_rows = oi_payload.get("data", [])
+    if len(oi_rows) < 2:
+        return DerivativesSnapshot(0.0, 0.0, ((mark - index) / index) * 100.0 if index else 0.0, source="okx", healthy=True, meta={"provider": "okx"})
+
+    old_oi = float(oi_rows[-1][1])
+    new_oi = float(oi_rows[0][1])
+    basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
+    return DerivativesSnapshot(0.0, _safe_pct_change(old_oi, new_oi), basis_pct, source="okx", healthy=True, meta={"provider": "okx"})
+
+
+def fetch_derivatives_context(budget: BudgetManager, timeout: float = 10.0) -> DerivativesSnapshot:
     if budget.can_call("bybit"):
         try:
             budget.record_call("bybit")
@@ -110,4 +99,11 @@ def fetch_derivatives_context(budget: BudgetManager, timeout: float = 10.0) -> D
         except Exception:
             pass
 
-    return DerivativesSnapshot(0.0, 0.0, 0.0, source="none", healthy=False)
+    if budget.can_call("okx"):
+        try:
+            budget.record_call("okx")
+            return _fetch_okx(timeout)
+        except Exception:
+            pass
+
+    return DerivativesSnapshot(0.0, 0.0, 0.0, source="none", healthy=False, meta={"provider": "none"})
