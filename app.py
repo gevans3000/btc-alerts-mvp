@@ -60,6 +60,20 @@ class Notifier:
 class AlertStateStore:
     def __init__(self, path: str = ".mvp_alert_state.json"):
         self.path = Path(path)
+        self.state = self._load_state()
+
+    def _load_state(self) -> dict:
+        if not self.path.exists():
+            return {}
+        try:
+            return json.loads(self.path.read_text())
+        except Exception as exc:
+            logger.warning("State file unreadable, resetting state: %s", exc)
+            try:
+                self.path.rename(self.path.with_suffix(self.path.suffix + ".bak"))
+            except Exception:
+                logger.warning("Failed to rotate bad state file")
+            return {}
         self.state = json.loads(self.path.read_text()) if self.path.exists() else {}
 
     def should_send(self, score: AlertScore, current_price: float) -> bool:

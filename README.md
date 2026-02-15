@@ -56,6 +56,7 @@ Each alert includes:
 - `context` (regime/session/quality/providers)
 - `reason_codes`, `score_breakdown`, `blockers`
 - `decision_trace` (`trace_version` included for downstream compatibility)
+- replay summary now includes `horizon_bars` and `htf_mode` metadata
 - `decision_trace`
 - `context` (regime/session/quality)
 - `reason_codes`, `score_breakdown`, `blockers`
@@ -75,6 +76,7 @@ Each alert includes:
    ./run.sh
    ```
 
+`run.sh` installs dependencies only on first run or when `requirements.txt` changes. Use `--install` to force reinstall; this flag is consumed by the script and not passed to `app.py`.
 `run.sh` installs dependencies only on first run or when `requirements.txt` changes. Use `--install` to force reinstall.
 
 ## Testing
