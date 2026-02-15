@@ -1,6 +1,7 @@
 import httpx, time, xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import List
+from concurrent.futures import ThreadPoolExecutor
 from collectors.base import BudgetManager
 
 @dataclass
@@ -27,13 +28,19 @@ def fetch_news(budget: BudgetManager) -> List[Headline]:
     if not budget.can_call("rss"): return []
     budget.record_call("rss")
     feeds = ["https://cointelegraph.com/rss", "https://www.coindesk.com/arc/outboundfeeds/rss/"]
-    results = []
-    for url in feeds:
+
+    def _fetch_feed(url):
         try:
             r = httpx.get(url, timeout=10)
             root = ET.fromstring(r.text)
-            for item in root.iter("item"):
-                results.append(Headline(item.find("title").text, url.split("/")[2]))
-                if len(results) > 20: break
-        except: pass
-    return results
+            return [Headline(item.find("title").text, url.split("/")[2]) for item in root.iter("item")]
+        except Exception:
+            return []
+
+    results = []
+    with ThreadPoolExecutor(max_workers=len(feeds)) as executor:
+        for feed_results in executor.map(_fetch_feed, feeds):
+            results.extend(feed_results)
+            if len(results) >= 40: break
+
+    return results[:20]
