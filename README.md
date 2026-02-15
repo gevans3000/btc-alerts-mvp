@@ -6,7 +6,6 @@ A high-frequency Bitcoin alert system optimized for 5-minute long/short opportun
 - **BTC Multi-Timeframe Context**: Kraken OHLC on 5m/15m/1h with HTF trend gating.
 - **Adaptive Technicals**: RSI, Bollinger Bands, EMA trend, ATR-aware volatility regime (compression/expansion).
 - **Market Structure Detection**: Break of structure, failed breakout/fakeout, reclaim detection.
-- **Derivatives Context (Free)**: Binance public funding, open-interest change, and basis proxy.
 - **SPX Risk Filter**: Yahoo Finance 5m SPX trend context to modulate BTC conviction.
 - **Stateful Alert Lifecycle**: Dedupe, cooldown, and meaningful state-change alerting.
 - **Sentiment + News**: Fear & Greed + crypto RSS catalyst scans.
@@ -16,7 +15,6 @@ A high-frequency Bitcoin alert system optimized for 5-minute long/short opportun
 - CoinGecko public API (BTC spot fallback)
 - Alternative.me Fear & Greed API
 - CoinDesk + Cointelegraph RSS feeds
-- Binance public futures/spot endpoints (funding, OI history, basis proxy)
 - Yahoo Finance chart endpoint for SPX (`^GSPC`)
 
 ## Fallback Behavior
