@@ -1,7 +1,10 @@
-import time, json, threading
-from pathlib import Path
+import json
+import threading
+import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List
+
 
 @dataclass
 class _SourceBucket:
@@ -20,8 +23,18 @@ class _SourceBucket:
     def record(self):
         self.timestamps.append(time.time())
 
+
 class BudgetManager:
-    LIMITS = {"kraken": (10, 60.0), "coingecko": (10, 60.0), "alternative_me": (5, 300.0), "rss": (20, 300.0), "llm": (5, 300.0), "yahoo": (20, 60.0), "binance": (20, 60.0), "bybit": (20, 60.0)}
+    LIMITS = {
+        "kraken": (24, 60.0),
+        "coingecko": (10, 60.0),
+        "alternative_me": (5, 300.0),
+        "rss": (20, 300.0),
+        "llm": (5, 300.0),
+        "yahoo": (24, 60.0),
+        "bybit": (24, 60.0),
+        "okx": (24, 60.0),
+    }
 
     def __init__(self, path: str = ".budget.json"):
         self.path = Path(path)
@@ -32,17 +45,18 @@ class BudgetManager:
     def _load(self):
         if self.path.exists():
             try:
-                with open(self.path, "r") as f:
-                    data = json.load(f)
-                    for k, ts in data.items():
-                        if k in self._buckets: self._buckets[k].timestamps = ts
-            except: pass
+                data: Dict[str, List[float]] = json.loads(self.path.read_text())
+                for k, ts in data.items():
+                    if k in self._buckets:
+                        self._buckets[k].timestamps = ts
+            except Exception:
+                return
 
     def _save(self):
         try:
-            with open(self.path, "w") as f:
-                json.dump({k: b.timestamps for k, b in self._buckets.items()}, f)
-        except: pass
+            self.path.write_text(json.dumps({k: b.timestamps for k, b in self._buckets.items()}))
+        except Exception:
+            return
 
     def can_call(self, source: str) -> bool:
         with self._lock:
