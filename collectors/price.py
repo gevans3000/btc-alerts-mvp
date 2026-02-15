@@ -124,11 +124,13 @@ def fetch_spx_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -
 
 
 def fetch_spx_multi_timeframe_bundle(budget: BudgetManager, limit: int = 120) -> Tuple[Dict[str, List[Candle]], Dict[str, str]]:
-    maps = {"5m": ("5m", "5d"), "15m": ("15m", "1mo"), "1h": ("1h", "3mo")}
+    maps = {"5m": ("5m", "5d")} # REDUCED: Only fetch 5m to minimize API usage
+    # Disabled for safety: "15m": ("15m", "1mo"), "1h": ("1h", "3mo")
+    
     out: Dict[str, List[Candle]] = {}
     source_map: Dict[str, str] = {}
     for tf, (interval, rng) in maps.items():
-        if out: time.sleep(2.0) # Significant delay for Yahoo
+        if out: time.sleep(2.0) 
         
         direct = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", interval, rng, limit=limit)
         if direct:
@@ -142,28 +144,17 @@ def fetch_spx_multi_timeframe_bundle(budget: BudgetManager, limit: int = 120) ->
 
 
 def fetch_macro_context(budget: BudgetManager, limit: int = 120, prefetched_spx: List[Candle] = None) -> Dict[str, List[Candle]]:
-    # Stagger calls to avoid burst rate limits with Yahoo
+    # Minimal mode: Reuse SPX if available, skip VIX/NQ to stop 429s
+    spx = []
     if prefetched_spx:
         spx = prefetched_spx
-    else:
-        spx = []
-        if budget.can_call("yahoo"):
-            spx = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit)
-            if not spx:
-                 spx = _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit)
+    elif budget.can_call("yahoo"):
+        spx = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit) or \
+              _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit)
     
-    vix = []
-    time.sleep(2.0)
-    if budget.can_call("yahoo"):
-        vix = _fetch_yahoo_symbol_candles(budget, "%5EVIX", "5m", "5d", limit)
-
-    nq = [] 
-    time.sleep(2.0)
-    if budget.can_call("yahoo"):
-        nq = _fetch_yahoo_symbol_candles(budget, "NQ%3DF", "5m", "5d", limit)
-        
+    # Disabled VIX/NQ to ensure we get at least one answer without crashing
     return {
         "spx": spx,
-        "vix": vix,
-        "nq": nq,
+        "vix": [],
+        "nq": [],
     }

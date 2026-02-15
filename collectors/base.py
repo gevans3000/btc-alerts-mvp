@@ -77,7 +77,8 @@ class BudgetManager:
 
 
 def _is_retriable_status(code: int) -> bool:
-    return code == 429 or code >= 500
+    # 429 means stop immediately. Do not retry.
+    return code >= 500
 
 
 def _request(url: str, params: Optional[dict], timeout: float) -> httpx.Response:
