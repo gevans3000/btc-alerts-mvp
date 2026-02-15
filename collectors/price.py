@@ -86,6 +86,7 @@ def fetch_btc_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -
     frames = {"5m": (5, "5"), "15m": (15, "15"), "1h": (60, "60")}
     out = {}
     for label, (kraken_i, bybit_i) in frames.items():
+        if out: time.sleep(1.0) # Throttle between timeframes
         candles = _fetch_kraken_ohlc(budget, interval=kraken_i, limit=limit)
         out[label] = candles or _fetch_bybit_ohlc(budget, interval=bybit_i, limit=limit)
     return out
@@ -127,6 +128,8 @@ def fetch_spx_multi_timeframe_bundle(budget: BudgetManager, limit: int = 120) ->
     out: Dict[str, List[Candle]] = {}
     source_map: Dict[str, str] = {}
     for tf, (interval, rng) in maps.items():
+        if out: time.sleep(2.0) # Significant delay for Yahoo
+        
         direct = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", interval, rng, limit=limit)
         if direct:
             out[tf] = direct
@@ -138,21 +141,24 @@ def fetch_spx_multi_timeframe_bundle(budget: BudgetManager, limit: int = 120) ->
     return out, source_map
 
 
-def fetch_macro_context(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
+def fetch_macro_context(budget: BudgetManager, limit: int = 120, prefetched_spx: List[Candle] = None) -> Dict[str, List[Candle]]:
     # Stagger calls to avoid burst rate limits with Yahoo
-    spx = []
-    if budget.can_call("yahoo"):
-        spx = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit)
-        if not spx:
-             spx = _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit)
+    if prefetched_spx:
+        spx = prefetched_spx
+    else:
+        spx = []
+        if budget.can_call("yahoo"):
+            spx = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit)
+            if not spx:
+                 spx = _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit)
     
     vix = []
-    time.sleep(1.5)
+    time.sleep(2.0)
     if budget.can_call("yahoo"):
         vix = _fetch_yahoo_symbol_candles(budget, "%5EVIX", "5m", "5d", limit)
 
     nq = [] 
-    time.sleep(1.5)
+    time.sleep(2.0)
     if budget.can_call("yahoo"):
         nq = _fetch_yahoo_symbol_candles(budget, "NQ%3DF", "5m", "5d", limit)
         

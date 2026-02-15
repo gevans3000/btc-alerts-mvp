@@ -145,24 +145,32 @@ def run():
     notif = Notifier()
     state = AlertStateStore()
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        f_price = executor.submit(fetch_btc_price, bm)
-        f_btc = executor.submit(fetch_btc_multi_timeframe_candles, bm)
-        f_spx = executor.submit(fetch_spx_multi_timeframe_bundle, bm)
-        f_fg = executor.submit(fetch_fear_greed, bm)
-        f_news = executor.submit(fetch_news, bm)
-        f_deriv = executor.submit(fetch_derivatives_context, bm)
-        f_flow = executor.submit(fetch_flow_context, bm)
-        f_macro = executor.submit(fetch_macro_context, bm)
+    # Sequential execution to absolutely guarantee no burst rate limits
+    # 1. Price & Multi-timeframe Candles (Kraken/Bybit)
+    btc_price = fetch_btc_price(bm)
+    time.sleep(1.0)
+    btc_tf = fetch_btc_multi_timeframe_candles(bm)
+    time.sleep(1.0)
 
-        btc_price = f_price.result()
-        btc_tf = f_btc.result()
-        spx_tf, spx_source_map = f_spx.result()
-        fg = f_fg.result()
-        news = f_news.result()
-        derivatives = f_deriv.result()
-        flows = f_flow.result()
-        macro = f_macro.result()
+    # 2. SPX Data (Yahoo) - this is the heaviest one
+    spx_tf, spx_source_map = fetch_spx_multi_timeframe_bundle(bm)
+    time.sleep(2.0)
+
+    # 3. Macro Context (Reuse SPX data to save a call)
+    # We use the 5m SPX candles we just fetched
+    cached_spx_5m = spx_tf.get("5m", [])
+    macro = fetch_macro_context(bm, prefetched_spx=cached_spx_5m)
+    time.sleep(1.0)
+
+    # 4. Derivatives & Flows
+    derivatives = fetch_derivatives_context(bm)
+    time.sleep(1.0)
+    flows = fetch_flow_context(bm)
+    time.sleep(1.0)
+
+    # 5. Social / News (Low impact)
+    fg = fetch_fear_greed(bm)
+    news = fetch_news(bm)
 
     alerts = []
     for tf in ["5m", "15m", "1h"]:
