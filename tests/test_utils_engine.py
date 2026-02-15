@@ -129,6 +129,14 @@ class _OffBudget:
         return None
 
 
+class _OffBudget:
+    def can_call(self, source):
+        return False
+
+    def record_call(self, source):
+        return None
+
+
 class CollectorTests(unittest.TestCase):
     @patch("collectors.derivatives.httpx.get")
     def test_derivatives_bybit_parse(self, mock_get):

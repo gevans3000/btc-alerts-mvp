@@ -180,6 +180,7 @@ def run():
 
     for alert in alerts:
         px = btc_price.price if alert.symbol == "BTC" else _latest_spx_price(spx_tf, alert.timeframe)
+        px = btc_price.price if alert.symbol == "BTC" else alert.tp1
         if not state.should_send(alert, px):
             continue
         notif.send(_format_alert(alert))

@@ -268,6 +268,14 @@ def compute_score(
     if direction == "SHORT" and t1h > 0:
         blockers.append("HTF conflict")
 
+    for hl in news:
+        text = hl.title.lower()
+        for kws in GROUPS.values():
+            for keyword, weight in kws.items():
+                if keyword in text:
+                    breakdown["momentum"] += int(weight * 2)
+                    codes.append(f"NEWS_{keyword.replace(' ', '_').upper()}")
+
     tier, action = _tier_and_action(score, blockers)
     key = f"{symbol}:{timeframe}:{regime}:{strategy}:{int(px)}"
 
