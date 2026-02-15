@@ -82,13 +82,13 @@ def fetch_btc_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -
     }
 
 
-def fetch_spx_candles(budget: BudgetManager, limit: int = 120) -> List[Candle]:
+def _fetch_yahoo_symbol_candles(budget: BudgetManager, symbol: str, limit: int = 120) -> List[Candle]:
     if not budget.can_call("yahoo"):
         return []
     try:
         budget.record_call("yahoo")
         response = httpx.get(
-            "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC",
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
             params={"interval": "5m", "range": "5d"},
             timeout=10,
         )
@@ -110,5 +110,17 @@ def fetch_spx_candles(budget: BudgetManager, limit: int = 120) -> List[Candle]:
             candles.append(Candle(str(tstamp), float(o), float(h), float(l), float(c), float(v or 0.0)))
         return candles[-limit:]
     except Exception as exc:
-        logging.error(f"SPX candle fetch failed: {exc}")
+        logging.error(f"Yahoo fetch failed for {symbol}: {exc}")
         return []
+
+
+def fetch_spx_candles(budget: BudgetManager, limit: int = 120) -> List[Candle]:
+    return _fetch_yahoo_symbol_candles(budget, "%5EGSPC", limit)
+
+
+def fetch_macro_context(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
+    return {
+        "spx": _fetch_yahoo_symbol_candles(budget, "%5EGSPC", limit),
+        "vix": _fetch_yahoo_symbol_candles(budget, "%5EVIX", limit),
+        "nq": _fetch_yahoo_symbol_candles(budget, "NQ%3DF", limit),
+    }
