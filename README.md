@@ -24,6 +24,7 @@ High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy*
 
 ## Provider + Fallback Policy
 - Shared HTTP retry/backoff wrapper is used for collectors (retries 429/5xx/network errors, fails fast on non-retriable 4xx).
+- Shared HTTP retry/backoff wrapper is used for collectors.
 - BTC price: Kraken → CoinGecko.
 - BTC candles: Kraken → Bybit.
 - Derivatives: Bybit → OKX.
@@ -43,6 +44,10 @@ Recommended loop:
 3. Run tests
 4. Run `app.py --once`
 
+## SPX Notes
+- Engine requests direct `^GSPC` data first.
+- If unavailable, it uses **SPY as `SPX_PROXY`** and labels alerts accordingly.
+
 ## Alert Output Shape
 Each alert includes:
 - `symbol`, `timeframe`, `action`, `tier`, `direction`, `strategy_type`
@@ -51,6 +56,9 @@ Each alert includes:
 - `context` (regime/session/quality/providers)
 - `reason_codes`, `score_breakdown`, `blockers`
 - `decision_trace` (`trace_version` included for downstream compatibility)
+- `decision_trace`
+- `context` (regime/session/quality)
+- `reason_codes`, `score_breakdown`, `blockers`
 
 ## Getting Started
 1. Optional Telegram env vars:
