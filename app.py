@@ -219,8 +219,16 @@ def run():
             )
 
     print(f"[i] Generated {len(alerts)} alerts. Processing filters...")
+    
+    best_alert = None
+    best_score = -1
 
     for alert in alerts:
+        if alert.symbol == "BTC":
+            if alert.confidence > best_score:
+                best_score = alert.confidence
+                best_alert = alert
+
         px = btc_price.price if alert.symbol == "BTC" else _latest_spx_price(spx_tf, alert.timeframe)
         provider_context = {
             "price": btc_price.source if alert.symbol == "BTC" else spx_source_map.get(alert.timeframe, "none"),
@@ -236,6 +244,29 @@ def run():
         print(f"\n>>> SENDING ALERT ({alert.symbol} {alert.timeframe}) <<<\n")
         notif.send(msg)
         state.save(alert, px)
+
+    if best_alert:
+        print("\n" + "="*50)
+        print(f"  CURRENT MARKET STATUS: BTC ({best_alert.timeframe})")
+        print("="*50)
+        print(f"  • ACTION:      {best_alert.action} ({best_alert.tier})")
+        print(f"  • DIRECTION:   {best_alert.direction}")
+        print(f"  • CONFIDENCE:  {best_alert.confidence}/100")
+        print(f"  • STRATEGY:    {best_alert.strategy_type}")
+        print("-" * 50)
+        if best_alert.direction != "NEUTRAL":
+            print(f"  • ENTRY ZONE:  {best_alert.entry_zone}")
+            print(f"  • TARGET 1:    ${best_alert.tp1:,.2f}")
+            print(f"  • TARGET 2:    ${best_alert.tp2:,.2f}")
+            print(f"  • STOP LOSS:   ${best_alert.invalidation:,.2f}")
+            print(f"  • R:R RATIO:   {best_alert.rr_ratio:.2f}")
+        else:
+            print("  • No clear trade setup currently.")
+        print("-" * 50)
+        print(f"  • REASONS:     {', '.join(best_alert.reasons)}")
+        if best_alert.blockers:
+            print(f"  • BLOCKERS:    {', '.join(best_alert.blockers)}")
+        print("="*50 + "\n")
 
 
 if __name__ == "__main__":
