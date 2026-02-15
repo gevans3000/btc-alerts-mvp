@@ -21,7 +21,7 @@ class _SourceBucket:
         self.timestamps.append(time.time())
 
 class BudgetManager:
-    LIMITS = {"kraken": (10, 60.0), "coingecko": (10, 60.0), "alternative_me": (5, 300.0), "rss": (20, 300.0), "llm": (5, 300.0)}
+    LIMITS = {"kraken": (10, 60.0), "coingecko": (10, 60.0), "alternative_me": (5, 300.0), "rss": (20, 300.0), "llm": (5, 300.0), "binance": (20, 60.0), "yahoo": (10, 60.0)}
 
     def __init__(self, path: str = ".budget.json"):
         self.path = Path(path)

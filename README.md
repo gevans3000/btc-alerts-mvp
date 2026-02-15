@@ -1,33 +1,41 @@
 # BTC Alerts MVP 🚀
 
-A minimal, high-frequency Bitcoin alert system optimized for 5-minute scalping.
+A high-frequency Bitcoin alert system optimized for 5-minute long/short opportunities with free public data sources.
 
 ## Features
-- **Kraken Integration**: Real-time ticker and OHLC data from Kraken.
-- **Technical Indicators**: 5m RSI (14), Bollinger Bands (20, 2), and EMA Crosses (9/21).
-- **Sentiment Analysis**: Integration with Fear & Greed Index and crypto news RSS feeds.
-- **Scalping Logic**: Specialized engine designed to surface Long/Short signals for fast trades.
-- **Telegram Notifications**: Easy integration via environment variables.
+- **BTC Multi-Timeframe Context**: Kraken OHLC on 5m/15m/1h with HTF trend gating.
+- **Adaptive Technicals**: RSI, Bollinger Bands, EMA trend, ATR-aware volatility regime (compression/expansion).
+- **Market Structure Detection**: Break of structure, failed breakout/fakeout, reclaim detection.
+- **Derivatives Context (Free)**: Binance public funding, open-interest change, and basis proxy.
+- **SPX Risk Filter**: Yahoo Finance 5m SPX trend context to modulate BTC conviction.
+- **Stateful Alert Lifecycle**: Dedupe, cooldown, and meaningful state-change alerting.
+- **Sentiment + News**: Fear & Greed + crypto RSS catalyst scans.
+
+## Free Data Sources Used
+- Kraken public API (ticker + OHLC)
+- CoinGecko public API (BTC spot fallback)
+- Alternative.me Fear & Greed API
+- CoinDesk + Cointelegraph RSS feeds
+- Binance public futures/spot endpoints (funding, OI history, basis proxy)
+- Yahoo Finance chart endpoint for SPX (`^GSPC`)
+
+## Fallback Behavior
+- Any source can fail independently; engine continues in degraded mode.
+- Degraded feeds are reflected in `quality` (e.g., `degraded:spx,derivatives`).
+- If Telegram env vars are missing, alerts print to stdout.
 
 ## Getting Started
-
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd btc-alerts-mvp
-   ```
-
-2. **Setup environment variables**:
-   Create a `.env` file with:
+1. **Setup environment variables** (optional for Telegram):
    ```env
    TELEGRAM_BOT_TOKEN=your_token
    TELEGRAM_CHAT_ID=your_chat_id
    ```
-
-3. **Run the system**:
-   The `run.sh` script handles virtual environment creation and dependency installation automatically.
+2. **Run once**:
    ```bash
-   chmod +x run.sh
+   ./run.sh --once
+   ```
+3. **Run continuously on 5m clock**:
+   ```bash
    ./run.sh
    ```
 
