@@ -4,7 +4,7 @@ from typing import List
 from collectors.derivatives import DerivativesSnapshot
 from collectors.price import PriceSnapshot
 from collectors.social import FearGreedSnapshot, Headline
-from utils import Candle, atr, bollinger_bands, ema as ema_calc, percentile_rank, rsi
+from utils import Candle, atr, bollinger_bands, ema as ema_calc, percentile_rank, rsi, vwap
 
 GROUPS = {
     "policy": {"trump": 0.0, "bitcoin reserve": 0.7, "tariff": -0.4, "regulation": -0.3},
@@ -24,6 +24,8 @@ class AlertScore:
     invalidation: float
     tp1: float
     tp2: float
+    rr_ratio: float
+    direction: str
     time_horizon_bars: int
     lifecycle_key: str
 
@@ -163,6 +165,16 @@ def compute_score(
                 bias += 6 if direction == "Buy" else -6
                 reasons.append(f"High vol {direction}")
 
+        # VWAP Logic
+        v = vwap(candles_5m[-288:])  # approx 24h
+        if v:
+            if current_price > v:
+                bias += 4
+                reasons.append("Price above VWAP")
+            else:
+                bias -= 4
+                reasons.append("Price below VWAP")
+
         structure_bias, structure_reasons = _market_structure_bias(candles_5m)
         bias += structure_bias
         reasons.extend(structure_reasons)
@@ -218,15 +230,21 @@ def compute_score(
         degraded.append("spx")
 
     score = int(min(100, max(0, 50 + bias)))
-    regime = "neutral"
+    regime = "sideways / no signal"
+    direction = "NEUTRAL"
+
     if score >= 68:
         regime = "long_signal"
+        direction = "LONG"
     elif score <= 32:
         regime = "short_signal"
+        direction = "SHORT"
     elif score >= 56:
         regime = "bullish_bias"
+        direction = "LONG"
     elif score <= 44:
         regime = "bearish_bias"
+        direction = "SHORT"
 
     # downgrade hard signals when HTF mismatch
     if regime == "long_signal" and htf_bias < 0 and score < 78:
@@ -241,17 +259,31 @@ def compute_score(
     if px <= 0:
         px = 1.0
     local_atr = atr(completed, 14) or max(1.0, px * 0.002)
-    if regime in ("long_signal", "bullish_bias"):
+    
+    rr_ratio = 0.0
+    if direction == "LONG":
         invalidation = px - (1.2 * local_atr)
-        tp1 = px + (1.0 * local_atr)
-        tp2 = px + (2.0 * local_atr)
-    else:
+        tp1 = px + (1.5 * local_atr)  # Improved R:R
+        tp2 = px + (2.5 * local_atr)
+        risk = px - invalidation
+        reward = tp1 - px
+        rr_ratio = reward / risk if risk > 0 else 0.0
+    elif direction == "SHORT":
         invalidation = px + (1.2 * local_atr)
-        tp1 = px - (1.0 * local_atr)
-        tp2 = px - (2.0 * local_atr)
+        tp1 = px - (1.5 * local_atr)
+        tp2 = px - (2.5 * local_atr)
+        risk = invalidation - px
+        reward = px - tp1
+        rr_ratio = reward / risk if risk > 0 else 0.0
+    else:
+        # Neutral / Sideways
+        invalidation = 0.0
+        tp1 = 0.0
+        tp2 = 0.0
+        rr_ratio = 0.0
 
     trump = ", ".join(sorted(set(k for k in hits if k in GROUPS["policy"])))
-    key = f"{regime}:{int(px)}:{int(invalidation)}:{int(tp1)}"
+    key = f"{regime}:{direction}:{int(px)}"
 
     return AlertScore(
         regime=regime,
@@ -259,10 +291,12 @@ def compute_score(
         reasons=reasons[:7],
         trump_hits=trump,
         quality="ok" if not degraded else f"degraded:{','.join(sorted(set(degraded)))}",
-        entry_zone=f"{px - 0.2 * local_atr:,.0f}-{px + 0.2 * local_atr:,.0f}",
+        entry_zone=f"{px - 0.1 * local_atr:,.0f}-{px + 0.1 * local_atr:,.0f}" if direction != "NEUTRAL" else "-",
         invalidation=invalidation,
         tp1=tp1,
         tp2=tp2,
+        rr_ratio=rr_ratio,
+        direction=direction,
         time_horizon_bars=8,
         lifecycle_key=key,
     )

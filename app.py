@@ -125,14 +125,16 @@ def run():
         "short_signal": "🔴📉",
         "bullish_bias": "📗",
         "bearish_bias": "📕",
-        "neutral": "⚪",
+        "sideways / no signal": "⚪",
     }.get(score.regime, "⚪")
 
     msg = (
         f"*{emoji} BTC 5m Alert ({score.confidence}/100)*\n"
         f"Regime: {score.regime.upper().replace('_', ' ')}\n"
+        f"Direction: {score.direction}\n"
         f"Quality: {score.quality}\n"
         f"Price: ${price.price:,.0f}\n"
+        f"R:R Ratio: 1:{score.rr_ratio:.2f}\n"
         f"Entry: {score.entry_zone}\n"
         f"Invalidation: {score.invalidation:,.0f}\n"
         f"TP1/TP2: {score.tp1:,.0f} / {score.tp2:,.0f}\n"

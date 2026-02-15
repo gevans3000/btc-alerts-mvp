@@ -71,3 +71,15 @@ def percentile_rank(values: List[float], value: float) -> Optional[float]:
         return None
     count = sum(1 for v in values if v <= value)
     return (count / len(values)) * 100.0
+
+
+def vwap(candles: List[Candle]) -> Optional[float]:
+    if not candles:
+        return None
+    cum_pv = 0.0
+    cum_vol = 0.0
+    for c in candles:
+        typical = (c.high + c.low + c.close) / 3
+        cum_pv += typical * c.volume
+        cum_vol += c.volume
+    return cum_pv / cum_vol if cum_vol > 0 else None
