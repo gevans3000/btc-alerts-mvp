@@ -43,6 +43,10 @@ Recommended loop:
 3. Run tests
 4. Run `app.py --once`
 
+## SPX Notes
+- Engine requests direct `^GSPC` data first.
+- If unavailable, it uses **SPY as `SPX_PROXY`** and labels alerts accordingly.
+
 ## Alert Output Shape
 Each alert includes:
 - `symbol`, `timeframe`, `action`, `tier`, `direction`, `strategy_type`
@@ -51,6 +55,8 @@ Each alert includes:
 - `context` (regime/session/quality/providers)
 - `reason_codes`, `score_breakdown`, `blockers`
 - `decision_trace`
+- `context` (regime/session/quality)
+- `reason_codes`, `score_breakdown`, `blockers`
 
 ## Getting Started
 1. Optional Telegram env vars:

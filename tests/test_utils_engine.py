@@ -11,6 +11,8 @@ from collectors.price import PriceSnapshot
 from collectors.social import FearGreedSnapshot, Headline
 from engine import compute_score
 from tools.replay import replay_symbol_timeframe
+from app import AlertStateStore
+from engine import compute_score
 from utils import Candle, adx, atr, ema, percentile_rank, rsi
 
 
@@ -34,6 +36,9 @@ class EngineTests(unittest.TestCase):
         for i in range(n):
             op, cl = px, px + step
             rows.append(Candle(str(now + (i * 300)), op, max(op, cl) + 0.4, min(op, cl) - 0.4, cl, 100 + i))
+        for i in range(n):
+            op, cl = px, px + step
+            rows.append(Candle(str(1700000000 + (i * 300)), op, max(op, cl) + 0.4, min(op, cl) - 0.4, cl, 100 + i))
             px = cl
         return rows
 
@@ -56,6 +61,7 @@ class EngineTests(unittest.TestCase):
         self.assertLessEqual(score.confidence, 100)
         self.assertTrue(isinstance(score.reason_codes, list))
         self.assertIn("candidates", score.decision_trace)
+
 
     def test_news_changes_confidence(self):
         c5 = self._candles()
@@ -81,6 +87,7 @@ class EngineTests(unittest.TestCase):
             fetch_flow_context(_OffBudget()),
             macro,
         )
+
         self.assertLess(with_news.confidence, base.confidence)
 
     def test_stale_candles_block_signal(self):
@@ -101,6 +108,18 @@ class EngineTests(unittest.TestCase):
             fetch_derivatives_context(_OffBudget()),
             fetch_flow_context(_OffBudget()),
             macro,
+        c5 = [
+            Candle(str(stale_start + (i * 300)), 100 + i, 101 + i, 99 + i, 100.5 + i, 100 + i)
+            for i in range(90)
+        ]
+        c15 = c5
+        c1h = c5
+        price = PriceSnapshot(price=c5[-1].close, timestamp=0)
+        fg = FearGreedSnapshot(value=30, label="Fear", healthy=True)
+        macro = {"spx": c5, "vix": list(reversed(c5)), "nq": c5}
+
+        score = compute_score(
+            "BTC", "5m", price, c5, c15, c1h, fg, [], fetch_derivatives_context(_OffBudget()), fetch_flow_context(_OffBudget()), macro
         )
 
         self.assertIn("Stale market data", score.blockers)
@@ -182,6 +201,13 @@ class ReplayTests(unittest.TestCase):
         self.assertGreaterEqual(metrics.alerts, 0)
         self.assertGreaterEqual(metrics.trades, 0)
 
+class _OffBudget:
+    def can_call(self, source):
+        return False
+
+    def record_call(self, source):
+        return None
+
 
 class _OffBudget:
     def can_call(self, source):
@@ -198,6 +224,15 @@ class CollectorTests(unittest.TestCase):
             {"result": {"list": [{"markPrice": "60000", "indexPrice": "59800", "fundingRate": "0.0005"}]}},
             {"result": {"list": [{"openInterest": "110"}, {"openInterest": "100"}]}},
         ]
+    @patch("collectors.derivatives.httpx.get")
+    def test_derivatives_bybit_parse(self, mock_get):
+        ticker_resp = Mock()
+        ticker_resp.raise_for_status = Mock()
+        ticker_resp.json.return_value = {"result": {"list": [{"markPrice": "60000", "indexPrice": "59800", "fundingRate": "0.0005"}]}}
+        oi_resp = Mock()
+        oi_resp.raise_for_status = Mock()
+        oi_resp.json.return_value = {"result": {"list": [{"openInterest": "110"}, {"openInterest": "100"}]}}
+        mock_get.side_effect = [ticker_resp, oi_resp]
 
         class _Budget:
             def can_call(self, source):

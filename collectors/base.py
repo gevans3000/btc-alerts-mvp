@@ -1,14 +1,9 @@
 import json
-import random
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
-
-import httpx
-
-from config import HTTP_RETRY
+from typing import Dict, List
 
 
 @dataclass

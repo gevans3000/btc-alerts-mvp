@@ -1,13 +1,12 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
 from collectors.price import PriceSnapshot
 from collectors.social import FearGreedSnapshot, Headline
-from config import DETECTORS, REGIME, STALE_SECONDS, TIMEFRAME_RULES
 from utils import Candle, adx, atr, bollinger_bands, donchian_break, ema as ema_calc, percentile_rank, rsi, vwap, zscore
 
 GROUPS = {
@@ -39,7 +38,6 @@ class AlertScore:
     session: str
     score_breakdown: Dict[str, int]
     lifecycle_key: str
-    decision_trace: Dict[str, object] = field(default_factory=dict)
 
 
 def _session_label(candles: List[Candle]) -> str:
@@ -89,9 +87,9 @@ def _regime(candles: List[Candle]) -> tuple[str, int, List[str]]:
     atr_series = [atr(candles[:i], 14) for i in range(20, len(candles))]
     atr_clean = [x for x in atr_series if x is not None]
     rank = percentile_rank(atr_clean, local_atr) if atr_clean else 50.0
-    if adx_v > REGIME["adx_trend"] and abs(slope) > REGIME["slope_trend"]:
+    if adx_v > 24 and abs(slope) > 0.003:
         return "trend", 8, ["REGIME_TREND"]
-    if rank > REGIME["atr_rank_chop"] and adx_v < REGIME["adx_chop"]:
+    if rank > 70 and adx_v < 20:
         return "vol_chop", -8, ["REGIME_VOL_CHOP"]
     return "range", -2, ["REGIME_RANGE"]
 
@@ -162,12 +160,58 @@ def _arbitrate_candidates(candidates: Dict[str, int]) -> Tuple[int, str, List[st
     strongest = max(candidates.items(), key=lambda kv: abs(kv[1]))
     strategy = strongest[0].replace("_LONG", "").replace("_SHORT", "")
     return strongest[1], strategy, codes, penalty
+def _detectors(candles: List[Candle]) -> tuple[int, str, List[str], List[str]]:
+    reasons, codes = [], []
+    closes = [c.close for c in candles[:-1]]
+    if len(closes) < 30:
+        return 0, "NONE", reasons, codes
+
+    score = 0
+    strategy = "TREND_CONTINUATION"
+    e9, e21 = ema_calc(closes, 9), ema_calc(closes, 21)
+    rvwap = vwap(candles[-288:])
+    up_break, dn_break = donchian_break(candles, 20)
+    z = zscore(closes, 20) or 0.0
+    rrsi = rsi(closes, 14) or 50.0
+
+    if up_break or dn_break:
+        strategy = "BREAKOUT"
+        score += 12 if up_break else -12
+        codes.append("DONCHIAN_BREAK")
+    elif abs(z) > 1.8 and ((z < 0 and rrsi < 35) or (z > 0 and rrsi > 65)):
+        strategy = "MEAN_REVERSION"
+        score += 10 if z < 0 else -10
+        codes.append("ZSCORE_EXTREME")
+    elif e9 and e21 and rvwap:
+        if e9 > e21 and closes[-1] > rvwap:
+            score += 9
+            strategy = "TREND_CONTINUATION"
+            codes.append("VWAP_RECLAIM")
+        elif e9 < e21 and closes[-1] < rvwap:
+            score -= 9
+            strategy = "TREND_CONTINUATION"
+            codes.append("VWAP_REJECT")
+
+    bb = bollinger_bands(closes, 20, 2)
+    if bb and (closes[-1] > bb[0] or closes[-1] < bb[2]):
+        strategy = "VOLATILITY_EXPANSION"
+        score += 6 if closes[-1] > bb[0] else -6
+        codes.append("BB_EXPANSION")
+
+    if score > 0:
+        reasons.append("Momentum supports LONG setup")
+    if score < 0:
+        reasons.append("Momentum supports SHORT setup")
+    return score, strategy, reasons, codes
+
+
 
 
 def _is_stale(candles: List[Candle], timeframe: str) -> bool:
     if not candles:
         return True
     max_age_seconds = STALE_SECONDS.get(timeframe, STALE_SECONDS["5m"])
+    max_age_seconds = {"5m": 12 * 60, "15m": 35 * 60, "1h": 130 * 60}.get(timeframe, 12 * 60)
     try:
         last_ts = int(float(candles[-1].ts))
     except (TypeError, ValueError):
@@ -221,6 +265,10 @@ def compute_score(
     reasons.extend(detector_reasons)
     codes.extend(detector_codes)
     codes.extend(arb_codes)
+    detector_pts, strategy, detector_reasons, detector_codes = _detectors(candles)
+    breakdown["momentum"] += detector_pts
+    reasons.extend(detector_reasons)
+    codes.extend(detector_codes)
 
     closes = [c.close for c in candles[:-1]]
     vols = [c.volume for c in candles[:-1]]
@@ -232,6 +280,7 @@ def compute_score(
         if len(vols) > 20:
             avg_vol = sum(vols[-21:-1]) / 20
             if vols[-1] > avg_vol * DETECTORS["volume_multiplier"]:
+            if vols[-1] > avg_vol * 1.4:
                 bump = 6 if closes[-1] > closes[-2] else -6
                 breakdown["volume"] += bump
                 codes.append("VOL_SURGE")
@@ -254,6 +303,10 @@ def compute_score(
     if symbol == "BTC" and derivatives.healthy and derivatives.oi_change_pct > 0.7 and derivatives.basis_pct > 0:
         breakdown["trend_alignment"] += 4
         codes.append("OI_BASIS_CONFIRM")
+    if symbol == "BTC" and derivatives.healthy:
+        if derivatives.oi_change_pct > 0.7 and derivatives.basis_pct > 0:
+            breakdown["trend_alignment"] += 4
+            codes.append("OI_BASIS_CONFIRM")
     if symbol == "BTC" and flows.healthy and flows.crowding_score > 6:
         breakdown["penalty"] -= 5
         codes.append("CROWDING_LONG")
@@ -278,6 +331,8 @@ def compute_score(
     score = int(min(100, max(0, 50 + net)))
     direction = "LONG" if score >= TIMEFRAME_RULES[timeframe]["watch_long"] else "SHORT" if score <= TIMEFRAME_RULES[timeframe]["watch_short"] else "NEUTRAL"
     regime = "long_signal" if score >= TIMEFRAME_RULES[timeframe]["trade_long"] else "short_signal" if score <= TIMEFRAME_RULES[timeframe]["trade_short"] else f"{reg}_bias"
+    direction = "LONG" if score >= 56 else "SHORT" if score <= 44 else "NEUTRAL"
+    regime = "long_signal" if score >= 68 else "short_signal" if score <= 32 else f"{reg}_bias"
 
     px = price.price or (closes[-1] if closes else 0.0)
     local_atr = atr(candles[:-1], 14) or max(1.0, px * 0.002)
@@ -291,6 +346,7 @@ def compute_score(
         invalidation = tp1 = tp2 = rr_ratio = 0.0
 
     if rr_ratio < TIMEFRAME_RULES[timeframe]["min_rr"] and direction != "NEUTRAL":
+    if rr_ratio < 1.25 and direction != "NEUTRAL":
         blockers.append("Low R:R")
     if direction == "LONG" and t1h < 0:
         blockers.append("HTF conflict")
@@ -304,6 +360,17 @@ def compute_score(
     trace["strategy"] = strategy
     trace["net"] = net
 
+    for hl in news:
+        text = hl.title.lower()
+        for kws in GROUPS.values():
+            for keyword, weight in kws.items():
+                if keyword in text:
+                    breakdown["momentum"] += int(weight * 2)
+                    codes.append(f"NEWS_{keyword.replace(' ', '_').upper()}")
+
+    tier, action = _tier_and_action(score, blockers)
+    key = f"{symbol}:{timeframe}:{regime}:{strategy}:{int(px)}"
+
     return AlertScore(
         symbol=symbol,
         timeframe=timeframe,
@@ -313,6 +380,7 @@ def compute_score(
         action=action,
         reasons=(reasons or ["No dominant setup"])[:5],
         reason_codes=sorted(set(codes))[:10],
+        reason_codes=sorted(set(codes))[:8],
         blockers=sorted(set(blockers)),
         quality="ok" if not degraded else f"degraded:{','.join(sorted(set(degraded)))}",
         direction=direction,

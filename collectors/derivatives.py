@@ -35,12 +35,13 @@ def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
     index = float(row.get("indexPrice", 0.0))
     basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
 
-    oi_payload = request_json(
+    oi_resp = httpx.get(
         "https://api.bybit.com/v5/market/open-interest",
         params={"category": "linear", "symbol": "BTCUSDT", "intervalTime": "5min", "limit": 2},
         timeout=timeout,
     )
-    oi_rows = oi_payload.get("result", {}).get("list", [])
+    oi_resp.raise_for_status()
+    oi_rows = oi_resp.json().get("result", {}).get("list", [])
     if len(oi_rows) < 2:
         return DerivativesSnapshot(float(row.get("fundingRate", 0.0)), 0.0, basis_pct, source="bybit", healthy=True, meta={"provider": "bybit"})
 
@@ -57,38 +58,41 @@ def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
 
 
 def _fetch_okx(timeout: float) -> DerivativesSnapshot:
-    ticker_payload = request_json(
+    ticker_resp = httpx.get(
         "https://www.okx.com/api/v5/market/ticker",
         params={"instId": "BTC-USDT-SWAP"},
         timeout=timeout,
     )
-    rows = ticker_payload.get("data", [])
+    ticker_resp.raise_for_status()
+    rows = ticker_resp.json().get("data", [])
     if not rows:
-        return DerivativesSnapshot(0.0, 0.0, 0.0, source="okx", healthy=False, meta={"provider": "okx"})
+        return DerivativesSnapshot(0.0, 0.0, 0.0, source="okx", healthy=False)
 
     row = rows[0]
     mark = float(row.get("last", 0.0))
-    index_payload = request_json(
+    index_resp = httpx.get(
         "https://www.okx.com/api/v5/market/index-tickers",
         params={"instId": "BTC-USDT"},
         timeout=timeout,
     )
-    idx_rows = index_payload.get("data", [])
+    index_resp.raise_for_status()
+    idx_rows = index_resp.json().get("data", [])
     index = float(idx_rows[0].get("idxPx", 0.0)) if idx_rows else 0.0
 
-    oi_payload = request_json(
+    oi_resp = httpx.get(
         "https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-history",
         params={"ccy": "BTC", "period": "5m", "limit": 2},
         timeout=timeout,
     )
-    oi_rows = oi_payload.get("data", [])
+    oi_resp.raise_for_status()
+    oi_rows = oi_resp.json().get("data", [])
     if len(oi_rows) < 2:
-        return DerivativesSnapshot(0.0, 0.0, ((mark - index) / index) * 100.0 if index else 0.0, source="okx", healthy=True, meta={"provider": "okx"})
+        return DerivativesSnapshot(0.0, 0.0, ((mark - index) / index) * 100.0 if index else 0.0, source="okx", healthy=True)
 
     old_oi = float(oi_rows[-1][1])
     new_oi = float(oi_rows[0][1])
     basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
-    return DerivativesSnapshot(0.0, _safe_pct_change(old_oi, new_oi), basis_pct, source="okx", healthy=True, meta={"provider": "okx"})
+    return DerivativesSnapshot(0.0, _safe_pct_change(old_oi, new_oi), basis_pct, source="okx", healthy=True)
 
 
 def fetch_derivatives_context(budget: BudgetManager, timeout: float = 10.0) -> DerivativesSnapshot:
