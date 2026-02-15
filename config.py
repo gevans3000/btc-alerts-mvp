@@ -28,3 +28,16 @@ STALE_SECONDS = {"5m": 12 * 60, "15m": 35 * 60, "1h": 130 * 60}
 COOLDOWN_SECONDS = {"A+": 10 * 60, "B": 20 * 60, "NO-TRADE": 20 * 60}
 
 HTTP_RETRY = {"attempts": 3, "backoff_seconds": 0.35, "jitter_seconds": 0.2}
+
+
+def validate_config() -> None:
+    for tf, cfg in TIMEFRAME_RULES.items():
+        if cfg["trade_long"] <= cfg["watch_long"]:
+            raise ValueError(f"{tf}: trade_long must be > watch_long")
+        if cfg["trade_short"] >= cfg["watch_short"]:
+            raise ValueError(f"{tf}: trade_short must be < watch_short")
+        if cfg["min_rr"] <= 0:
+            raise ValueError(f"{tf}: min_rr must be > 0")
+    for tf, seconds in STALE_SECONDS.items():
+        if seconds <= 0:
+            raise ValueError(f"{tf}: stale seconds must be > 0")

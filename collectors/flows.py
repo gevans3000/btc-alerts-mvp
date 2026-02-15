@@ -59,6 +59,7 @@ def _fetch_bybit_flow(timeout: float) -> FlowSnapshot:
 
 def fetch_flow_context(budget: BudgetManager, timeout: float = 10.0) -> FlowSnapshot:
     if not budget.can_call("bybit"):
+        return FlowSnapshot(1.0, 1.0, 0.0, healthy=False, source="none", meta={"provider": "none"})
         return FlowSnapshot(1.0, 1.0, 0.0, healthy=False)
 
     try:

@@ -23,6 +23,7 @@ High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy*
 - CoinDesk + Cointelegraph RSS feeds
 
 ## Provider + Fallback Policy
+- Shared HTTP retry/backoff wrapper is used for collectors (retries 429/5xx/network errors, fails fast on non-retriable 4xx).
 - Shared HTTP retry/backoff wrapper is used for collectors.
 - BTC price: Kraken → CoinGecko.
 - BTC candles: Kraken → Bybit.
@@ -54,6 +55,7 @@ Each alert includes:
 - `entry_zone`, `invalidation_level`, `tp1`, `tp2`, `rr_ratio`
 - `context` (regime/session/quality/providers)
 - `reason_codes`, `score_breakdown`, `blockers`
+- `decision_trace` (`trace_version` included for downstream compatibility)
 - `decision_trace`
 - `context` (regime/session/quality)
 - `reason_codes`, `score_breakdown`, `blockers`
@@ -66,12 +68,14 @@ Each alert includes:
    ```
 2. Run once:
    ```bash
-   ./run.sh --once
+   ./run.sh --install --once
    ```
 3. Run continuously (5m loop):
    ```bash
    ./run.sh
    ```
+
+`run.sh` installs dependencies only on first run or when `requirements.txt` changes. Use `--install` to force reinstall.
 
 ## Testing
 - `pytest -q`

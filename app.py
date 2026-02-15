@@ -21,6 +21,7 @@ from collectors.price import (
     fetch_spx_multi_timeframe_bundle,
 )
 from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
+from config import COOLDOWN_SECONDS, validate_config
 from config import COOLDOWN_SECONDS
     fetch_spx_multi_timeframe_candles,
 )
@@ -116,6 +117,16 @@ def _format_alert(score: AlertScore) -> str:
         "tp1": round(score.tp1, 2),
         "tp2": round(score.tp2, 2),
         "rr_ratio": round(score.rr_ratio, 2),
+        "context": {
+            "regime": score.regime,
+            "session": score.session,
+            "quality": score.quality,
+            "providers": provider_context,
+        },
+        "reason_codes": score.reason_codes,
+        "score_breakdown": score.score_breakdown,
+        "blockers": score.blockers,
+        "decision_trace": score.decision_trace,
         "context": {"regime": score.regime, "session": score.session, "quality": score.quality},
         "reason_codes": score.reason_codes,
         "score_breakdown": score.score_breakdown,
@@ -125,6 +136,7 @@ def _format_alert(score: AlertScore) -> str:
 
 
 def run():
+    validate_config()
     bm = BudgetManager(".mvp_budget.json")
     notif = Notifier()
     state = AlertStateStore()
@@ -132,6 +144,7 @@ def run():
     with ThreadPoolExecutor(max_workers=8) as executor:
         f_price = executor.submit(fetch_btc_price, bm)
         f_btc = executor.submit(fetch_btc_multi_timeframe_candles, bm)
+        f_spx = executor.submit(fetch_spx_multi_timeframe_bundle, bm)
         f_spx = executor.submit(fetch_spx_multi_timeframe_candles, bm)
         f_fg = executor.submit(fetch_fear_greed, bm)
         f_news = executor.submit(fetch_news, bm)
@@ -179,6 +192,8 @@ def run():
                     spx_tf.get("1h", []),
                     FearGreedSnapshot(50, "Neutral", healthy=False),
                     [],
+                    DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False, source="none", meta={"provider": "none"}),
+                    FlowSnapshot(1.0, 1.0, 0.0, healthy=False, source="none", meta={"provider": "none"}),
                     DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False),
                     FlowSnapshot(1.0, 1.0, 0.0, healthy=False),
                     macro,
@@ -187,6 +202,16 @@ def run():
 
     for alert in alerts:
         px = btc_price.price if alert.symbol == "BTC" else _latest_spx_price(spx_tf, alert.timeframe)
+        provider_context = {
+            "price": btc_price.source if alert.symbol == "BTC" else spx_source_map.get(alert.timeframe, "none"),
+            "derivatives": derivatives.source if alert.symbol == "BTC" else "none",
+            "flows": flows.source if alert.symbol == "BTC" else "none",
+            "spx_mode": "direct" if spx_source_map.get(alert.timeframe) == "^GSPC" else "proxy" if alert.symbol != "BTC" else "n/a",
+        }
+        if not state.should_send(alert, px):
+            logger.info("Filtered %s %s: %s", alert.symbol, alert.timeframe, json.dumps(alert.decision_trace))
+            continue
+        notif.send(_format_alert(alert, provider_context))
         px = btc_price.price if alert.symbol == "BTC" else alert.tp1
         if not state.should_send(alert, px):
             continue
