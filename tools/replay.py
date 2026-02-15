@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
@@ -59,6 +60,7 @@ def _context_streams(candles: List[Candle], timeframe: str) -> Tuple[List[Candle
 def replay_symbol_timeframe(symbol: str, timeframe: str, candles: List[Candle]) -> ReplayMetrics:
     if len(candles) < 60:
         return ReplayMetrics(0, 0, 0.0, 0.0, FORWARD_BARS.get(timeframe, 1), "native")
+        return ReplayMetrics(0, 0, 0.0, 0.0)
 
     fg = FearGreedSnapshot(50, "Neutral", healthy=False)
     deriv = DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False)
@@ -78,6 +80,18 @@ def replay_symbol_timeframe(symbol: str, timeframe: str, candles: List[Candle]) 
         fired.append(score)
         if i + horizon < len(candles):
             fwd = candles[i + horizon].close - candles[i].close
+    for i in range(50, len(candles)):
+        c = _slice(candles, i)
+        c15, c1h, _ = _context_streams(c, timeframe)
+        px = PriceSnapshot(price=c[-1].close, timestamp=0, source="replay", healthy=True)
+        score = compute_score(symbol, timeframe, px, c, c15, c1h, fg, [], deriv, flow, {"spx": c, "vix": c, "nq": c})
+        px = PriceSnapshot(price=c[-1].close, timestamp=0, source="replay", healthy=True)
+        score = compute_score(symbol, timeframe, px, c, c, c, fg, [], deriv, flow, {"spx": c, "vix": c, "nq": c})
+        if score.action == "SKIP":
+            continue
+        fired.append(score)
+        if i + 3 < len(candles):
+            fwd = candles[i + 3].close - candles[i].close
             if (score.direction == "LONG" and fwd > 0) or (score.direction == "SHORT" and fwd < 0):
                 wins += 1
 
@@ -86,6 +100,7 @@ def replay_symbol_timeframe(symbol: str, timeframe: str, candles: List[Candle]) 
     noise_ratio = 0.0 if alerts == 0 else round((alerts - trades) / alerts, 4)
     hit = 0.0 if alerts == 0 else round(wins / alerts, 4)
     return ReplayMetrics(alerts, trades, noise_ratio, hit, horizon, mode)
+    return ReplayMetrics(alerts, trades, noise_ratio, hit)
 
 
 def summarize(metrics: Dict[str, ReplayMetrics]) -> dict:
