@@ -139,9 +139,25 @@ def fetch_spx_multi_timeframe_bundle(budget: BudgetManager, limit: int = 120) ->
 
 
 def fetch_macro_context(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
+    # Stagger calls to avoid burst rate limits with Yahoo
+    spx = []
+    if budget.can_call("yahoo"):
+        spx = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit)
+        if not spx:
+             spx = _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit)
+    
+    vix = []
+    time.sleep(1.5)
+    if budget.can_call("yahoo"):
+        vix = _fetch_yahoo_symbol_candles(budget, "%5EVIX", "5m", "5d", limit)
+
+    nq = [] 
+    time.sleep(1.5)
+    if budget.can_call("yahoo"):
+        nq = _fetch_yahoo_symbol_candles(budget, "NQ%3DF", "5m", "5d", limit)
+        
     return {
-        "spx": _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit)
-        or _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit),
-        "vix": _fetch_yahoo_symbol_candles(budget, "%5EVIX", "5m", "5d", limit),
-        "nq": _fetch_yahoo_symbol_candles(budget, "NQ%3DF", "5m", "5d", limit),
+        "spx": spx,
+        "vix": vix,
+        "nq": nq,
     }

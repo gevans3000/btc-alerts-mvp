@@ -38,7 +38,7 @@ class BudgetManager:
         "alternative_me": (5, 300.0),
         "rss": (20, 300.0),
         "llm": (5, 300.0),
-        "yahoo": (24, 60.0),
+        "yahoo": (10, 300.0),
         "bybit": (24, 60.0),
         "okx": (24, 60.0),
     }
