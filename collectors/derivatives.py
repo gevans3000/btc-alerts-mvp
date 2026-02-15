@@ -20,43 +20,6 @@ def _safe_pct_change(old: float, new: float) -> float:
     return ((new - old) / abs(old)) * 100.0
 
 
-def _fetch_binance(timeout: float) -> DerivativesSnapshot:
-    funding_resp = httpx.get(
-        "https://fapi.binance.com/fapi/v1/premiumIndex",
-        params={"symbol": "BTCUSDT"},
-        timeout=timeout,
-    )
-    funding_resp.raise_for_status()
-    funding_data = funding_resp.json()
-
-    oi_resp = httpx.get(
-        "https://fapi.binance.com/futures/data/openInterestHist",
-        params={"symbol": "BTCUSDT", "period": "5m", "limit": 2},
-        timeout=timeout,
-    )
-    oi_resp.raise_for_status()
-    oi_rows = oi_resp.json()
-
-    if len(oi_rows) < 2:
-        return DerivativesSnapshot(0.0, 0.0, 0.0, source="binance", healthy=False)
-
-    old_oi = float(oi_rows[0].get("sumOpenInterest", 0.0))
-    new_oi = float(oi_rows[1].get("sumOpenInterest", 0.0))
-    oi_change_pct = _safe_pct_change(old_oi, new_oi)
-
-    mark = float(funding_data.get("markPrice", 0.0))
-    index = float(funding_data.get("indexPrice", 0.0))
-    basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
-
-    return DerivativesSnapshot(
-        funding_rate=float(funding_data.get("lastFundingRate", 0.0)),
-        oi_change_pct=oi_change_pct,
-        basis_pct=basis_pct,
-        source="binance",
-        healthy=True,
-    )
-
-
 def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
     ticker_resp = httpx.get(
         "https://api.bybit.com/v5/market/tickers",
@@ -73,13 +36,13 @@ def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
     index = float(row.get("indexPrice", 0.0))
     basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
 
-    kl_resp = httpx.get(
+    oi_resp = httpx.get(
         "https://api.bybit.com/v5/market/open-interest",
         params={"category": "linear", "symbol": "BTCUSDT", "intervalTime": "5min", "limit": 2},
         timeout=timeout,
     )
-    kl_resp.raise_for_status()
-    oi_rows = kl_resp.json().get("result", {}).get("list", [])
+    oi_resp.raise_for_status()
+    oi_rows = oi_resp.json().get("result", {}).get("list", [])
     if len(oi_rows) < 2:
         return DerivativesSnapshot(float(row.get("fundingRate", 0.0)), 0.0, basis_pct, source="bybit", healthy=True)
 
@@ -95,18 +58,56 @@ def _fetch_bybit(timeout: float) -> DerivativesSnapshot:
     )
 
 
-def fetch_derivatives_context(budget: BudgetManager, timeout: float = 10.0) -> DerivativesSnapshot:
-    if budget.can_call("binance"):
-        try:
-            budget.record_call("binance")
-            return _fetch_binance(timeout)
-        except Exception:
-            pass
+def _fetch_okx(timeout: float) -> DerivativesSnapshot:
+    ticker_resp = httpx.get(
+        "https://www.okx.com/api/v5/market/ticker",
+        params={"instId": "BTC-USDT-SWAP"},
+        timeout=timeout,
+    )
+    ticker_resp.raise_for_status()
+    rows = ticker_resp.json().get("data", [])
+    if not rows:
+        return DerivativesSnapshot(0.0, 0.0, 0.0, source="okx", healthy=False)
 
+    row = rows[0]
+    mark = float(row.get("last", 0.0))
+    index_resp = httpx.get(
+        "https://www.okx.com/api/v5/market/index-tickers",
+        params={"instId": "BTC-USDT"},
+        timeout=timeout,
+    )
+    index_resp.raise_for_status()
+    idx_rows = index_resp.json().get("data", [])
+    index = float(idx_rows[0].get("idxPx", 0.0)) if idx_rows else 0.0
+
+    oi_resp = httpx.get(
+        "https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-history",
+        params={"ccy": "BTC", "period": "5m", "limit": 2},
+        timeout=timeout,
+    )
+    oi_resp.raise_for_status()
+    oi_rows = oi_resp.json().get("data", [])
+    if len(oi_rows) < 2:
+        return DerivativesSnapshot(0.0, 0.0, ((mark - index) / index) * 100.0 if index else 0.0, source="okx", healthy=True)
+
+    old_oi = float(oi_rows[-1][1])
+    new_oi = float(oi_rows[0][1])
+    basis_pct = ((mark - index) / index) * 100.0 if index else 0.0
+    return DerivativesSnapshot(0.0, _safe_pct_change(old_oi, new_oi), basis_pct, source="okx", healthy=True)
+
+
+def fetch_derivatives_context(budget: BudgetManager, timeout: float = 10.0) -> DerivativesSnapshot:
     if budget.can_call("bybit"):
         try:
             budget.record_call("bybit")
             return _fetch_bybit(timeout)
+        except Exception:
+            pass
+
+    if budget.can_call("okx"):
+        try:
+            budget.record_call("okx")
+            return _fetch_okx(timeout)
         except Exception:
             pass
 

@@ -4,18 +4,24 @@ import logging
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
 
-from concurrent.futures import ThreadPoolExecutor
 from collectors.base import BudgetManager
-from collectors.derivatives import fetch_derivatives_context
-from collectors.flows import fetch_flow_context
-from collectors.price import fetch_btc_multi_timeframe_candles, fetch_btc_price, fetch_macro_context
-from collectors.social import fetch_fear_greed, fetch_news
-from engine import compute_score
+from collectors.derivatives import DerivativesSnapshot, fetch_derivatives_context
+from collectors.flows import FlowSnapshot, fetch_flow_context
+from collectors.price import (
+    PriceSnapshot,
+    fetch_btc_multi_timeframe_candles,
+    fetch_btc_price,
+    fetch_macro_context,
+    fetch_spx_multi_timeframe_candles,
+)
+from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
+from engine import AlertScore, compute_score
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -32,7 +38,7 @@ class Notifier:
         if not self.token or not self.chat_id:
             print(f"\n--- ALERT ---\n{msg}\n------------\n")
             return
-        msg_hash = hashlib.md5(msg[:140].encode()).hexdigest()
+        msg_hash = hashlib.md5(msg[:160].encode()).hexdigest()
         if msg_hash == self.last_hash:
             return
         try:
@@ -49,54 +55,58 @@ class Notifier:
 class AlertStateStore:
     def __init__(self, path: str = ".mvp_alert_state.json"):
         self.path = Path(path)
-        self.state = self._load()
+        self.state = json.loads(self.path.read_text()) if self.path.exists() else {}
 
-    def _load(self):
-        if self.path.exists():
-            try:
-                return json.loads(self.path.read_text())
-            except Exception:
-                return {}
-        return {}
-
-    def should_send(self, score, current_price: float) -> bool:
+    def should_send(self, score: AlertScore, current_price: float) -> bool:
         if score.action == "SKIP":
             return False
-
         now = int(time.time())
-        last_key = self.state.get("lifecycle_key")
-        last_tier = self.state.get("tier")
-        last_sent = int(self.state.get("last_sent", 0))
+        s = self.state.get(score.symbol, {}).get(score.timeframe, {})
         cooldown = 10 * 60 if score.tier == "A+" else 20 * 60
-
-        if last_key != score.lifecycle_key or last_tier != score.tier:
+        if s.get("lifecycle_key") != score.lifecycle_key or s.get("tier") != score.tier:
             return True
-        if now - last_sent > cooldown:
+        if now - int(s.get("last_sent", 0)) > cooldown:
             return True
-
-        tp1_hit = self.state.get("tp1_hit", False)
-        if not tp1_hit and score.direction == "LONG" and current_price >= score.tp1:
-            return True
-        if not tp1_hit and score.direction == "SHORT" and current_price <= score.tp1:
-            return True
+        if not s.get("tp1_hit", False):
+            if score.direction == "LONG" and current_price >= score.tp1:
+                return True
+            if score.direction == "SHORT" and current_price <= score.tp1:
+                return True
         return False
 
-    def save(self, score, current_price: float):
-        tp1_hit = False
-        if score.direction == "LONG":
-            tp1_hit = current_price >= score.tp1
-        if score.direction == "SHORT":
-            tp1_hit = current_price <= score.tp1
-
-        payload = {
+    def save(self, score: AlertScore, current_price: float):
+        tp1_hit = (score.direction == "LONG" and current_price >= score.tp1) or (
+            score.direction == "SHORT" and current_price <= score.tp1
+        )
+        self.state.setdefault(score.symbol, {})[score.timeframe] = {
             "lifecycle_key": score.lifecycle_key,
-            "regime": score.regime,
             "tier": score.tier,
             "last_sent": int(time.time()),
             "tp1_hit": tp1_hit,
         }
-        self.path.write_text(json.dumps(payload))
-        self.state = payload
+        self.path.write_text(json.dumps(self.state))
+
+
+def _format_alert(score: AlertScore) -> str:
+    payload = {
+        "symbol": score.symbol,
+        "timeframe": score.timeframe,
+        "action": score.action,
+        "tier": score.tier,
+        "direction": score.direction,
+        "strategy_type": score.strategy_type,
+        "confidence_score": score.confidence,
+        "entry_zone": score.entry_zone,
+        "invalidation_level": round(score.invalidation, 2),
+        "tp1": round(score.tp1, 2),
+        "tp2": round(score.tp2, 2),
+        "rr_ratio": round(score.rr_ratio, 2),
+        "context": {"regime": score.regime, "session": score.session, "quality": score.quality},
+        "reason_codes": score.reason_codes,
+        "score_breakdown": score.score_breakdown,
+        "blockers": score.blockers,
+    }
+    return f"*{score.symbol} {score.timeframe} {score.action} ({score.tier})*\n```{json.dumps(payload, indent=2)}```"
 
 
 def run():
@@ -104,55 +114,67 @@ def run():
     notif = Notifier()
     state = AlertStateStore()
 
-    with ThreadPoolExecutor(max_workers=7) as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         f_price = executor.submit(fetch_btc_price, bm)
-        f_tf = executor.submit(fetch_btc_multi_timeframe_candles, bm)
+        f_btc = executor.submit(fetch_btc_multi_timeframe_candles, bm)
+        f_spx = executor.submit(fetch_spx_multi_timeframe_candles, bm)
         f_fg = executor.submit(fetch_fear_greed, bm)
         f_news = executor.submit(fetch_news, bm)
         f_deriv = executor.submit(fetch_derivatives_context, bm)
         f_flow = executor.submit(fetch_flow_context, bm)
         f_macro = executor.submit(fetch_macro_context, bm)
 
-        price = f_price.result()
-        tf = f_tf.result()
+        btc_price = f_price.result()
+        btc_tf = f_btc.result()
+        spx_tf = f_spx.result()
         fg = f_fg.result()
         news = f_news.result()
         derivatives = f_deriv.result()
         flows = f_flow.result()
         macro = f_macro.result()
 
-    score = compute_score(price, tf["5m"], tf["15m"], tf["1h"], fg, news, derivatives, flows, macro)
+    alerts = []
+    for tf in ["5m", "15m", "1h"]:
+        if btc_tf.get(tf):
+            alerts.append(
+                compute_score(
+                    "BTC",
+                    tf,
+                    btc_price,
+                    btc_tf[tf],
+                    btc_tf.get("15m", []),
+                    btc_tf.get("1h", []),
+                    fg,
+                    news,
+                    derivatives,
+                    flows,
+                    macro,
+                )
+            )
+        if spx_tf.get(tf):
+            spx_price = PriceSnapshot(price=spx_tf[tf][-1].close, timestamp=time.time(), source="yahoo", healthy=True)
+            alerts.append(
+                compute_score(
+                    "SPX_PROXY",
+                    tf,
+                    spx_price,
+                    spx_tf[tf],
+                    spx_tf.get("15m", []),
+                    spx_tf.get("1h", []),
+                    FearGreedSnapshot(50, "Neutral", healthy=False),
+                    [],
+                    DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False),
+                    FlowSnapshot(1.0, 1.0, 0.0, healthy=False),
+                    macro,
+                )
+            )
 
-    if not state.should_send(score, price.price):
-        logger.info("No actionable state change; skipping alert.")
-        return
-
-    emoji = {
-        "TRADE": "🟢" if score.direction == "LONG" else "🔴",
-        "WATCH": "🟡",
-        "SKIP": "⚪",
-    }.get(score.action, "⚪")
-
-    msg = (
-        f"*{emoji} BTC 5m {score.action} ({score.tier} | {score.confidence}/100)*\n"
-        f"Regime: {score.regime.upper().replace('_', ' ')}\n"
-        f"Direction: {score.direction}\n"
-        f"Session: {score.session}\n"
-        f"Quality: {score.quality}\n"
-        f"Entry: {score.entry_zone}\n"
-        f"Invalidation: {score.invalidation:,.0f}\n"
-        f"TP1/TP2: {score.tp1:,.0f} / {score.tp2:,.0f}\n"
-        f"R:R Ratio: 1:{score.rr_ratio:.2f}\n"
-        "Reasons:\n"
-        + "\n".join(f"• {r}" for r in score.reasons)
-    )
-    if score.blockers:
-        msg += "\nBlockers:\n" + "\n".join(f"• {b}" for b in score.blockers)
-    if score.trump_hits:
-        msg += f"\nPolicy: {score.trump_hits}"
-
-    notif.send(msg)
-    state.save(score, price.price)
+    for alert in alerts:
+        px = btc_price.price if alert.symbol == "BTC" else alert.tp1
+        if not state.should_send(alert, px):
+            continue
+        notif.send(_format_alert(alert))
+        state.save(alert, px)
 
 
 if __name__ == "__main__":
