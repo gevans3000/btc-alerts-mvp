@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 if [ ! -d ".venv" ]; then
   echo "Creating virtual environment..."
@@ -19,28 +19,22 @@ for arg in "$@"; do
 done
 
 REQ_HASH_FILE=".venv/.requirements.sha256"
-NEW_HASH=$(sha256sum requirements.txt | awk '{print $1}')
+# Use shasum -a 256 for macOS compatibility if sha256sum is missing
+if command -v sha256sum >/dev/null 2>&1; then
+  NEW_HASH=$(sha256sum requirements.txt | awk '{print $1}')
+else
+  NEW_HASH=$(shasum -a 256 requirements.txt | awk '{print $1}')
+fi
+
 OLD_HASH=""
 if [ -f "$REQ_HASH_FILE" ]; then
   OLD_HASH=$(cat "$REQ_HASH_FILE")
 fi
 
 if [ "$INSTALL" -eq 1 ] || [ "$NEW_HASH" != "$OLD_HASH" ]; then
+  echo "Installing requirements..."
   pip install -r requirements.txt
   echo "$NEW_HASH" > "$REQ_HASH_FILE"
 fi
 
-python app.py "${APP_ARGS[@]}"
-REQ_HASH_FILE=".venv/.requirements.sha256"
-NEW_HASH=$(sha256sum requirements.txt | awk '{print $1}')
-OLD_HASH=""
-if [ -f "$REQ_HASH_FILE" ]; then
-  OLD_HASH=$(cat "$REQ_HASH_FILE")
-fi
-
-if [ "${1:-}" = "--install" ] || [ "$NEW_HASH" != "$OLD_HASH" ]; then
-  pip install -r requirements.txt
-  echo "$NEW_HASH" > "$REQ_HASH_FILE"
-fi
-
-python app.py "$@"
+python3 app.py "${APP_ARGS[@]}"
