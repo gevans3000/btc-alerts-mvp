@@ -1,7 +1,9 @@
 from dataclasses import dataclass
-from typing import List
+from datetime import datetime, timezone
+from typing import Dict, List
 
 from collectors.derivatives import DerivativesSnapshot
+from collectors.flows import FlowSnapshot
 from collectors.price import PriceSnapshot
 from collectors.social import FearGreedSnapshot, Headline
 from utils import Candle, atr, bollinger_bands, ema as ema_calc, percentile_rank, rsi, vwap
@@ -17,7 +19,10 @@ GROUPS = {
 class AlertScore:
     regime: str
     confidence: int
+    tier: str
+    action: str
     reasons: List[str]
+    blockers: List[str]
     trump_hits: str
     quality: str
     entry_zone: str
@@ -27,6 +32,7 @@ class AlertScore:
     rr_ratio: float
     direction: str
     time_horizon_bars: int
+    session: str
     lifecycle_key: str
 
 
@@ -40,55 +46,119 @@ def _trend_bias(candles: List[Candle]) -> int:
     return 1 if fast > slow else -1
 
 
+def _pivot_high(candles: List[Candle], idx: int, lb: int = 2) -> bool:
+    if idx < lb or idx + lb >= len(candles):
+        return False
+    px = candles[idx].high
+    return all(candles[idx - k].high < px and candles[idx + k].high < px for k in range(1, lb + 1))
+
+
+def _pivot_low(candles: List[Candle], idx: int, lb: int = 2) -> bool:
+    if idx < lb or idx + lb >= len(candles):
+        return False
+    px = candles[idx].low
+    return all(candles[idx - k].low > px and candles[idx + k].low > px for k in range(1, lb + 1))
+
+
 def _market_structure_bias(candles: List[Candle]) -> tuple[float, List[str]]:
-    reasons = []
-    if len(candles) < 25:
+    reasons: List[str] = []
+    if len(candles) < 40:
         return 0.0, reasons
 
     completed = candles[:-1]
-    recent = completed[-20:]
-    prev = completed[-21:-1]
-    latest = recent[-1]
-    prior_high = max(c.high for c in prev)
-    prior_low = min(c.low for c in prev)
-    body = abs(latest.close - latest.open)
-    range_size = max(1e-6, latest.high - latest.low)
-    conviction = body / range_size
+    latest = completed[-1]
+
+    swing_highs = [c.high for i, c in enumerate(completed[-30:-2], start=len(completed) - 30) if _pivot_high(completed, i)]
+    swing_lows = [c.low for i, c in enumerate(completed[-30:-2], start=len(completed) - 30) if _pivot_low(completed, i)]
+    if not swing_highs or not swing_lows:
+        return 0.0, reasons
+
+    key_high = max(swing_highs[-3:])
+    key_low = min(swing_lows[-3:])
 
     bias = 0.0
-    if latest.close > prior_high and conviction > 0.55:
-        bias += 12
-        reasons.append(f"BOS up {prior_high:,.0f}")
-    elif latest.close < prior_low and conviction > 0.55:
-        bias -= 12
-        reasons.append(f"BOS down {prior_low:,.0f}")
-
-    # Fakeout logic
-    if latest.high > prior_high and latest.close < prior_high:
-        bias -= 8
-        reasons.append(f"Failed breakout {prior_high:,.0f}")
-    if latest.low < prior_low and latest.close > prior_low:
-        bias += 8
-        reasons.append(f"Failed breakdown reclaim {prior_low:,.0f}")
+    if latest.close > key_high:
+        retest_zone = [c for c in completed[-4:] if c.low <= key_high * 1.001]
+        if retest_zone and latest.close > latest.open:
+            bias += 14
+            reasons.append(f"Confirmed break-retest above {key_high:,.0f}")
+        else:
+            bias += 6
+            reasons.append(f"Wicky break above {key_high:,.0f}")
+    elif latest.close < key_low:
+        retest_zone = [c for c in completed[-4:] if c.high >= key_low * 0.999]
+        if retest_zone and latest.close < latest.open:
+            bias -= 14
+            reasons.append(f"Confirmed break-retest below {key_low:,.0f}")
+        else:
+            bias -= 6
+            reasons.append(f"Wicky break below {key_low:,.0f}")
 
     return bias, reasons
 
 
-def _spx_risk_bias(spx_candles: List[Candle]) -> tuple[float, str, bool]:
-    if len(spx_candles) < 30:
-        return 0.0, "SPX unavailable", False
-    closes = [c.close for c in spx_candles[:-1]]
-    e9, e21 = ema_calc(closes, 9), ema_calc(closes, 21)
-    last = closes[-1]
-    first = closes[-13]
-    momentum = ((last - first) / first) * 100 if first else 0.0
-    if e9 is None or e21 is None:
-        return 0.0, "SPX insufficient", False
-    if e9 > e21 and momentum > 0.1:
-        return 5.0, "SPX risk-on", True
-    if e9 < e21 and momentum < -0.1:
-        return -5.0, "SPX risk-off", True
-    return 0.0, "SPX mixed", True
+def _session_label(candles: List[Candle]) -> str:
+    if not candles:
+        return "unknown"
+    try:
+        ts = int(float(candles[-1].ts))
+        dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+        hour = dt.hour
+        if dt.weekday() >= 5:
+            return "weekend"
+        if 0 <= hour < 8:
+            return "asia"
+        if 8 <= hour < 13:
+            return "europe"
+        return "us"
+    except Exception:
+        return "unknown"
+
+
+def _macro_risk_bias(macro: Dict[str, List[Candle]]) -> tuple[float, str, List[str]]:
+    degraded: List[str] = []
+    score = 0.0
+
+    spx = macro.get("spx", [])
+    if len(spx) >= 30:
+        closes = [c.close for c in spx[:-1]]
+        e9, e21 = ema_calc(closes, 9), ema_calc(closes, 21)
+        if e9 and e21:
+            score += 4 if e9 > e21 else -4
+    else:
+        degraded.append("spx")
+
+    vix = macro.get("vix", [])
+    if len(vix) >= 14:
+        v_closes = [c.close for c in vix[:-1]]
+        if v_closes[-1] < v_closes[-13]:
+            score += 3
+        else:
+            score -= 3
+    else:
+        degraded.append("vix")
+
+    nq = macro.get("nq", [])
+    if len(nq) >= 30:
+        n_closes = [c.close for c in nq[:-1]]
+        e9, e21 = ema_calc(n_closes, 9), ema_calc(n_closes, 21)
+        if e9 and e21:
+            score += 2 if e9 > e21 else -2
+    else:
+        degraded.append("nq")
+
+    reason = "Macro risk-on" if score > 1 else "Macro risk-off" if score < -1 else "Macro mixed"
+    return score, reason, degraded
+
+
+def _tier_and_action(score: int, blockers: List[str]) -> tuple[str, str]:
+    if blockers:
+        return "NO-TRADE", "SKIP"
+    if score >= 74 or score <= 26:
+        return "A+", "TRADE"
+    if score >= 58 or score <= 42:
+        return "B", "WATCH"
+    return "NO-TRADE", "SKIP"
 
 
 def compute_score(
@@ -99,9 +169,10 @@ def compute_score(
     fg: FearGreedSnapshot,
     news: List[Headline],
     derivatives: DerivativesSnapshot,
-    spx_candles: List[Candle],
+    flows: FlowSnapshot,
+    macro: Dict[str, List[Candle]],
 ) -> AlertScore:
-    bias, reasons, degraded = 0.0, [], []
+    bias, reasons, degraded, blockers = 0.0, [], [], []
 
     if not candles_5m or len(candles_5m) < 40:
         degraded.append("candles_5m")
@@ -114,90 +185,67 @@ def compute_score(
         r = rsi(closes, 14)
         if r is not None:
             if r < 30:
-                bias += 18
+                bias += 16
                 reasons.append(f"Oversold RSI ({r:.1f})")
             elif r > 70:
-                bias -= 18
+                bias -= 16
                 reasons.append(f"Overbought RSI ({r:.1f})")
 
         bb = bollinger_bands(closes, 20, 2)
-        widths = []
-        for i in range(20, len(closes) + 1):
-            sample = closes[:i]
-            band = bollinger_bands(sample, 20, 2)
-            if band:
-                widths.append((band[0] - band[2]) / band[1] if band[1] else 0.0)
-        vol_regime = "neutral"
         if bb:
             upper, _, lower = bb
+            width_series = []
+            for i in range(20, len(closes) + 1):
+                b = bollinger_bands(closes[:i], 20, 2)
+                if b:
+                    width_series.append((b[0] - b[2]) / b[1] if b[1] else 0)
             width = (upper - lower) / current_price if current_price else 0.0
-            width_rank = percentile_rank(widths, width) or 50.0
-            current_atr = atr(completed, 14) or 0.0
-            atr_series = [atr(completed[:i], 14) or 0.0 for i in range(20, len(completed) + 1)]
-            atr_rank = percentile_rank(atr_series, current_atr) or 50.0
-            if width_rank < 35 and atr_rank < 40:
-                vol_regime = "compression"
-            elif width_rank > 65 and atr_rank > 60:
-                vol_regime = "expansion"
-            reasons.append(f"Vol regime: {vol_regime}")
-
+            width_rank = percentile_rank(width_series, width) or 50.0
+            reasons.append("Vol regime: compression" if width_rank < 35 else "Vol regime: expansion" if width_rank > 65 else "Vol regime: neutral")
             if current_price < lower:
-                bias += 12 if vol_regime != "expansion" else 6
-                reasons.append("Below lower BB")
+                bias += 10
             elif current_price > upper:
-                bias -= 12 if vol_regime != "expansion" else 6
-                reasons.append("Above upper BB")
+                bias -= 10
 
         e9, e21 = ema_calc(closes, 9), ema_calc(closes, 21)
         if e9 is not None and e21 is not None:
-            if e9 > e21:
-                bias += 8
-                reasons.append("Bullish EMA 9/21")
-            else:
-                bias -= 8
-                reasons.append("Bearish EMA 9/21")
+            bias += 8 if e9 > e21 else -8
+            reasons.append("Bullish EMA 9/21" if e9 > e21 else "Bearish EMA 9/21")
 
         if len(volumes) > 20:
             avg_vol = sum(volumes[-21:-1]) / 20
-            vol_mult = 1.7 if "compression" in reasons else 1.35
-            if volumes[-1] > avg_vol * vol_mult:
-                direction = "Buy" if closes[-1] > closes[-2] else "Sell"
-                bias += 6 if direction == "Buy" else -6
-                reasons.append(f"High vol {direction}")
+            if volumes[-1] > avg_vol * 1.35:
+                bias += 5 if closes[-1] > closes[-2] else -5
+                reasons.append("Volume expansion")
 
-        # VWAP Logic
-        v = vwap(candles_5m[-288:])  # approx 24h
+        v = vwap(candles_5m[-288:])
         if v:
-            if current_price > v:
-                bias += 4
-                reasons.append("Price above VWAP")
-            else:
-                bias -= 4
-                reasons.append("Price below VWAP")
+            bias += 4 if current_price > v else -4
 
         structure_bias, structure_reasons = _market_structure_bias(candles_5m)
         bias += structure_bias
         reasons.extend(structure_reasons)
+
+    session = _session_label(candles_5m)
+    session_shift = {"asia": 2, "europe": 0, "us": 0, "weekend": -4, "unknown": -1}.get(session, -1)
+    bias += session_shift
+    reasons.append(f"Session: {session}")
 
     t15 = _trend_bias(candles_15m)
     t1h = _trend_bias(candles_1h)
     htf_bias = t15 + t1h
     if htf_bias >= 1:
         bias += 8
-        reasons.append("HTF trend aligned bullish")
     elif htf_bias <= -1:
         bias -= 8
-        reasons.append("HTF trend aligned bearish")
     else:
         degraded.append("htf")
 
     if fg.healthy:
         if fg.value < 20:
             bias += 4
-            reasons.append(f"Extreme fear ({fg.value})")
         if fg.value > 80:
             bias -= 4
-            reasons.append(f"Extreme greed ({fg.value})")
     else:
         degraded.append("fg")
 
@@ -208,87 +256,85 @@ def compute_score(
             for keyword, weight in kws.items():
                 if keyword in text:
                     hits.append(keyword)
-                    bias += weight * 4
+                    bias += weight * 3
 
     if derivatives.healthy:
         if derivatives.oi_change_pct > 0.6 and derivatives.basis_pct > 0:
             bias += 5
             reasons.append("OI rising with positive basis")
-        if derivatives.oi_change_pct > 0.6 and derivatives.funding_rate > 0.0008:
-            bias -= 4
-            reasons.append("Crowded longs (funding high)")
-        if derivatives.oi_change_pct < -0.6 and derivatives.funding_rate < -0.0008:
-            bias += 4
-            reasons.append("Short squeeze setup")
+        if derivatives.funding_rate > 0.0012 and derivatives.oi_change_pct > 0.8:
+            bias -= 6
+            reasons.append("Crowded longs")
+        if derivatives.funding_rate < -0.0012 and derivatives.oi_change_pct > 0.8:
+            bias += 6
+            reasons.append("Crowded shorts")
     else:
         degraded.append("derivatives")
 
-    spx_bias, spx_reason, spx_ok = _spx_risk_bias(spx_candles)
-    bias += spx_bias
-    reasons.append(spx_reason)
-    if not spx_ok:
-        degraded.append("spx")
+    if flows.healthy:
+        if flows.crowding_score > 5:
+            bias -= 5
+            reasons.append("Long crowding risk")
+        if flows.crowding_score < -5:
+            bias += 5
+            reasons.append("Short crowding risk")
+    else:
+        degraded.append("flows")
+
+    macro_bias, macro_reason, macro_degraded = _macro_risk_bias(macro)
+    bias += macro_bias
+    reasons.append(macro_reason)
+    degraded.extend(macro_degraded)
 
     score = int(min(100, max(0, 50 + bias)))
     regime = "sideways / no signal"
     direction = "NEUTRAL"
-
     if score >= 68:
-        regime = "long_signal"
-        direction = "LONG"
+        regime, direction = "long_signal", "LONG"
     elif score <= 32:
-        regime = "short_signal"
-        direction = "SHORT"
+        regime, direction = "short_signal", "SHORT"
     elif score >= 56:
-        regime = "bullish_bias"
-        direction = "LONG"
+        regime, direction = "bullish_bias", "LONG"
     elif score <= 44:
-        regime = "bearish_bias"
-        direction = "SHORT"
-
-    # downgrade hard signals when HTF mismatch
-    if regime == "long_signal" and htf_bias < 0 and score < 78:
-        regime = "bullish_bias"
-        reasons.append("Long blocked by HTF mismatch")
-    if regime == "short_signal" and htf_bias > 0 and score > 22:
-        regime = "bearish_bias"
-        reasons.append("Short blocked by HTF mismatch")
+        regime, direction = "bearish_bias", "SHORT"
 
     completed = candles_5m[:-1] if len(candles_5m) > 1 else candles_5m
-    px = price.price or (completed[-1].close if completed else 0.0)
-    if px <= 0:
-        px = 1.0
+    px = price.price or (completed[-1].close if completed else 1.0)
     local_atr = atr(completed, 14) or max(1.0, px * 0.002)
-    
-    rr_ratio = 0.0
+
     if direction == "LONG":
         invalidation = px - (1.2 * local_atr)
-        tp1 = px + (1.5 * local_atr)  # Improved R:R
+        tp1 = px + (1.5 * local_atr)
         tp2 = px + (2.5 * local_atr)
-        risk = px - invalidation
-        reward = tp1 - px
-        rr_ratio = reward / risk if risk > 0 else 0.0
+        rr_ratio = (tp1 - px) / (px - invalidation) if px > invalidation else 0.0
     elif direction == "SHORT":
         invalidation = px + (1.2 * local_atr)
         tp1 = px - (1.5 * local_atr)
         tp2 = px - (2.5 * local_atr)
-        risk = invalidation - px
-        reward = px - tp1
-        rr_ratio = reward / risk if risk > 0 else 0.0
+        rr_ratio = (px - tp1) / (invalidation - px) if invalidation > px else 0.0
     else:
-        # Neutral / Sideways
-        invalidation = 0.0
-        tp1 = 0.0
-        tp2 = 0.0
-        rr_ratio = 0.0
+        invalidation = tp1 = tp2 = rr_ratio = 0.0
 
+    if rr_ratio < 1.2 and direction != "NEUTRAL":
+        blockers.append("Low R:R")
+    if direction == "LONG" and htf_bias < 0:
+        blockers.append("HTF conflict")
+    if direction == "SHORT" and htf_bias > 0:
+        blockers.append("HTF conflict")
+    if len(set(degraded)) >= 3:
+        blockers.append("Data quality degraded")
+
+    tier, action = _tier_and_action(score, blockers)
     trump = ", ".join(sorted(set(k for k in hits if k in GROUPS["policy"])))
-    key = f"{regime}:{direction}:{int(px)}"
+    key = f"{regime}:{tier}:{action}:{int(px)}"
 
     return AlertScore(
         regime=regime,
         confidence=score,
+        tier=tier,
+        action=action,
         reasons=reasons[:7],
+        blockers=blockers,
         trump_hits=trump,
         quality="ok" if not degraded else f"degraded:{','.join(sorted(set(degraded)))}",
         entry_zone=f"{px - 0.1 * local_atr:,.0f}-{px + 0.1 * local_atr:,.0f}" if direction != "NEUTRAL" else "-",
@@ -298,5 +344,6 @@ def compute_score(
         rr_ratio=rr_ratio,
         direction=direction,
         time_horizon_bars=8,
+        session=session,
         lifecycle_key=key,
     )
