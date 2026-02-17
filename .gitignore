@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 .budget.json
 .mvp_alert_state.json
+logs/
+data/

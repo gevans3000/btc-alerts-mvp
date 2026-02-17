@@ -48,17 +48,17 @@ def _aggregate(candles: List[Candle], factor: int) -> List[Candle]:
     return out
 
 
-def _context_streams(candles: List[Candle], timeframe: str) -> Tuple[List[Candle], List[Candle], str]:
-    if timeframe == "5m":
-        return _aggregate(candles, 3), _aggregate(candles, 12), "aggregated"
-    if timeframe == "15m":
-        return candles, _aggregate(candles, 4), "aggregated"
-    return candles, candles, "native"
+def _context_streams(candles_5m: List[Candle]) -> Tuple[List[Candle], List[Candle]]:
+    """Generates 15m and 1h context streams from a 5m source."""
+    return _aggregate(candles_5m, 3), _aggregate(candles_5m, 12)
 
 
-def replay_symbol_timeframe(symbol: str, timeframe: str, candles: List[Candle]) -> ReplayMetrics:
-    if len(candles) < 60:
-        return ReplayMetrics(0, 0, 0.0, 0.0, FORWARD_BARS.get(timeframe, 1), "native")
+def replay_symbol_timeframe(symbol: str, timeframe: str, candles_5m: List[Candle]) -> ReplayMetrics:
+    factors = {"5m": 1, "15m": 3, "1h": 12}
+    factor = factors.get(timeframe, 1)
+    
+    if len(candles_5m) < (50 * factor):
+        return ReplayMetrics(0, 0, 0.0, 0.0, FORWARD_BARS.get(timeframe, 1), "aggregated")
 
     fg = FearGreedSnapshot(50, "Neutral", healthy=False)
     deriv = DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False)
@@ -66,20 +66,51 @@ def replay_symbol_timeframe(symbol: str, timeframe: str, candles: List[Candle]) 
 
     fired: List[AlertScore] = []
     wins = 0
-    horizon = FORWARD_BARS.get(timeframe, 1)
-    mode = "native"
-    for i in range(50, len(candles)):
-        c = _slice(candles, i)
-        c15, c1h, mode = _context_streams(c, timeframe)
-        px = PriceSnapshot(price=c[-1].close, timestamp=0, source="replay", healthy=True)
-        score = compute_score(symbol, timeframe, px, c, c15, c1h, fg, [], deriv, flow, {"spx": c, "vix": c, "nq": c})
+    horizon_bars = FORWARD_BARS.get(timeframe, 1)
+    # The horizon in 5m source candles is (horizon_bars * factor)
+    horizon_5m = horizon_bars * factor
+    
+    for i in range(50, len(candles_5m)):
+        # Gating: only evaluate at the end of a candle for the target timeframe
+        # i is the current 5m candle index (0-indexed)
+        if (i + 1) % factor != 0:
+            continue
+            
+        # Get the slice of 5m candles up to i (inclusive)
+        c_5m = candles_5m[: i + 1]
+        
+        # Higher timeframe context ALWAYS derived from 5m source
+        c15, c1h = _context_streams(c_5m)
+        
+        # The main candles for the engine must match the target timeframe
+        if timeframe == "5m":
+            c_main = c_5m
+        elif timeframe == "15m":
+            c_main = c15
+        elif timeframe == "1h":
+            c_main = c1h
+        else:
+            c_main = c_5m
+            
+        if len(c_main) < 30: # Ensure enough history for indicators
+            continue
+
+        px = PriceSnapshot(price=c_main[-1].close, timestamp=0, source="replay", healthy=True)
+        score = compute_score(
+            symbol, timeframe, px, c_main, c15, c1h, 
+            fg, [], deriv, flow, 
+            {"spx": c_5m, "vix": c_5m, "nq": c_5m} # Use 5m for macro proxy
+        )
+        
         if score.action == "SKIP":
             continue
+            
         fired.append(score)
         
-        # Check forward performance
-        if i + horizon < len(candles):
-            fwd = candles[i + horizon].close - candles[i].close
+        # Check forward performance in source (5m) resolution for higher accuracy
+        # but relative to the end of the timeframe bar
+        if i + horizon_5m < len(candles_5m):
+            fwd = candles_5m[i + horizon_5m].close - candles_5m[i].close
             if (score.direction == "LONG" and fwd > 0) or (score.direction == "SHORT" and fwd < 0):
                 wins += 1
 
@@ -87,7 +118,7 @@ def replay_symbol_timeframe(symbol: str, timeframe: str, candles: List[Candle]) 
     trades = sum(1 for a in fired if a.action == "TRADE")
     noise_ratio = 0.0 if alerts == 0 else round((alerts - trades) / alerts, 4)
     hit = 0.0 if alerts == 0 else round(wins / alerts, 4)
-    return ReplayMetrics(alerts, trades, noise_ratio, hit, horizon, mode)
+    return ReplayMetrics(alerts, trades, noise_ratio, hit, horizon_bars, "aggregated")
 
 
 def summarize(metrics: Dict[str, ReplayMetrics]) -> dict:

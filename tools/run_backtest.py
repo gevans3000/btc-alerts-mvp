@@ -22,16 +22,24 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 def get_history(limit=720):
     """Fetch max available 5m candles."""
     budget = BudgetManager()
-    logging.info(f"Fetching last {limit} candles (5m timeframe)...")
     
-    # Try Kraken first (reliable)
+    # If limit > 720, try Bybit first as Kraken is typically capped at 720
+    if limit > 720:
+        logging.info(f"Fetching last {limit} candles (5m timeframe) from Bybit...")
+        candles = _fetch_bybit_ohlc(budget, interval="5", limit=limit)
+        if candles:
+            logging.info(f"Successfully loaded {len(candles)} candles from Bybit.")
+            return candles
+        logging.info("Bybit failed, falling back to Kraken...")
+
+    logging.info(f"Fetching last {limit} candles (5m timeframe) from Kraken...")
     candles = _fetch_kraken_ohlc(budget, interval=5, limit=limit)
     if not candles:
-        logging.info("Kraken failed, trying Bybit...")
+        logging.info("Kraken failed, trying Bybit (final fallback)...")
         candles = _fetch_bybit_ohlc(budget, interval="5", limit=limit)
         
     if not candles:
-        logging.error("Could not fetch historical data.")
+        logging.error("Could not fetch historical data from any source.")
         sys.exit(1)
         
     logging.info(f"Successfully loaded {len(candles)} candles.")

@@ -1,0 +1,21 @@
+*** Begin Patch
+*** Add File: proposals/pid129_phase2_test_expansion.md
++PID-129 Phase 2: Test Expansion and Replay Tooling Proposal
++Objective: Expand test coverage for BTC Alerts MVP Phase 2 with deterministic replay tooling to reproduce scenarios.
++Targets:
++- Unit tests for alert generation, persistence, and deduplication.
++- Integration tests for webhook delivery, retry/backoff, and idempotency keys.
++- Replay tooling to capture live runs and replay deterministically in CI.
++Approach:
++- Introduce a TestHarness utility to seed data and assert end-to-end results.
++- Add a ReplayEngine that stores event traces (inputs, timestamps, responses) in /tmp/replay-logs or artifacts.
++- Build a deterministic clock mock to allow replay reproducibility.
++Risks & Mitigations:
++- Sensitive data in logs: redact PII in replay logs.
++- CI flakiness: implement multiple retries with exponential backoff.
++Deliverables:
++- Patch-ready diffs for tests+replay
++- CI configuration to run replay tests
++- Documentation on how to create and run replays
++Note: This patch is a placeholder for proposed changes. Actual changes will be implemented in Phase 2 scope.
+*** End Patch

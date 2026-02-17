@@ -74,6 +74,10 @@ def _session_label(candles: List[Candle]) -> str:
         return "unknown"
     try:
         dt = datetime.fromtimestamp(int(float(candles[-1].ts)), tz=timezone.utc)
+        # Dead Zone: Weekday 20:00-22:00 UTC (US Close to Asia Open gap)
+        if 0 <= dt.weekday() < 5:
+            if 20 <= dt.hour < 22:
+                return "dead_zone"
         if dt.weekday() >= 5:
             return "weekend"
         if 0 <= dt.hour < 8:
@@ -128,8 +132,10 @@ def _macro_risk_bias(macro: Dict[str, List[Candle]]) -> tuple[float, List[str]]:
     return score, reasons
 
 
-def _regime(candles: List[Candle]) -> tuple[str, float, List[str]]:
+def _calculate_raw_regime(candles: List[Candle]) -> str:
     closes = [c.close for c in candles[:-1]]
+    if len(candles) < 30:
+        return "range"
     adx_v = adx(candles, 14) or 18
     e9, e21 = ema_calc(closes, 9), ema_calc(closes, 21)
     slope = (e9 - e21) / e21 if e9 and e21 else 0.0
@@ -137,11 +143,44 @@ def _regime(candles: List[Candle]) -> tuple[str, float, List[str]]:
     atr_series = [atr(candles[:i], 14) for i in range(20, len(candles))]
     atr_clean = [x for x in atr_series if x is not None]
     rank = percentile_rank(atr_clean, local_atr) if atr_clean else 50.0
+    
     if adx_v > REGIME["adx_trend"] and abs(slope) > REGIME["slope_trend"]:
-        return "trend", 8.0, ["REGIME_TREND"]
+        return "trend"
     if rank > REGIME["atr_rank_chop"] and adx_v < REGIME["adx_chop"]:
-        return "vol_chop", -8.0, ["REGIME_VOL_CHOP"]
-    return "range", -2.0, ["REGIME_RANGE"]
+        return "vol_chop"
+    if adx_v < REGIME.get("adx_low", 20) and rank < REGIME.get("atr_rank_low", 30):
+        return "chop"
+    return "range"
+
+
+def _regime(candles: List[Candle]) -> tuple[str, float, List[str]]:
+    # Persistence check: require 3 consecutive candles in the same raw regime
+    if len(candles) < 35:
+        r = _calculate_raw_regime(candles)
+        return r, 0.0, [f"REGIME_{r.upper()}"]
+        
+    r1 = _calculate_raw_regime(candles)
+    r2 = _calculate_raw_regime(candles[:-1])
+    r3 = _calculate_raw_regime(candles[:-2])
+    
+    if r1 == r2 == r3:
+        final_regime = r1
+    elif r2 == r3:
+        final_regime = r2
+    else:
+        final_regime = "range"
+
+    pts = 0.0
+    if final_regime == "trend":
+        pts = 8.0
+    elif final_regime == "vol_chop":
+        pts = -8.0
+    elif final_regime == "chop":
+        pts = -15.0 # CHOP regime automatically penalizes score by 15
+    else:
+        pts = -2.0
+        
+    return final_regime, pts, [f"REGIME_{final_regime.upper()}"]
 
 
 def _detector_candidates(candles: List[Candle]) -> tuple[Dict[str, int], List[str], List[str]]:
@@ -318,6 +357,11 @@ def compute_score(
         blockers.append("Stale market data")
 
     session = _session_label(candles)
+    if session == "dead_zone":
+        blockers.append("Market dead zone")
+    if session == "weekend":
+        breakdown["penalty"] -= 10.0 # Weekend liquidity penalty
+
     reg, reg_pts, reg_codes = _regime(candles)
     breakdown["volatility"] += reg_pts
     codes.extend(reg_codes)
@@ -478,10 +522,22 @@ def compute_score(
 
     if rr_ratio < tf_cfg["min_rr"] and direction != "NEUTRAL":
         blockers.append("Low R:R")
-    if direction == "LONG" and t1h < 0: blockers.append("HTF conflict")
-    if direction == "SHORT" and t1h > 0: blockers.append("HTF conflict")
+    if direction == "LONG":
+        if timeframe == "5m" and t15 < 0: blockers.append("HTF_CONFLICT_15M")
+        if t1h < 0: blockers.append("HTF_CONFLICT_1H")
+    elif direction == "SHORT":
+        if timeframe == "5m" and t15 > 0: blockers.append("HTF_CONFLICT_15M")
+        if t1h > 0: blockers.append("HTF_CONFLICT_1H")
 
     tier, action = _tier_and_action(final_score, blockers, timeframe, confluence)
+    
+    # 2.4 Volume Confirmation Gate for TRADE signals
+    if action == "TRADE" and len(vols) > 20:
+        avg_vol = sum(vols[-21:-1]) / 20
+        if vols[-1] < avg_vol:
+            action = "WATCH"
+            tier = "B"
+            codes.append("VOLUME_GATE_DOWNGRADE")
     key = f"{symbol}:{timeframe}:{regime}:{strategy}:{int(px)}"
     trace["strategy"] = strategy
     trace["net"] = sum(breakdown.values())

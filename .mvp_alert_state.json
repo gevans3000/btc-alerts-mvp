@@ -1,1 +1,20 @@
-{"lifecycle_key": "bearish_bias:SHORT:68999", "regime": "bearish_bias", "last_sent": 1771165300, "tp1_hit": false}
+{
+    "lifecycle_key": "bearish_bias:SHORT:68999",
+    "regime": "bearish_bias",
+    "last_sent": 1771165300,
+    "tp1_hit": false,
+    "BTC": {
+        "1h": {
+            "lifecycle_key": "BTC:1h:long_signal:TREND_CONTINUATION:68807",
+            "tier": "A+",
+            "last_sent": 1771248848,
+            "tp1_hit": false
+        },
+        "15m": {
+            "lifecycle_key": "BTC:15m:range_bias:TREND_CONTINUATION:68896",
+            "tier": "B",
+            "last_sent": 1771291662,
+            "tp1_hit": false
+        }
+    }
+}

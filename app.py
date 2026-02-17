@@ -23,6 +23,8 @@ from collectors.price import (
 from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
 from config import COOLDOWN_SECONDS, validate_config
 from engine import AlertScore, compute_score
+from tools.outcome_tracker import resolve_outcomes
+from tools.paper_trader import Portfolio as PaperPortfolio
 
 load_dotenv()
 
@@ -115,6 +117,48 @@ if not logger.handlers:
 
 logger.info("Structured logging configured.")
 # --- Structured Logging Configuration END ---
+
+
+import uuid
+from datetime import datetime
+
+class PersistentLogger:
+    """Logs alerts to a JSONL file for outcome tracking."""
+    def __init__(self, path: str = "logs/pid-129-alerts.jsonl"):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"PersistentLogger initialized at {self.path}")
+
+    def log_alert(self, score: AlertScore, price: float):
+        """Records a new alert with null outcome fields."""
+        alert_id = str(uuid.uuid4())
+        record = {
+            "alert_id": alert_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "symbol": score.symbol,
+            "timeframe": score.timeframe,
+            "direction": score.direction,
+            "entry_price": price,
+            "tp1": score.tp1,
+            "tp2": score.tp2,
+            "invalidation": score.invalidation,
+            "confidence": score.confidence,
+            "tier": score.tier,
+            "strategy": score.strategy_type,
+            "outcome": None,
+            "outcome_timestamp": None,
+            "outcome_price": None,
+            "r_multiple": None,
+            "resolved": False
+        }
+        try:
+            with open(self.path, "a") as f:
+                f.write(json.dumps(record) + "\n")
+            logger.info(f"Alert persisted for tracking: {alert_id}")
+            return alert_id
+        except Exception as exc:
+            logger.error(f"Failed to persist alert: {exc}", exc_info=True)
+            return None
 
 
 class Notifier:
@@ -397,7 +441,7 @@ def _format_alert(score: AlertScore, provider_context: dict) -> str:
     return f"*{score.symbol} {score.timeframe} {score.action} ({score.tier})*\n```{json.dumps(payload_for_display, indent=2)}```"
 
 
-def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore):
+def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: PersistentLogger, portfolio: PaperPortfolio):
     """Main function to execute the BTC alert monitoring process."""
     # Log the start of the main execution, indicating configuration validation is next.
     logger.info("Starting main execution cycle.")
@@ -634,6 +678,12 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore):
         
         # Save the state after sending the alert
         state.save(alert, current_price_for_state)
+        alert_id = p_logger.log_alert(alert, current_price_for_state)
+        if alert_id:
+            portfolio.on_alert(
+                alert_id, alert.symbol, alert.timeframe, alert.direction, 
+                current_price_for_state, alert.invalidation, alert.tp1, alert.action
+            )
 
     # --- Summary and Reporting ---
     logger.info("Finished processing all alerts. Generating summary output.")
@@ -687,6 +737,18 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore):
     print("  • 1h:  Swing Trading (Trend following, 4-24 hour hold)")
     print("\n")
     logger.info("Summary and timeframe guide displayed.")
+    
+    # Resolve outcomes for pending alerts
+    try:
+        resolve_outcomes()
+        if btc_price and btc_price.healthy:
+            portfolio.update(btc_price.price)
+        
+        # Generate reporting artifacts
+        os.system(f"{sys.executable} scripts/pid-129/generate_scorecard.py")
+        os.system(f"{sys.executable} scripts/pid-129/generate_dashboard.py")
+    except Exception as e:
+        logger.error(f"Error during loop house-keeping: {e}")
 
 
 # --- Main execution block ---
@@ -703,10 +765,12 @@ if __name__ == "__main__":
     bm = BudgetManager(BUDGET_MANAGER_PATH)
     notif = Notifier()
     state = AlertStateStore(STATE_STORE_PATH)
+    p_logger = PersistentLogger()
+    portfolio = PaperPortfolio()
 
     # Check if the script is run with '--once' argument
     if "--once" in sys.argv:
-        run(bm, notif, state)
+        run(bm, notif, state, p_logger, portfolio)
         logger.info("Script finished execution in --once mode.")
     else:
         # Run in a continuous loop with a 5-minute interval
@@ -718,7 +782,7 @@ if __name__ == "__main__":
                 sys.exit(0)
 
             try:
-                run(bm, notif, state)
+                run(bm, notif, state, p_logger, portfolio)
             except Exception as exc:
                 logger.error("Unhandled exception in main loop: %s", exc, exc_info=True)
             
