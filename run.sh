@@ -37,4 +37,4 @@ if [ "$INSTALL" -eq 1 ] || [ "$NEW_HASH" != "$OLD_HASH" ]; then
   echo "$NEW_HASH" > "$REQ_HASH_FILE"
 fi
 
-python3 app.py "${APP_ARGS[@]}"
+python3 app.py "${APP_ARGS[@]}" --once
