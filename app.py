@@ -76,11 +76,15 @@ class JSONFormatter(logging.Formatter):
             "thread_id": record.thread,
         }
 
-        # Attach any extra attributes passed to the logger (e.g., logger.info('msg', extra={'key': 'value'}))
-        # These are stored in record.__dict__
+        # Attach any extra attributes passed to the logger
         for key, value in record.__dict__.items():
             if key not in self.standard_fields:
-                log_record[key] = value
+                try:
+                    # Test if serializable
+                    json.dumps(value)
+                    log_record[key] = value
+                except (TypeError, OverflowError):
+                    log_record[key] = str(value)
         
         # Include exception information if present
         if record.exc_info:
@@ -449,17 +453,17 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore):
     time.sleep(sleep_duration) # Short delay after SPX fetch
 
     # --- Data Collection: Macro Context (reuses SPX data) ---
-    macro = None
+    macro = {"spx": [], "vix": [], "nq": []}
     try:
         logger.info("Fetching macro context data (reusing SPX 5m candles)...")
         # Pass a subset of SPX data if available
         prefetched_spx_5m = spx_tf.get("5m", []) if spx_tf else []
         macro = fetch_macro_context(bm, prefetched_spx=prefetched_spx_5m)
-        logger.info(f"Macro context fetched successfully. Regime: {macro.regime}, Session: {macro.session}.", extra={'regime': macro.regime, 'session': macro.session, 'healthy': macro.healthy})
+        logger.info(f"Macro context fetched successfully.")
     except Exception as e:
         logger.error("Exception occurred during macro context fetch: %s", e, exc_info=True)
-        # Create a dummy macro context if fetch fails
-        macro = type('MacroContext', (object,), {'regime': 'unknown', 'session': 'unknown', 'quality': 0.0, 'healthy': False})()
+        # Fallback dictionary
+        macro = {"spx": [], "vix": [], "nq": []}
     
     time.sleep(sleep_duration)
 
@@ -491,10 +495,11 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore):
     try:
         logger.info("Fetching Fear & Greed index...")
         fg = fetch_fear_greed(bm)
-        logger.info(f"Fear & Greed index fetched.", extra={'score': fg.score, 'sentiment': fg.sentiment, 'healthy': fg.healthy})
+        logger.info(f"Fear & Greed index fetched.", extra={'value': fg.value, 'label': fg.label, 'healthy': fg.healthy})
     except Exception as e:
         logger.error("Exception occurred during Fear & Greed fetch: %s", e, exc_info=True)
-        fg = FearGreedSnapshot(score=50, sentiment="Neutral", healthy=False)
+        # Create a dummy healthy snapshot if fetch fails
+        fg = FearGreedSnapshot(value=50, label="Neutral", healthy=False)
     
     news = [] # Initialize as empty list
     try:
@@ -601,8 +606,8 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore):
             "derivatives": derivatives.source if alert.symbol == "BTC" else "none", # Derivatives for BTC
             "flows": flows.source if alert.symbol == "BTC" else "none", # Flows for BTC
             "spx_mode": "direct" if spx_source_map.get(alert.timeframe) == "^GSPC" else "proxy" if alert.symbol == "SPX_PROXY" else "n/a",
-            "macro_regime": macro.regime if macro else "unknown",
-            "fear_greed": fg.sentiment if alert.symbol == "BTC" else "N/A" # Include F&G for BTC alerts
+            "macro_regime": alert.regime,
+            "fear_greed": fg.label if alert.symbol == "BTC" else "N/A" # Include F&G for BTC alerts
         }
 
         # Format the alert message
