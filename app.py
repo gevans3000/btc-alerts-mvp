@@ -438,7 +438,7 @@ def _format_alert(score: AlertScore, provider_context: dict) -> str:
     }
     
     # Return the formatted message string with embedded JSON payload
-    return f"*{score.symbol} {score.timeframe} {score.action} ({score.tier})*\n```{json.dumps(payload_for_display, indent=2)}```"
+    return f"--- ALERT ---\n*{score.symbol} {score.timeframe} {score.action} ({score.tier})*\n```{json.dumps(payload_for_display, indent=2)}```"
 
 
 def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: PersistentLogger, portfolio: PaperPortfolio):
