@@ -1,0 +1,19 @@
+[Unit]
+Description=BTC Alerts MVP Watchdog (PID-129)
+Documentation=https://github.com/openclaw/openclaw
+
+[Service]
+Type=simple
+User=superg
+Group=staff
+WorkingDirectory=/Users/superg/btc-alerts-mvp
+ExecStartPre=/bin/sleep 5
+ExecStart=/Users/superg/btc-alerts-mvp/scripts/pid-129/healthcheck.sh
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=30s
+StandardOutput=append:/Users/superg/btc-alerts-mvp/logs/pid-129-watchdog.log
+StandardError=append:/Users/superg/btc-alerts-mvp/logs/pid-129-watchdog.log
+
+[Install]
+WantedBy=default.target

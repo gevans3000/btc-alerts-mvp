@@ -1,0 +1,23 @@
+[Unit]
+Description=BTC Alerts MVP Service (PID-129)
+Documentation=https://github.com/openclaw/openclaw
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=superg
+Group=staff
+WorkingDirectory=/Users/superg/btc-alerts-mvp
+Environment="PATH=/Users/superg/btc-alerts-mvp/.venv/bin:/Users/superg/btc-alerts-mvp:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/Users/superg/btc-alerts-mvp/.venv/bin/python3 /Users/superg/btc-alerts-mvp/app.py --loop
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=10s
+StandardOutput=append:/Users/superg/btc-alerts-mvp/logs/service.log
+StandardError=append:/Users/superg/btc-alerts-mvp/logs/service.log
+SyslogIdentifier=btc-alerts-mvp
+Nice=-5
+
+[Install]
+WantedBy=default.target
