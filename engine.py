@@ -65,6 +65,7 @@ class AlertScore:
     session: str
     score_breakdown: Dict[str, float]
     lifecycle_key: str
+    last_candle_ts: int = 0
     decision_trace: Dict[str, object] = field(default_factory=dict)
 
 
@@ -493,5 +494,7 @@ def compute_score(
         direction=direction, strategy_type=strategy,
         entry_zone=f"{px - 0.1 * local_atr:,.0f}-{px + 0.1 * local_atr:,.0f}" if direction != "NEUTRAL" else "-",
         invalidation=invalidation, tp1=tp1, tp2=tp2, rr_ratio=rr_ratio,
-        session=session, score_breakdown=breakdown, lifecycle_key=key, decision_trace=trace,
+        session=session, score_breakdown=breakdown, lifecycle_key=key,
+        last_candle_ts=int(float(candles[-1].ts)) if candles else 0,
+        decision_trace=trace,
     )

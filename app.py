@@ -229,11 +229,25 @@ class AlertStateStore:
             "time_since_last_sent": now - int(timeframe_state.get("last_sent", 0)) if timeframe_state.get("last_sent") else float('inf')
         })
         
-        # Decision 2: Lifecycle or Tier changed
-        if timeframe_state.get("lifecycle_key") != score.lifecycle_key or timeframe_state.get("tier") != score.tier:
+        # Decision 2: Lifecycle, Tier, or Candle changed
+        old_key = timeframe_state.get("lifecycle_key")
+        old_tier = timeframe_state.get("tier")
+        old_ts = timeframe_state.get("last_candle_ts", 0)
+
+        # Send if it's a new lifecycle OR a new candle
+        # BUT if it's the same candle, only send if the tier upgraded (e.g. WATCH -> TRADE)
+        tire_ranks = {"NO-TRADE": 0, "WATCH": 1, "B": 2, "A+": 3}
+        current_rank = tire_ranks.get(score.tier, 0)
+        previous_rank = tire_ranks.get(old_tier, 0)
+
+        is_new_candle = score.last_candle_ts > old_ts
+        is_tier_upgrade = current_rank > previous_rank
+        is_new_lifecycle = old_key != score.lifecycle_key
+
+        if is_new_lifecycle or is_new_candle or is_tier_upgrade:
             decision_trace_data["decision"] = "SEND"
-            decision_trace_data["reason"] = "Lifecycle key or tier mismatch detected."
-            logger.info("Alert should send: Lifecycle/tier changed.", extra=decision_trace_data)
+            decision_trace_data["reason"] = f"New signal: candle_change={is_new_candle}, upgrade={is_tier_upgrade}, lifecycle={is_new_lifecycle}"
+            logger.info("Alert should send: Change detected.", extra=decision_trace_data)
             return True
 
         # Decision 3: Cooldown period has passed
@@ -288,6 +302,7 @@ class AlertStateStore:
             "lifecycle_key": score.lifecycle_key,
             "tier": score.tier,
             "last_sent": int(time.time()),
+            "last_candle_ts": score.last_candle_ts,
             "tp1_hit": tp1_hit,
         }
         
@@ -697,6 +712,11 @@ if __name__ == "__main__":
         # Run in a continuous loop with a 5-minute interval
         logger.info("Starting continuous monitoring loop (5-minute intervals).")
         while True:
+            if os.path.exists("STOP"):
+                logger.warning("STOP file detected. Gracefully exiting...")
+                os.remove("STOP") # Remove it so it doesn't block future starts
+                sys.exit(0)
+
             try:
                 run(bm, notif, state)
             except Exception as exc:

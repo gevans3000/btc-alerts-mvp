@@ -37,4 +37,11 @@ if [ "$INSTALL" -eq 1 ] || [ "$NEW_HASH" != "$OLD_HASH" ]; then
   echo "$NEW_HASH" > "$REQ_HASH_FILE"
 fi
 
-python3 app.py "${APP_ARGS[@]}" --once
+if [ "$1" = "--loop" ]; then
+  echo ">>> STARTING BTC ALERTS (CONTINUOUS MODE) <<<"
+  echo ">>> To turn OFF: Press Ctrl+C or type 'touch STOP' in another terminal <<<"
+  python3 app.py
+else
+  echo ">>> RUNNING BTC ALERTS (SINGLE SNAPSHOT) <<<"
+  python3 app.py --once
+fi

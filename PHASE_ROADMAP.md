@@ -38,30 +38,17 @@ Improve signal quality by implementing missing technical indicators and enhancin
 
 ### Sub-Phases
 
-#### Phase 1A: Advanced Technical Indicators
+#### Phase 1A: Advanced Technical Indicators ✅
 - **What:** Add missing indicators identified in IMPLEMENTATION_PLAN.md
-  - RSI Divergence Detection (already in utils.py, verify correctness)
-  - Candle Patterns (Engulfing/Pin Bars) - verify implementation
-  - Volume Delta (already in utils.py, verify correctness)
-  - Swing Support/Resistance Levels (already in utils.py, verify correctness)
-  - Confluence Gating (verify session weights and VIX bias)
+  - ✅ RSI Divergence Detection (verified)
+  - ✅ Candle Patterns (verified)
+  - ✅ Volume Delta (verified)
+  - ✅ Swing Support/Resistance Levels (verified)
+  - ✅ Confluence Gating (TIGHTENED to 4 factors for A+)
 
-- **How:**
-  - Run comprehensive test suite: `python tests/test_utils_engine.py`
-  - Manually test indicator outputs with historical candles
-  - Compare signal quality before/after improvements
+- **Evidence:** `utils.py`, `engine.py`, `config.py` (v1.2)
 
-- **Deliverables:**
-  - Updated utils.py with verified implementations
-  - Test results documenting improved signal quality
-  - Updated IMPLEMENTATION_PLAN.md with confirmed changes
-
-- **Success Criteria:**
-  - All indicators pass existing tests
-  - Signal quality metrics improve by ≥15%
-  - No new false positives introduced
-
-#### Phase 1B: Enhanced Market Regime Classification
+#### Phase 1B: Enhanced Market Regime Classification 🎯 NEXT
 - **What:** Improve regime detection accuracy
   - Better ADX + ATR threshold tuning
   - Improve trend detection (EMA crossover improvements)

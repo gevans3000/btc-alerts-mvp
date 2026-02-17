@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC Alerts | Strategic Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --surface: #121216;
+            --accent: #00ffcc;
+            --secondary: #7000ff;
+            --text: #e0e0e6;
+            --text-muted: #80808a;
+            --border: #23232a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--accent), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: transform 0.2s, border-color 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--secondary);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .symbol { font-weight: 700; font-size: 1.2rem; }
+        .timeframe {
+            background: var(--border);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .tier {
+            font-weight: 800;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .scorecard-section {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 2rem;
+            border-left: 4px solid var(--accent);
+        }
+
+        h2 { margin-bottom: 1.5rem; font-weight: 600; color: var(--accent); }
+
+        pre {
+            font-family: 'JetBrains Mono', monospace;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .badge-live {
+            background: rgba(0, 255, 204, 0.1);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>EMBER OPS</h1>
+            <p style="color: var(--text-muted)">PID-129 | Progressive Capability Interface</p>
+        </div>
+        <div class="status">
+            <div class="badge-live">Live Feed</div>
+            <p style="margin-top: 8px">Last Sync: 2026-02-16 20:46:56</p>
+        </div>
+    </header>
+
+    <section>
+        <h2>Active Signal State</h2>
+        <div class="grid">
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="symbol">BTC</span>
+                    <span class="timeframe">1h</span>
+                </div>
+                <div class="tier" style="color: var(--accent)">A+</div>
+                <div class="meta">
+                    <p>Last Signal: 19:00</p>
+                    <p>TP1 Hit: ❌</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="symbol">BTC</span>
+                    <span class="timeframe">15m</span>
+                </div>
+                <div class="tier" style="color: var(--secondary)">B</div>
+                <div class="meta">
+                    <p>Last Signal: 19:00</p>
+                    <p>TP1 Hit: ❌</p>
+                </div>
+            </div>
+            
+        </div>
+    </section>
+
+    <section class="scorecard-section">
+        <h2>Latest Daily Scorecard</h2>
+        <pre># PID-129 BTC Alerts Daily Scorecard
+
+**Generated:** 2026-02-17 01:26:55 UTC
+
+## Summary
+
+- **Total Alerts (24h):** 0
+- **LONG Alerts:** 0 (0.0%)
+- **SHORT Alerts:** 0 (0.0%)
+- **NO-TRADE Alerts:** 0 (0.0%)
+
+## Confidence Distribution
+
+- **High (≥70):** 0 (0.0%)
+- **Medium (50-69):** 0 (0.0%)
+- **Low (<50):** 0 (0.0%)
+
+## Strategy Breakdown
+
+
+## Reason Code Breakdown
+
+
+## Telegram Status
+
+- **Successful Sends:** 0
+- **Failed Sends:** 0
+
+## Insights
+
+
+## Next Steps
+
+
+## Recent Alerts (Last 5)
+
+</pre>
+    </section>
+
+    <footer style="margin-top: 4rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+        &copy; 2026 BTC Alerts MVP | OpenClaw Governance Framework
+    </footer>
+</body>
+</html>
+    

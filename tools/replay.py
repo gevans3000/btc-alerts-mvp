@@ -59,7 +59,6 @@ def _context_streams(candles: List[Candle], timeframe: str) -> Tuple[List[Candle
 def replay_symbol_timeframe(symbol: str, timeframe: str, candles: List[Candle]) -> ReplayMetrics:
     if len(candles) < 60:
         return ReplayMetrics(0, 0, 0.0, 0.0, FORWARD_BARS.get(timeframe, 1), "native")
-        return ReplayMetrics(0, 0, 0.0, 0.0)
 
     fg = FearGreedSnapshot(50, "Neutral", healthy=False)
     deriv = DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False)

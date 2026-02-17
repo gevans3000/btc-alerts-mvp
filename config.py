@@ -37,7 +37,7 @@ SESSION_WEIGHTS = {
     "unknown": {"BREAKOUT": 1.0, "MEAN_REVERSION": 1.0, "TREND_CONTINUATION": 1.0, "VOLATILITY_EXPANSION": 1.0},
 }
 
-CONFLUENCE_RULES = {"A+": 3, "B": 2}
+CONFLUENCE_RULES = {"A+": 4, "B": 2}
 
 TP_MULTIPLIERS = {
     "trend": {"tp1": 1.8, "tp2": 3.0, "inv": 1.1},
