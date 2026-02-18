@@ -152,9 +152,15 @@ def fetch_macro_context(budget: BudgetManager, limit: int = 120, prefetched_spx:
         spx = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit) or \
               _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit)
     
+    # Fetch DXY and Gold candles
+    dxy = _fetch_yahoo_symbol_candles(budget, "DX-Y.NYB", "1d", "1y", limit) # Daily DXY for 1 year
+    gold = _fetch_yahoo_symbol_candles(budget, "GC=F", "1d", "1y", limit) # Daily Gold for 1 year
+
     # Disabled VIX/NQ to ensure we get at least one answer without crashing
     return {
         "spx": spx,
+        "dxy": dxy,
+        "gold": gold,
         "vix": [],
         "nq": [],
     }

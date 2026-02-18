@@ -24,7 +24,9 @@ from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
 from config import COOLDOWN_SECONDS, validate_config, INTELLIGENCE_FLAGS
 from intelligence import IntelligenceBundle
 from intelligence.squeeze import detect_squeeze
-from intelligence.volume import volume_profile
+from intelligence.liquidity import analyze_liquidity
+from intelligence.volume_profile import compute_volume_profile
+from collectors.orderbook import fetch_orderbook
 from engine import AlertScore, compute_score
 from tools.outcome_tracker import resolve_outcomes
 from tools.paper_trader import Portfolio as PaperPortfolio
@@ -587,26 +589,42 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         # Compute score for BTC if data is available
         if btc_price and btc_tf.get(tf) and btc_tf.get("15m", []) and btc_tf.get("1h", []):
             try:
-                from config import INTELLIGENCE_FLAGS
+                candles = btc_tf[tf]
+
+                # Initialize intelligence bundle for this timeframe
+                intel = IntelligenceBundle()
+
+                # Phase 1.3: Squeeze Detector
                 if INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
                     try:
-                        intel.squeeze = detect_squeeze(btc_tf[tf])
+                        intel.squeeze = detect_squeeze(candles)
                         logger.debug(f"Squeeze intelligence for {tf}: {intel.squeeze}")
                     except Exception as e:
                         logger.error(f"Error in squeeze detection for {tf}: {e}", exc_info=True)
 
+                # Phase 2.3: Volume Profile
                 if INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
                     try:
-                        intel.volume_profile = volume_profile(btc_tf[tf])
+                        intel.volume_profile = compute_volume_profile(candles, btc_price.price)
                         logger.debug(f"Volume Profile intelligence for {tf}: {intel.volume_profile}")
                     except Exception as e:
                         logger.error(f"Error in volume profile calculation for {tf}: {e}", exc_info=True)
 
+                # --- Intelligence Layer: Liquidity ---
+                if INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
+                    try:
+                        orderbook = fetch_orderbook(bm)
+                        intel.liquidity = analyze_liquidity(orderbook)
+                        logger.debug(f"Liquidity intelligence for {tf}: {intel.liquidity}")
+                    except Exception as e:
+                        logger.error(f"Error in liquidity analysis for {tf}: {e}", exc_info=True)
+
+                # All intelligence layers are now prepared in 'intel' bundle
                 computed_alert = compute_score(
                     symbol="BTC",
                     timeframe=tf,
-                    price=btc_price,
-                    candles=btc_tf[tf],
+                    price=btc_price.price, # Corrected to .price
+                    candles=candles, # Corrected to 'candles'
                     candles_15m=btc_tf.get("15m", []),
                     candles_1h=btc_tf.get("1h", []),
                     fg=fg,

@@ -67,6 +67,9 @@ SQUEEZE = {
     "kc_period": 20,
     "kc_atr_mult": 1.5,
     "fire_bonus_pts": 8,
+    "squeeze_lookback": 14,
+    "no_squeeze_lookback": 20,
+    "momentum_lookback": 14,
 }
 
 VOLUME_PROFILE = {

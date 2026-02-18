@@ -1,93 +1,62 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Tuple, Optional
-import time
-import requests
-
-# Assuming these are available from a base collector or similar setup
-# from .base import BudgetManager, logger # Placeholder for now
+from typing import List, Tuple, Dict, Any
+import math
 
 @dataclass
 class OrderBookSnapshot:
-    source: str
-    timestamp: float
-    symbol: str
-    bids: List[Tuple[float, float]]  # List of (price, quantity)
-    asks: List[Tuple[float, float]]  # List of (price, quantity)
-    is_healthy: bool = True
-    message: Optional[str] = None
+    ts: int
+    bids: List[Tuple[float, float]]  # (price, amount)
+    asks: List[Tuple[float, float]] # (price, amount)
+    mid_price: float = field(init=False)
+    healthy: bool = True
 
-# Placeholder for API keys/secrets - should be loaded from config
-KRAKEN_API_URL = "https://api.kraken.com/0/public/Depth"
-BYBIT_API_URL = "https://api.bybit.com/v5/market/orderbook"
+    def __post_init__(self):
+        if self.bids and self.asks:
+            best_bid = self.bids[0][0]
+            best_ask = self.asks[0][0]
+            self.mid_price = (best_bid + best_ask) / 2
+        else:
+            self.mid_price = 0.0 # Or handle as error
+            self.healthy = False
 
-def get_orderbook_snapshot(symbol: str, depth: int = 25) -> OrderBookSnapshot:
-    """Fetches order book data from Kraken and Bybit, prioritizing Kraken."""
-    # Placeholder for actual API calls and error handling
-    # This will involve proper API interaction, rate limit handling, and error checking.
-    # For now, it returns a dummy snapshot.
-    
-    # Kraken API call (simplified)
-    try:
-        # url = f"{KRAKEN_API_URL}?pair={symbol.replace(\"/\", \"\")}&count={depth}"
-        # response = requests.get(url, timeout=5)
-        # response.raise_for_status()
-        # data = response.json()
-        # if data["error"]:
-        #     raise ValueError(f"Kraken API error: {data['error']}")
-
-        # Process Kraken data
-        # ...
-        kraken_bids = [(100.0 - i, 10.0 + i) for i in range(depth)]
-        kraken_asks = [(100.0 + i, 10.0 + i) for i in range(depth)]
-        return OrderBookSnapshot(
-            source="kraken",
-            timestamp=time.time(),
-            symbol=symbol,
-            bids=kraken_bids,
-            asks=kraken_asks,
-            is_healthy=True
-        )
-    except Exception as e:
-        # Fallback to Bybit if Kraken fails
-        # print(f"Kraken order book failed: {e}. Falling back to Bybit.") # Use proper logger
-        pass
-
-    # Bybit API call (simplified)
-    try:
-        # url = f"{BYBIT_API_URL}?category=spot&symbol={symbol.replace(\"/\", \"\")}&limit={depth}"
-        # response = requests.get(url, timeout=5)
-        # response.raise_for_status()
-        # data = response.json()
-        # # Process Bybit data
-        # # ...
-        bybit_bids = [(100.0 - i - 0.1, 11.0 + i) for i in range(depth)]
-        bybit_asks = [(100.0 + i + 0.1, 11.0 + i) for i in range(depth)]
-        return OrderBookSnapshot(
-            source="bybit",
-            timestamp=time.time(),
-            symbol=symbol,
-            bids=bybit_bids,
-            asks=bybit_asks,
-            is_healthy=True
-        )
-    except Exception as e:
-        # print(f"Bybit order book failed: {e}") # Use proper logger
-        pass
-
+def fetch_orderbook(budget_manager) -> OrderBookSnapshot:
+    # Placeholder for actual API call
+    # This function would interact with a real-time order book API
+    # For MVP, we will return a mock snapshot
     return OrderBookSnapshot(
-        source="none",
-        timestamp=time.time(),
-        symbol=symbol,
-        bids=[],
-        asks=[],
-        is_healthy=False,
-        message="Failed to fetch order book from all sources."
+        ts=int(datetime.now().timestamp()),
+        bids=[(100.0 - i * 0.1, 10 + i) for i in range(10)],
+        asks=[(100.0 + i * 0.1, 10 + i) for i in range(10)],
     )
 
+def _detect_walls(
+    orderbook: OrderBookSnapshot,
+    side: str,
+    depth_pct: float,
+    wall_threshold_btc: float
+) -> List[Dict[str, Any]]:
+    """
+    Detects significant liquidity walls in the order book.
+    Returns a list of detected walls.
+    """
+    if not orderbook.healthy:
+        return []
 
-# Example usage (for testing purposes)
-if __name__ == "__main__":
-    btc_orderbook = get_orderbook_snapshot("BTC/USD")
-    print(f"BTC/USD Order Book: {btc_orderbook}")
+    walls = []
+    reference_price = orderbook.mid_price
 
-    # Add a more realistic example with actual API calls later
+    if side == "bids":
+        levels = orderbook.bids
+        # Iterate from best bid downwards
+        levels_to_check = [lvl for lvl in levels if lvl[0] >= reference_price * (1 - depth_pct)]
+    elif side == "asks":
+        levels = orderbook.asks
+        # Iterate from best ask upwards
+        levels_to_check = [lvl for lvl in levels if lvl[0] <= reference_price * (1 + depth_pct)]
+    else:
+        return []
+
+    for price, amount in levels_to_check:
+        if amount >= wall_threshold_btc:
+            walls.append({"price": price, "amount": amount, "side": side})
+    return walls

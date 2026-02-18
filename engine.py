@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 from config import INTELLIGENCE_FLAGS, VOLUME_PROFILE
 from intelligence import IntelligenceBundle
+from intelligence.macro import analyze_macro_correlation
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
@@ -358,25 +359,16 @@ def compute_score(
     # --- Intelligence Layer: Volume Profile ---
     if intel and intel.volume_profile and INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
         vp = intel.volume_profile
-        px = price.price # Current price
         
-        # Penalty if far from POC
-        poc_dist_pct = abs(px - vp["poc_price"]) / vp["poc_price"]
-        if poc_dist_pct > VOLUME_PROFILE["poc_proximity_penalty_pct"]:
-            breakdown["penalty"] -= VOLUME_PROFILE["poc_penalty_pts"]
-            trace["codes"].append("VP_FAR_FROM_POC")
-            trace["context"]["vp_poc_dist_pct"] = poc_dist_pct
-        else:
-            trace["codes"].append("VP_NEAR_POC")
-            trace["context"]["vp_poc_dist_pct"] = poc_dist_pct
-
-        # Bonus if within Value Area
-        if vp["va_low"] <= px <= vp["va_high"]:
-            breakdown["momentum"] += VOLUME_PROFILE["va_bonus_pts"]
-            trace["codes"].append("VP_IN_VA")
-            trace["context"]["vp_in_va"] = True
-        else:
-            trace["context"]["vp_in_va"] = False
+        if vp["position"] == "ABOVE_VALUE":
+            breakdown["volume"] += vp["pts"]
+            codes.append("VP_ABOVE_VALUE")
+        elif vp["position"] == "BELOW_VALUE":
+            breakdown["volume"] += vp["pts"]
+            codes.append("VP_BELOW_VALUE")
+        else: # AT_VALUE
+            codes.append("VP_AT_VALUE")
+        trace["context"]["volume_profile"] = vp
     intel = intel or IntelligenceBundle()
 
     # --- Intelligence Layer: Squeeze ---
@@ -388,6 +380,20 @@ def compute_score(
         elif sq["state"] == "SQUEEZE_ON":
             codes.append("SQUEEZE_ON")
         trace["context"]["squeeze"] = sq["state"]
+
+    # --- Intelligence Layer: Liquidity Walls ---
+    if intel and intel.liquidity and INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
+        liq = intel.liquidity
+        breakdown["volume"] += liq["pts"]
+        codes.append(f"LIQUIDITY_IMBALANCE_{liq['imbalance']:.2f}")
+        trace["context"]["liquidity"] = liq
+
+    # --- Intelligence Layer: Macro Correlation ---
+    if intel and INTELLIGENCE_FLAGS.get("macro_correlation_enabled", True):
+        macro_analysis = analyze_macro_correlation(candles, macro)
+        breakdown["trend_alignment"] += macro_analysis["pts"]
+        codes.extend(macro_analysis["codes"])
+        trace["context"]["macro_correlation"] = macro_analysis
 
     if len(candles) < 40:
         degraded.append("candles")

@@ -186,7 +186,7 @@ if intel and intel.squeeze and INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
 ```
 
 #### 1.3 — Wire up in `app.py` (TODO)
-- [ ] In `run()`, after candle collection:
+- [x] P1.3: Wire up Squeeze Detector in app.py I AM HERE
 ```python
 from intelligence.squeeze import detect_squeeze
 from intelligence import IntelligenceBundle
@@ -198,13 +198,13 @@ if INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
 ```
 
 #### 1.4 — Config tunables (TODO)
-- [ ] Add `SQUEEZE` dict to `config.py`:
+- [x] Add `SQUEEZE` dict to `config.py`: I AM HERE
 ```python
 SQUEEZE = {"bb_period": 20, "bb_std": 2.0, "kc_period": 20, "kc_atr_mult": 1.5, "fire_bonus_pts": 8}
 ```
 
 #### 1.5 — Tests (TODO)
-- [ ] Create `tests/test_squeeze.py`:
+- [x] P1.5: Create tests for Squeeze Detector (tests/test_squeeze.py) I AM HERE
   - BB inside KC → `SQUEEZE_ON`
   - Squeeze just released → `SQUEEZE_FIRE`
   - Normal volatility → `NONE`
@@ -230,7 +230,7 @@ PYTHONPATH=. python -m pytest tests/test_squeeze.py -v
 ### Tasks
 
 #### 2.1 — Create `intelligence/volume_profile.py`
-- [ ] `compute_volume_profile(candles, current_price, num_bins=50)` →
+- [x] `compute_volume_profile(candles, current_price, num_bins=50)` → I AM HERE
   `{"poc": float, "va_high": float, "va_low": float, "position": str, "pts": float}`
 
 ```python
@@ -287,6 +287,7 @@ def compute_volume_profile(candles, current_price, num_bins=50):
 ```
 
 #### 2.2 — Integrate into `compute_score()`
+- [x] P2.2: Integrate Volume Profile into compute_score() in engine.py I AM HERE
 - [ ] After squeeze block:
 ```python
 # --- Intelligence Layer: Volume Profile ---
@@ -299,7 +300,7 @@ if intel and intel.volume_profile and INTELLIGENCE_FLAGS.get("volume_profile_ena
 ```
 
 #### 2.3 — Wire up in `app.py`
-- [ ] After candle collection:
+- [x] After candle collection: I AM HERE
 ```python
 from intelligence.volume_profile import compute_volume_profile
 if INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
@@ -307,7 +308,7 @@ if INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
 ```
 
 #### 2.4 — Config & Tests
-- [ ] Add `VOLUME_PROFILE = {"num_bins": 50, "value_area_pct": 0.70, "poc_bonus_pts": 3}` to `config.py`
+- [x] P2.4: Add Volume Profile config and tests (tests/test_volume_profile.py) I AM HERE
 - [ ] Create `tests/test_volume_profile.py`:
   - Uniform volume → POC at midpoint
   - Concentrated volume → tight VA
@@ -340,6 +341,7 @@ PYTHONPATH=. python -m pytest tests/test_volume_profile.py -v
 ### Tasks
 
 #### 3.1 — Create `collectors/orderbook.py`
+- [x] P3.1: Create collectors/orderbook.py with OrderBookSnapshot dataclass and fetch_orderbook, _detect_walls functions I AM HERE
 - [ ] `OrderBookSnapshot` dataclass:
 ```python
 @dataclass
@@ -358,6 +360,7 @@ class OrderBookSnapshot:
 - [ ] `_detect_walls(levels, current_price, threshold_mult=2.0)` — flag levels > avg × mult
 
 #### 3.2 — Create `intelligence/liquidity.py`
+- [x] P3.2: Create intelligence/liquidity.py with analyze_liquidity function I AM HERE
 - [ ] `analyze_liquidity(ob, direction, current_price)` →
   `{"imbalance": float, "nearest_wall": str, "wall_distance_pct": float, "blocker": bool, "bias": str, "pts": float}`
 
@@ -395,7 +398,7 @@ def analyze_liquidity(ob, direction, current_price):
 ```
 
 #### 3.3 — Integrate into `compute_score()`
-- [ ] After volume profile block:
+- [x] P3.3: Integrate Liquidity Walls into compute_score() in engine.py I AM HERE
 ```python
 # --- Intelligence Layer: Liquidity ---
 if intel and intel.liquidity and INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
@@ -413,7 +416,7 @@ if intel and intel.liquidity and INTELLIGENCE_FLAGS.get("liquidity_enabled", Tru
     }
 ```
 
-#### 3.4 — Wire up in `app.py`
+#### 3.4 — Wire up in `app.py` ✅ DONE
 - [ ] After price fetch:
 ```python
 from collectors.orderbook import fetch_orderbook
@@ -433,6 +436,7 @@ if orderbook and orderbook.healthy:
 ```
 
 #### 3.5 — Config & Tests
+- [x] P3.5: Add Liquidity Walls config and tests (tests/test_liquidity.py) I AM HERE
 - [ ] Add `LIQUIDITY = {"wall_threshold_mult": 2.0, "wall_danger_pct": 0.005, "imbalance_threshold": 0.3, "imbalance_pts": 3}` to `config.py`
 - [ ] Create `tests/test_liquidity.py`:
   - Wall detection with synthetic orderbook
@@ -467,11 +471,13 @@ PYTHONPATH=. python -m pytest tests/test_liquidity.py -v
 ### Tasks
 
 #### 4.1 — Add DXY & Gold fetchers to `collectors/price.py`
+- [x] P4.1: Add DXY & Gold fetchers to collectors/price.py I AM HERE
 - [ ] `fetch_dxy_candles(budget, limit=30)` — uses `_fetch_yahoo_symbol_candles(budget, "DX-Y.NYB", "5m", "1d", limit)`
 - [ ] `fetch_gold_candles(budget, limit=30)` — uses `_fetch_yahoo_symbol_candles(budget, "GC=F", "5m", "1d", limit)`
 - [ ] `fetch_macro_assets(budget)` → `{"dxy": List[Candle], "gold": List[Candle]}` (with 1s throttle between calls)
 
 #### 4.2 — Create `intelligence/macro.py`
+- [x] P4.2: Create intelligence/macro.py with analyze_macro_correlation function I AM HERE
 - [ ] `analyze_macro_correlation(dxy, gold, btc, direction)` →
   `{"dxy_bias": str, "gold_confirm": bool, "dxy_roc": float, "gold_roc": float, "pts": float}`
 
@@ -508,6 +514,7 @@ def analyze_macro_correlation(dxy, gold, btc, direction):
 ```
 
 #### 4.3 — Integrate into `compute_score()`
+- [x] P4.3: Integrate Macro Correlation into compute_score() in engine.py I AM HERE
 - [ ] After liquidity block:
 ```python
 # --- Intelligence Layer: Macro Correlation ---
