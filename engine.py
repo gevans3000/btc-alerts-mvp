@@ -379,6 +379,16 @@ def compute_score(
             trace["context"]["vp_in_va"] = False
     intel = intel or IntelligenceBundle()
 
+    # --- Intelligence Layer: Squeeze ---
+    if intel and intel.squeeze and INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
+        sq = intel.squeeze
+        if sq["state"] == "SQUEEZE_FIRE":
+            breakdown["volatility"] += sq["pts"]
+            codes.append("SQUEEZE_FIRE")
+        elif sq["state"] == "SQUEEZE_ON":
+            codes.append("SQUEEZE_ON")
+        trace["context"]["squeeze"] = sq["state"]
+
     if len(candles) < 40:
         degraded.append("candles")
     if _is_stale(candles, timeframe):

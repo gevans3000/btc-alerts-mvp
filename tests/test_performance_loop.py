@@ -1,5 +1,6 @@
 import json
 import pytest
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 from tools.paper_trader import Portfolio, Position

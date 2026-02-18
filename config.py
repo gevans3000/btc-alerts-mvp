@@ -78,8 +78,20 @@ VOLUME_PROFILE = {
     "va_bonus_pts": 3.0, # Points to add if within VA
 }
 
+LIQUIDITY = {
+    "depth_pct": 0.005,        # How far from mid-price to consider for volume (0.5%)
+    "wall_threshold_btc": 10.0,  # Minimum BTC quantity to consider a "wall"
+    "imbalance_threshold": 0.6,# How high of an imbalance (0.0 to 1.0) to flag
+    "imbalance_bonus_pts": 5.0,
+    "wall_bonus_pts": 10.0,
+    "wall_penalty_pts": 5.0,
+}
+
 
 def validate_config() -> None:
+    for k, v in LIQUIDITY.items():
+        if not isinstance(v, (int, float)):
+            raise ValueError(f"LIQUIDITY['{k}']: must be a number")
     for tf, cfg in TIMEFRAME_RULES.items():
         if cfg["trade_long"] <= cfg["watch_long"]:
             raise ValueError(f"{tf}: trade_long must be > watch_long")

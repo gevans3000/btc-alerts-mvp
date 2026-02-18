@@ -21,7 +21,7 @@ from collectors.price import (
     fetch_spx_multi_timeframe_bundle,
 )
 from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
-from config import COOLDOWN_SECONDS, validate_config
+from config import COOLDOWN_SECONDS, validate_config, INTELLIGENCE_FLAGS
 from intelligence import IntelligenceBundle
 from intelligence.squeeze import detect_squeeze
 from intelligence.volume import volume_profile
@@ -603,17 +603,17 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                         logger.error(f"Error in volume profile calculation for {tf}: {e}", exc_info=True)
 
                 computed_alert = compute_score(
-                    "BTC",
-                    tf,
-                    btc_price,
-                    btc_tf[tf],
-                    btc_tf.get("15m", []),
-                    btc_tf.get("1h", []),
-                    fg,
-                    news,
-                    derivatives,
-                    flows,
-                    macro,
+                    symbol="BTC",
+                    timeframe=tf,
+                    price=btc_price,
+                    candles=btc_tf[tf],
+                    candles_15m=btc_tf.get("15m", []),
+                    candles_1h=btc_tf.get("1h", []),
+                    fg=fg,
+                    news=news,
+                    derivatives=derivatives,
+                    flows=flows,
+                    macro=macro,
                     intel=intel,
                 )
                 alerts.append(computed_alert)

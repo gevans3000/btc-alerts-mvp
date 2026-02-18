@@ -114,6 +114,9 @@ class TestVolumeProfile(unittest.TestCase):
             "total_volume": 2000.0,
             "profile": []
         }
+        mock_intel.liquidity = None # Added for compatibility
+        mock_intel.liquidity = None # Added for compatibility
+        mock_intel.liquidity = None # Added for compatibility
 
         # Current price within VA and near POC
         mock_btc_price = PriceSnapshot(source='mock', price=100.5, timestamp=time.time())
@@ -152,6 +155,7 @@ class TestVolumeProfile(unittest.TestCase):
             "total_volume": 2000.0,
             "profile": []
         }
+        mock_intel.liquidity = None # Added for compatibility
 
         # Current price far from POC
         mock_btc_price = PriceSnapshot(source='mock', price=105.0, timestamp=time.time()) # Far from POC 100
@@ -188,6 +192,7 @@ class TestVolumeProfile(unittest.TestCase):
             "total_volume": 2000.0,
             "profile": []
         }
+        mock_intel.liquidity = None # Added for compatibility
 
         mock_btc_price = PriceSnapshot(source='mock', price=100.5, timestamp=time.time())
         mock_fg = FearGreedSnapshot(value=50, label='Neutral')
