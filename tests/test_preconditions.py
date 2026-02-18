@@ -4,8 +4,8 @@ from typing import Dict
 from pathlib import Path
 import time
 
-from engine import AlertScore, compute_score
-from intelligence import IntelligenceBundle
+from engine import compute_score
+from intelligence import AlertScore, IntelligenceBundle
 from collectors.base import BudgetManager
 from config import INTELLIGENCE_FLAGS, TIMEFRAME_RULES
 from collectors.price import PriceSnapshot

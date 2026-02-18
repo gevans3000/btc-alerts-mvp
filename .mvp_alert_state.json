@@ -5,15 +5,23 @@
     "tp1_hit": false,
     "BTC": {
         "1h": {
-            "lifecycle_key": "BTC:1h:long_signal:TREND_CONTINUATION:68807",
+            "lifecycle_key": "BTC:1h:trend_continuation:LONG:66360",
             "tier": "A+",
-            "last_sent": 1771248848,
+            "last_sent": 1771440236,
+            "last_candle_ts": 1771437600,
             "tp1_hit": false
         },
         "15m": {
             "lifecycle_key": "BTC:15m:range_bias:TREND_CONTINUATION:68896",
             "tier": "B",
             "last_sent": 1771291662,
+            "tp1_hit": false
+        },
+        "5m": {
+            "lifecycle_key": "BTC:5m:trend_continuation:SHORT:66360",
+            "tier": "B",
+            "last_sent": 1771440236,
+            "last_candle_ts": 1771440000,
             "tp1_hit": false
         }
     }
