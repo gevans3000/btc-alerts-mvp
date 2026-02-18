@@ -7,3 +7,9 @@ __pycache__/
 .mvp_alert_state.json
 logs/
 data/
+*.log
+run_debug_*.txt
+test_output.txt
+dashboard.html
+.pytest_cache/
+reports/

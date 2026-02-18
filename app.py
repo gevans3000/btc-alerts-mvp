@@ -629,7 +629,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                 computed_alert = compute_score(
                     symbol="BTC",
                     timeframe=tf,
-                    price=btc_price.price, # Corrected to .price
+                    price=btc_price, # Pass full snapshot object
                     candles=candles, # Corrected to 'candles'
                     candles_15m=btc_tf.get("15m", []),
                     candles_1h=btc_tf.get("1h", []),

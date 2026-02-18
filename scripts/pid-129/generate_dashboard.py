@@ -5,7 +5,10 @@ from pathlib import Path
 from datetime import datetime
 
 # Paths
-BASE_DIR = Path("/Users/superg/btc-alerts-mvp")
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+# Fallback to current working directory if structure is different
+if not (BASE_DIR / "logs").exists():
+    BASE_DIR = Path.cwd()
 STATE_PATH = BASE_DIR / ".mvp_alert_state.json"
 PORTFOLIO_PATH = BASE_DIR / "data" / "paper_portfolio.json"
 SCORECARD_PATH = BASE_DIR / "reports" / "pid-129-daily-scorecard.md"
@@ -277,7 +280,7 @@ def generate_html():
 </body>
 </html>
     """
-    OUTPUT_PATH.write_text(html)
+    OUTPUT_PATH.write_text(html, encoding='utf-8')
     print(f"Dashboard generated: {OUTPUT_PATH}")
 
 if __name__ == "__main__":

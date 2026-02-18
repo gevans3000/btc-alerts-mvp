@@ -6,12 +6,15 @@ Generates a daily summary of alerts, performance, and insights.
 
 import json
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from collections import defaultdict
 
 # Paths
-SERVICE_DIR = Path("/Users/superg/btc-alerts-mvp")
+SERVICE_DIR = Path(__file__).resolve().parent.parent.parent
+# Fallback to current working directory if structure is different
+if not (SERVICE_DIR / "logs").exists():
+    SERVICE_DIR = Path.cwd()
 LOGS_DIR = SERVICE_DIR / "logs"
 ALERTS_FILE = LOGS_DIR / "pid-129-alerts.jsonl"
 REPORTS_DIR = SERVICE_DIR / "reports"
@@ -20,7 +23,7 @@ OUTPUT_FILE = REPORTS_DIR / "pid-129-daily-scorecard.md"
 def load_alerts(days=1):
     """Load alerts from JSONL file."""
     alerts = []
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     if not ALERTS_FILE.exists():
         return alerts
@@ -34,7 +37,7 @@ def load_alerts(days=1):
                     if 'timestamp' in alert:
                         alert['parsed_time'] = datetime.fromisoformat(alert['timestamp'].replace('Z', '+00:00'))
                     else:
-                        alert['parsed_time'] = datetime.utcnow()
+                        alert['parsed_time'] = datetime.now(timezone.utc)
 
                     if alert['parsed_time'] >= cutoff:
                         alerts.append(alert)
@@ -42,7 +45,7 @@ def load_alerts(days=1):
                     print(f"Warning: Failed to parse alert: {e}", file=sys.stderr)
 
     # Sort by time
-    alerts.sort(key=lambda x: x.get('parsed_time', datetime.utcnow()))
+    alerts.sort(key=lambda x: x.get('parsed_time', datetime.now(timezone.utc)))
     return alerts
 
 def generate_scorecard():
@@ -145,7 +148,7 @@ def main():
     report = generate_scorecard()
 
     # Write to file
-    with open(OUTPUT_FILE, 'w') as f:
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         f.write(report)
 
     print(f"Scorecard generated: {OUTPUT_FILE}")
