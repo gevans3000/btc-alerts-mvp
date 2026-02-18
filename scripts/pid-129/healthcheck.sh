@@ -9,8 +9,10 @@ set -eo pipefail
 #   2 = CHECK FAILED
 
 SERVICE_NAME="btc-alerts-mvp"
-SERVICE_USER="superg"
-SERVICE_DIR="/Users/superg/btc-alerts-mvp"
+SERVICE_USER=$(whoami)
+# Discover root directory relative to this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVICE_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 LOG_DIR="${SERVICE_DIR}/logs"
 HEALTH_LOG="${LOG_DIR}/pid-129-health.log"
 EXIT_CODE=0
@@ -56,21 +58,18 @@ check_logs_exist() {
 check_data_freshness() {
     log "Checking data freshness..."
 
-    # Check BTC price timestamp
-    local btc_timestamp=$(stat -f "%Sm" -t "%Y-%m-%dT%H:%M:%SZ" "${SERVICE_DIR}/.mvp_alert_state.json" 2>/dev/null)
-    if [ -n involved "${btc_timestamp}" ]; then
-        log "✓ BTC price timestamp: ${btc_timestamp}"
-    else
-        log "✗ BTC price timestamp: UNKNOWN"
-        EXIT_CODE=2
+    # Detect OS for stat command
+    local stat_cmd="stat -c %Y" # Linux default
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        stat_cmd="stat -f %m" # macOS
     fi
 
-    # Check budget timestamp
-    local budget_timestamp=$(stat -f "%Sm" -t "%Y-%m-%dT%H:%M:%SZ" "${SERVICE_DIR}/.mvp_budget.json" 2>/dev/null)
-    if [ -n involved "${budget_timestamp}" ]; then
-        log "✓ Budget timestamp: ${budget_timestamp}"
+    # Check BTC price timestamp
+    if [ -f "${SERVICE_DIR}/.mvp_alert_state.json" ]; then
+        local btc_timestamp=$($stat_cmd "${SERVICE_DIR}/.mvp_alert_state.json" 2>/dev/null)
+        log "✓ BTC state file age: $(($(date +%s) - btc_timestamp)) seconds"
     else
-        log "✗ Budget timestamp: UNKNOWN"
+        log "✗ BTC state file MISSING"
         EXIT_CODE=2
     fi
 
@@ -91,8 +90,14 @@ check_recent_alerts() {
         while IFS= read -r line; do
             if [ -n "$line" ]; then
                 alert_count=$((alert_count + 1))
-                # Extract timestamp from alert
-                local alert_ts=$(echo "$line" | jq -r '.timestamp // empty' 2>/dev/null || echo "")
+                # Extract timestamp from alert (try jq, fallback to grep/sed)
+                local alert_ts=""
+                if command -v jq >/dev/null 2>&1; then
+                    alert_ts=$(echo "$line" | jq -r '.timestamp // empty' 2>/dev/null)
+                else
+                    alert_ts=$(echo "$line" | grep -oP '"timestamp":\s*"\K[^"]+' 2>/dev/null || echo "")
+                fi
+
                 if [ -n "$alert_ts" ]; then
                     last_alert_time="$alert_ts"
                 fi

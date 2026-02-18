@@ -6,8 +6,8 @@ Continuously improve EMBER in **2-hour cycles** on the **BTC Alerts MVP** subjec
 ## Scope
 ### In
 - 2-hour recurring improvement cycles on BTC Alerts MVP
-- OpenClaw governance (systemd, health checks, watchdogs, scorecards)
-- Remote operations (Mac mini → Nitro 5)
+- **OpenClaw governance:** Multi-platform automation (systemd/Mac, PowerShell/Windows), health checks, watchdogs, scorecards
+- **Remote operations:** Control from Mac mini (Strategic Command) to any target (Windows PC/Nitro 5)
 - Failure & outcome matrix handling
 - Pre-gate checks before each cycle
 
@@ -92,23 +92,20 @@ If any gate fails, cycle result = `NOT_READY`.
 
 ### Remote Operations (from Mac mini)
 ```bash
-# Status check
-openclaw ssh nitro5 "systemctl --user status pid-129-btc-alerts.service"
+# Status check (Mac/Linux)
+ssh <target> "systemctl --user status pid-129-btc-alerts.service"
 
-# View logs
-openclaw ssh nitro5 "journalctl --user -u pid-129-btc-alerts.service -n 200"
+# Status check (Windows)
+ssh <target> "powershell -File <path>/scripts/pid-129/healthcheck.ps1"
 
-# Restart service
-openclaw ssh nitro5 "systemctl --user restart pid-129-btc-alerts.service"
+# Restart service (Mac/Linux)
+ssh <target> "systemctl --user restart pid-129-btc-alerts.service"
 
 # Manual alert cycle
-openclaw ssh nitro5 "cd /Users/superg/btc-alerts-mvp && .venv/bin/python3 app.py --once"
-
-# Health check
-openclaw ssh nitro5 "./scripts/pid-129/healthcheck.sh"
+ssh <target> "cd <path> && python app.py --once"
 
 # Generate scorecard
-openclaw ssh nitro5 "./scripts/pid-129/generate_scorecard.py"
+ssh <target> "cd <path> && python scripts/pid-129/generate_scorecard.py"
 ```
 
 ## Failure & Outcome Matrix

@@ -20,14 +20,17 @@ This system generates **LONG/SHORT/NO-TRADE** alerts with **0-100 confidence sco
 - **Confluence gating:** Tier A+ requires 3+ confirming factors
 - **Macro risk filter:** VIX-aware gating (spikes or extreme levels block breakouts)
 - **Dynamic TP/SL:** Adjusted by volatility regime and swing levels
-- **OpenClaw governance:** Systemd, health checks, watchdogs, scorecards
-- **Remote operations:** Full control from Mac mini to Nitro 5
+- **OpenClaw governance:** Multi-platform support (systemd/Mac, PowerShell/Windows), health checks, watchdogs, scorecards
+- **Remote operations:** Full control from Mac mini to Windows PC / Nitro 5
 
 ### Quick Start
 
 ```bash
-cd /Users/superg/btc-alerts-mvp
+# Mac / Linux
 ./run.sh --once
+
+# Windows
+.\run.ps1 --once
 ```
 
 This fetches data, computes scores, and prints the best setup.
@@ -106,21 +109,25 @@ BTC Alerts MVP (PID-129)
 ### Run Continuously (Service Mode)
 
 ```bash
-# On Nitro 5 (production)
-./run.sh
+# Start Service (Mac/Linux)
+./scripts/pid-129/install_services.sh
+systemctl --user start pid-129-btc-alerts.service
 
-# From Mac mini (remote control)
-openclaw ssh nitro5 "cd /Users/superg/btc-alerts-mvp && ./run.sh --once"
+# Start Service (Windows)
+.\run.ps1 --loop
 ```
 
 ### Health Check
 
 ```bash
-# Local
+# Local (Mac/Linux)
 ./scripts/pid-129/healthcheck.sh
 
-# Remote (from Mac mini)
-openclaw ssh nitro5 "./scripts/pid-129/healthcheck.sh"
+# Local (Windows)
+.\scripts\pid-129\healthcheck.ps1
+
+# Remote (example)
+ssh <target> "<path>/scripts/pid-129/healthcheck.sh"
 ```
 
 ### Generate Daily Scorecard
