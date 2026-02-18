@@ -52,6 +52,16 @@ TP_MULTIPLIERS = {
 }
 
 
+INTELLIGENCE_FLAGS = {
+    "squeeze_enabled": True,
+    "volume_profile_enabled": True,
+    "liquidity_enabled": True,
+    "macro_correlation_enabled": True,
+    "sentiment_enabled": True,
+    "confluence_enabled": True,
+}
+
+
 def validate_config() -> None:
     for tf, cfg in TIMEFRAME_RULES.items():
         if cfg["trade_long"] <= cfg["watch_long"]:
@@ -63,3 +73,7 @@ def validate_config() -> None:
     for tf, seconds in STALE_SECONDS.items():
         if seconds <= 0:
             raise ValueError(f"{tf}: stale seconds must be > 0")
+    
+    for flag, value in INTELLIGENCE_FLAGS.items():
+        if not isinstance(value, bool):
+            raise ValueError(f"INTELLIGENCE_FLAGS['{flag}']: must be a boolean")

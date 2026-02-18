@@ -595,6 +595,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                     derivatives,
                     flows,
                     macro,
+                    intel=None,
                 )
                 alerts.append(computed_alert)
                 logger.info(f"Computed alert score for BTC {tf}.", extra={'symbol': 'BTC', 'timeframe': tf, 'score_confidence': computed_alert.confidence, 'action': computed_alert.action})

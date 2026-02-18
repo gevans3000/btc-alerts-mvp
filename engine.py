@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import time
 from typing import Dict, List, Tuple, Optional
+from intelligence import IntelligenceBundle
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
@@ -67,6 +68,7 @@ class AlertScore:
     lifecycle_key: str
     last_candle_ts: int = 0
     decision_trace: Dict[str, object] = field(default_factory=dict)
+    context: Dict[str, object] = field(default_factory=dict)
 
 
 def _session_label(candles: List[Candle]) -> str:
@@ -344,11 +346,13 @@ def compute_score(
     derivatives: DerivativesSnapshot,
     flows: FlowSnapshot,
     macro: Dict[str, List[Candle]],
+    intel: Optional[IntelligenceBundle] = None,
 ) -> AlertScore:
     tf_cfg = TIMEFRAME_RULES.get(timeframe, TIMEFRAME_RULES["5m"])
     reasons, codes, degraded, blockers = [], [], [], []
     breakdown: Dict[str, float] = {"trend_alignment": 0.0, "momentum": 0.0, "volatility": 0.0, "volume": 0.0, "htf": 0.0, "penalty": 0.0}
     trace: Dict[str, object] = {"degraded": [], "candidates": {}, "blockers": []}
+    intel = intel or IntelligenceBundle()
 
     if len(candles) < 40:
         degraded.append("candles")
