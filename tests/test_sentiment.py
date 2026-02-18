@@ -89,3 +89,14 @@ def test_analyze_sentiment_with_crypto_lexicon(mock_sentiment_engine):
     # HODL, moon, FUD, dump are strong. Expected a relatively neutral to slightly negative/positive result depending on balance.
     # Let's verify it's not extreme in either direction and not fallback.
     assert -0.5 < result["composite"] < 0.5
+
+def test_vader_missing(monkeypatch):
+    """If vaderSentiment is not installed, analyze_sentiment must return fallback=True."""
+    import intelligence.sentiment as sent_module
+    monkeypatch.setattr(sent_module, "_VADER_AVAILABLE", False)
+    monkeypatch.setattr(sent_module, "sentiment_engine", None)
+    news = [Headline(title="Bitcoin rallies hard", source="test_source")]
+    result = sent_module.analyze_sentiment(news)
+    assert result["fallback"] == True
+    assert result["composite"] == 0.0
+

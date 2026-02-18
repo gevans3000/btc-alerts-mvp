@@ -3,6 +3,18 @@ from typing import List, Optional, Dict
 from engine import AlertScore
 from core.logger import logger
 
+def _format_intel_lines(score) -> str:
+    """Render the 🧠 Intel: block from score.context. Returns empty string if nothing to show."""
+    intel_lines = []
+    if score.context.get("squeeze"):
+        intel_lines.append(f"Squeeze: {score.context['squeeze']}")
+    if score.context.get("sentiment"):
+        s = score.context["sentiment"]
+        intel_lines.append(f"Sentiment: {s['score']:.2f} ({s.get('bull_pct', 0)}% bull)")
+    if intel_lines:
+        return "\n🧠 Intel:\n" + "\n".join(f"  {l}" for l in intel_lines)
+    return ""
+
 def format_alert_msg(score: AlertScore, provider_context: dict) -> str:
     """Formats an AlertScore object into a readable string for notifications."""
     payload_for_display = {
@@ -31,7 +43,7 @@ def format_alert_msg(score: AlertScore, provider_context: dict) -> str:
         "squeeze_state": provider_context.get("squeeze"),
         "sentiment": provider_context.get("sentiment"),
     }
-    return f"--- ALERT ---\n*{score.symbol} {score.timeframe} {score.action} ({score.tier})*\n```{json.dumps(payload_for_display, indent=2)}```"
+    return f"--- ALERT ---\n*{score.symbol} {score.timeframe} {score.action} ({score.tier})*\n```{json.dumps(payload_for_display, indent=2)}```" + _format_intel_lines(score)
 
 def print_market_overview(alerts: List[AlertScore]):
     """Prints a terminal-friendly market overview table."""

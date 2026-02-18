@@ -62,7 +62,7 @@ def _collect_intelligence(candles, news, btc_price):
             degraded.append("squeeze")
     
     # Sentiment
-    if INTELLIGENCE_FLAGS.get("sentiment_enabled", True):
+    if INTELLIGENCE_FLAGS.get("sentiment_enabled", True) and news:
         try:
             intel.sentiment = analyze_sentiment(news)
         except Exception as e:

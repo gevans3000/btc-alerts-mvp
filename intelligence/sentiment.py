@@ -1,10 +1,17 @@
 from typing import Dict, Any, List
 from collectors.social import FearGreedSnapshot, Headline
 from config import SENTIMENT
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+    _VADER_AVAILABLE = True
+except ImportError:
+    _VADER_AVAILABLE = False
 
 class SentimentEngine:
     def __init__(self):
+        if not _VADER_AVAILABLE:
+            raise ImportError("vaderSentiment is not installed")
         self.analyzer = SentimentIntensityAnalyzer()
         # Extend VADER's lexicon with crypto-specific terms from config
         self.analyzer.lexicon.update(SENTIMENT["crypto_lexicon"])
@@ -13,7 +20,11 @@ class SentimentEngine:
         vs = self.analyzer.polarity_scores(text)
         return vs
 
-sentiment_engine = SentimentEngine() # Initialize a global sentiment engine
+
+if _VADER_AVAILABLE:
+    sentiment_engine = SentimentEngine()
+else:
+    sentiment_engine = None
 
 def analyze_sentiment(
     news: List[Headline],
@@ -21,7 +32,11 @@ def analyze_sentiment(
     """
     Analyzes news headlines for sentiment using VADER.
     Returns a composite score, bullish/bearish percentages, and fallback status.
+    Falls back gracefully if vaderSentiment is not installed.
     """
+    if not _VADER_AVAILABLE or sentiment_engine is None:
+        return {"composite": 0.0, "bullish_pct": 0, "bearish_pct": 0, "count": 0, "fallback": True}
+
     if not news:
         return {"composite": 0.0, "bullish_pct": 0, "bearish_pct": 0, "count": 0, "fallback": True}
 
