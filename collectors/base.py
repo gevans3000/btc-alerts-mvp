@@ -1,4 +1,4 @@
-import time, json
+import time, json, threading
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Dict, List
@@ -26,6 +26,7 @@ class BudgetManager:
     def __init__(self, path: str = ".budget.json"):
         self.path = Path(path)
         self._buckets = {k: _SourceBucket(v[0], v[1]) for k, v in self.LIMITS.items()}
+        self._lock = threading.Lock()
         self._load()
 
     def _load(self):
@@ -44,9 +45,11 @@ class BudgetManager:
         except: pass
 
     def can_call(self, source: str) -> bool:
-        return self._buckets.get(source, _SourceBucket(5, 60)).can_call()
+        with self._lock:
+            return self._buckets.get(source, _SourceBucket(5, 60)).can_call()
 
     def record_call(self, source: str):
-        if source in self._buckets:
-            self._buckets[source].record()
-            self._save()
+        with self._lock:
+            if source in self._buckets:
+                self._buckets[source].record()
+                self._save()

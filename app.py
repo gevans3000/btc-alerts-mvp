@@ -2,6 +2,7 @@ import os, sys, time, httpx, hashlib, logging
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
+from concurrent.futures import ThreadPoolExecutor
 from collectors.base import BudgetManager
 from collectors.price import fetch_btc_price, fetch_btc_candles
 from collectors.social import fetch_fear_greed, fetch_news
@@ -30,7 +31,15 @@ class Notifier:
 def run():
     bm = BudgetManager(".mvp_budget.json")
     notif = Notifier()
-    p, c, f, n = fetch_btc_price(bm), fetch_btc_candles(bm), fetch_fear_greed(bm), fetch_news(bm)
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        f_p = executor.submit(fetch_btc_price, bm)
+        f_c = executor.submit(fetch_btc_candles, bm)
+        f_f = executor.submit(fetch_fear_greed, bm)
+        f_n = executor.submit(fetch_news, bm)
+
+        p, c, f, n = f_p.result(), f_c.result(), f_f.result(), f_n.result()
+
     s = compute_score(p, c, f, n)
     emoji = {
         "long_signal": "🟢🚀", 
