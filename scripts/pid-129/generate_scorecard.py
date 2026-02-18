@@ -17,6 +17,7 @@ if not (SERVICE_DIR / "logs").exists():
     SERVICE_DIR = Path.cwd()
 LOGS_DIR = SERVICE_DIR / "logs"
 ALERTS_FILE = LOGS_DIR / "pid-129-alerts.jsonl"
+AUDIT_FILE = LOGS_DIR / "audit.jsonl"
 REPORTS_DIR = SERVICE_DIR / "reports"
 OUTPUT_FILE = REPORTS_DIR / "pid-129-daily-scorecard.md"
 
@@ -47,6 +48,24 @@ def load_alerts(days=1):
     # Sort by time
     alerts.sort(key=lambda x: x.get('parsed_time', datetime.now(timezone.utc)))
     return alerts
+
+def load_audit(hours=24):
+    """Load audit heartbeats."""
+    audit = []
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    if not AUDIT_FILE.exists():
+        return audit
+    with open(AUDIT_FILE, 'r') as f:
+        for line in f:
+            if line.strip():
+                try:
+                    entry = json.loads(line)
+                    ts = datetime.fromisoformat(entry['timestamp'].replace('Z', '+00:00'))
+                    if ts >= cutoff:
+                        audit.append(entry)
+                except:
+                    continue
+    return audit
 
 def generate_scorecard():
     """Generate daily scorecard report."""
@@ -113,7 +132,7 @@ def generate_scorecard():
 
 - **Total Alerts:** {stats['total_alerts']}
 - **Directional Split:** {stats['long_alerts']} LONG / {stats['short_alerts']} SHORT
-- **High Confidence (≥70):** {stats['high_confidence']}
+- **High Confidence (>=70):** {stats['high_confidence']}
 
 ## Trading Performance (Paper)
 
@@ -137,6 +156,17 @@ def generate_scorecard():
         outcome = alert.get('outcome') or 'PENDING'
         report += f"| {ts} | {alert.get('direction')} | {alert.get('strategy')} | {alert.get('confidence')} | {outcome} |\n"
 
+    report += "\n## System Health (Audit Log - Last 24h)\n\n"
+    audits = load_audit(24)
+    if audits:
+        count = len(audits)
+        best_score = max([a['score'] for a in audits]) if audits else 0
+        report += f"- **Cycles Completed:** {count}\n"
+        report += f"- **Peak Confidence Seen:** {best_score}\n"
+        report += f"- **Status:** Bot Active & Scanning\n"
+    else:
+        report += "- **Status:** No monitoring activity recorded in last 24h.\n"
+
     return report
 
 def main():
@@ -152,8 +182,13 @@ def main():
         f.write(report)
 
     print(f"Scorecard generated: {OUTPUT_FILE}")
-    print(f"Total alerts: {len(json.loads(load_alerts().__str__()))}")  # Simplified
-    print(report)
+    print(f"Total signals: {len(load_alerts())}")
+    # Print a terminal-safe version (replace unicode)
+    safe_report = report.replace('≥', '>=')
+    try:
+        print(safe_report)
+    except:
+        print("Report contains characters terminal cannot display. See markdown file.")
 
 if __name__ == "__main__":
     main()

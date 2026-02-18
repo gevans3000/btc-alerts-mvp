@@ -26,7 +26,7 @@ def get_portfolio():
 
 def get_scorecard():
     if not SCORECARD_PATH.exists(): return "No scorecard found yet."
-    return SCORECARD_PATH.read_text()
+    return SCORECARD_PATH.read_text(encoding='utf-8')
 
 def generate_svg_equity(curve):
     if not curve or len(curve) < 2:

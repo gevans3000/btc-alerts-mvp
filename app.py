@@ -123,7 +123,7 @@ logger.info("Structured logging configured.")
 
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 class PersistentLogger:
     """Logs alerts to a JSONL file for outcome tracking."""
@@ -162,6 +162,26 @@ class PersistentLogger:
         except Exception as exc:
             logger.error(f"Failed to persist alert: {exc}", exc_info=True)
             return None
+
+class AuditLogger:
+    """Logs every computation cycle for monitoring heartbeats."""
+    def __init__(self, path: str = "logs/audit.jsonl"):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def log_cycle(self, symbol: str, timeframe: str, score: float, action: str):
+        record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "score": score,
+            "action": action
+        }
+        try:
+            with open(self.path, "a") as f:
+                f.write(json.dumps(record) + "\n")
+        except:
+            pass
 
 
 class Notifier:
@@ -475,7 +495,7 @@ def _collect_intelligence(candles, news, btc_price):
     return intel
 
 
-def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: PersistentLogger, portfolio: PaperPortfolio):
+def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: PersistentLogger, a_logger: AuditLogger, portfolio: PaperPortfolio):
     """Main function to execute the BTC alert monitoring process."""
     # Log the start of the main execution, indicating configuration validation is next.
     logger.info("Starting main execution cycle.")
@@ -641,6 +661,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                     intel=intel,
                 )
                 alerts.append(computed_alert)
+                a_logger.log_cycle("BTC", tf, computed_alert.confidence, computed_alert.action)
                 logger.info(f"Computed alert score for BTC {tf}.", extra={'symbol': 'BTC', 'timeframe': tf, 'score_confidence': computed_alert.confidence, 'action': computed_alert.action})
             except Exception as e:
                 logger.error("Exception during BTC %s score computation: %s", tf, e, exc_info=True, extra={'symbol': 'BTC', 'timeframe': tf})
@@ -669,6 +690,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                     macro, # Macro context is relevant for SPX
                 )
                 alerts.append(computed_alert)
+                a_logger.log_cycle("SPX_PROXY", tf, computed_alert.confidence, computed_alert.action)
                 logger.info(f"Computed alert score for SPX_PROXY {tf}.", extra={'symbol': 'SPX_PROXY', 'timeframe': tf, 'score_confidence': computed_alert.confidence, 'action': computed_alert.action})
             except Exception as e:
                 logger.error("Exception during SPX_PROXY %s score computation: %s", tf, e, exc_info=True, extra={'symbol': 'SPX_PROXY', 'timeframe': tf})
@@ -811,11 +833,12 @@ if __name__ == "__main__":
     notif = Notifier()
     state = AlertStateStore(STATE_STORE_PATH)
     p_logger = PersistentLogger()
+    a_logger = AuditLogger()
     portfolio = PaperPortfolio()
 
     # Check if the script is run with '--once' argument
     if "--once" in sys.argv:
-        run(bm, notif, state, p_logger, portfolio)
+        run(bm, notif, state, p_logger, a_logger, portfolio)
         logger.info("Script finished execution in --once mode.")
     else:
         # Run in a continuous loop with a 5-minute interval
@@ -827,7 +850,7 @@ if __name__ == "__main__":
                 sys.exit(0)
 
             try:
-                run(bm, notif, state, p_logger, portfolio)
+                run(bm, notif, state, p_logger, a_logger, portfolio)
             except Exception as exc:
                 logger.error("Unhandled exception in main loop: %s", exc, exc_info=True)
             
