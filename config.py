@@ -61,6 +61,14 @@ INTELLIGENCE_FLAGS = {
     "confluence_enabled": True,
 }
 
+SQUEEZE = {
+    "bb_period": 20,
+    "bb_std": 2.0,
+    "kc_period": 20,
+    "kc_atr_mult": 1.5,
+    "fire_bonus_pts": 8,
+}
+
 
 def validate_config() -> None:
     for tf, cfg in TIMEFRAME_RULES.items():

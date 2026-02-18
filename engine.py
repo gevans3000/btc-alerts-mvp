@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import time
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, Any, List, Optional, Tuple
+
+from config import INTELLIGENCE_FLAGS
 from intelligence import IntelligenceBundle
 
 from collectors.derivatives import DerivativesSnapshot
@@ -351,7 +353,7 @@ def compute_score(
     tf_cfg = TIMEFRAME_RULES.get(timeframe, TIMEFRAME_RULES["5m"])
     reasons, codes, degraded, blockers = [], [], [], []
     breakdown: Dict[str, float] = {"trend_alignment": 0.0, "momentum": 0.0, "volatility": 0.0, "volume": 0.0, "htf": 0.0, "penalty": 0.0}
-    trace: Dict[str, object] = {"degraded": [], "candidates": {}, "blockers": []}
+    trace: Dict[str, object] = {"degraded": [], "candidates": {}, "blockers": [], "context": {}}
     intel = intel or IntelligenceBundle()
 
     if len(candles) < 40:
@@ -460,6 +462,16 @@ def compute_score(
                         breakdown["momentum"] += contribution
                         codes.append(f"NEWS_{keyword.replace(' ', '_').upper()}")
                     keyword_hits[keyword] = count + 1
+
+    # --- Intelligence Layer: Squeeze ---
+    if intel and intel.squeeze and INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
+        sq = intel.squeeze
+        if sq["state"] == "SQUEEZE_FIRE":
+            breakdown["volatility"] += sq["pts"]
+            codes.append("SQUEEZE_FIRE")
+        elif sq["state"] == "SQUEEZE_ON":
+            codes.append("SQUEEZE_ON")
+        trace["context"]["squeeze"] = sq["state"]
 
     net = sum(breakdown.values())
     raw_score = int(min(100, max(0, 50 + net)))

@@ -22,6 +22,8 @@ from collectors.price import (
 )
 from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
 from config import COOLDOWN_SECONDS, validate_config
+from intelligence import IntelligenceBundle
+from intelligence.squeeze import detect_squeeze
 from engine import AlertScore, compute_score
 from tools.outcome_tracker import resolve_outcomes
 from tools.paper_trader import Portfolio as PaperPortfolio
@@ -580,9 +582,14 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
 
     # Iterate through common timeframes to compute scores for BTC and SPX
     for tf in ["5m", "15m", "1h"]: # Focused on 5m, 15m, 1h as per original logic
+        intel = IntelligenceBundle() # Initialize for each timeframe
         # Compute score for BTC if data is available
         if btc_price and btc_tf.get(tf) and btc_tf.get("15m", []) and btc_tf.get("1h", []):
             try:
+                from config import INTELLIGENCE_FLAGS
+                if INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
+                    intel.squeeze = detect_squeeze(btc_tf[tf])
+
                 computed_alert = compute_score(
                     "BTC",
                     tf,
@@ -595,7 +602,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                     derivatives,
                     flows,
                     macro,
-                    intel=None,
+                    intel=intel,
                 )
                 alerts.append(computed_alert)
                 logger.info(f"Computed alert score for BTC {tf}.", extra={'symbol': 'BTC', 'timeframe': tf, 'score_confidence': computed_alert.confidence, 'action': computed_alert.action})
