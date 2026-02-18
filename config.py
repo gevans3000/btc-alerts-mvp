@@ -69,6 +69,15 @@ SQUEEZE = {
     "fire_bonus_pts": 8,
 }
 
+VOLUME_PROFILE = {
+    "num_buckets": 100, # Number of price buckets for VP calculation
+    "va_percentage": 0.70, # Percentage of total volume for Value Area calculation
+    "poc_proximity_penalty_pct": 0.005, # % distance from POC to incur penalty
+    "va_bonus_pct": 0.002, # % distance within VA to get bonus
+    "poc_penalty_pts": 5.0, # Points to deduct if far from POC
+    "va_bonus_pts": 3.0, # Points to add if within VA
+}
+
 
 def validate_config() -> None:
     for tf, cfg in TIMEFRAME_RULES.items():

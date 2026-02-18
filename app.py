@@ -24,6 +24,7 @@ from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
 from config import COOLDOWN_SECONDS, validate_config
 from intelligence import IntelligenceBundle
 from intelligence.squeeze import detect_squeeze
+from intelligence.volume import volume_profile
 from engine import AlertScore, compute_score
 from tools.outcome_tracker import resolve_outcomes
 from tools.paper_trader import Portfolio as PaperPortfolio
@@ -588,7 +589,18 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
             try:
                 from config import INTELLIGENCE_FLAGS
                 if INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
-                    intel.squeeze = detect_squeeze(btc_tf[tf])
+                    try:
+                        intel.squeeze = detect_squeeze(btc_tf[tf])
+                        logger.debug(f"Squeeze intelligence for {tf}: {intel.squeeze}")
+                    except Exception as e:
+                        logger.error(f"Error in squeeze detection for {tf}: {e}", exc_info=True)
+
+                if INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
+                    try:
+                        intel.volume_profile = volume_profile(btc_tf[tf])
+                        logger.debug(f"Volume Profile intelligence for {tf}: {intel.volume_profile}")
+                    except Exception as e:
+                        logger.error(f"Error in volume profile calculation for {tf}: {e}", exc_info=True)
 
                 computed_alert = compute_score(
                     "BTC",

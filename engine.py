@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import time
 from typing import Dict, Any, List, Optional, Tuple
 
-from config import INTELLIGENCE_FLAGS
+from config import INTELLIGENCE_FLAGS, VOLUME_PROFILE
 from intelligence import IntelligenceBundle
 
 from collectors.derivatives import DerivativesSnapshot
@@ -353,7 +353,30 @@ def compute_score(
     tf_cfg = TIMEFRAME_RULES.get(timeframe, TIMEFRAME_RULES["5m"])
     reasons, codes, degraded, blockers = [], [], [], []
     breakdown: Dict[str, float] = {"trend_alignment": 0.0, "momentum": 0.0, "volatility": 0.0, "volume": 0.0, "htf": 0.0, "penalty": 0.0}
-    trace: Dict[str, object] = {"degraded": [], "candidates": {}, "blockers": [], "context": {}}
+    trace: Dict[str, object] = {"degraded": [], "candidates": {}, "blockers": [], "context": {}, "codes": []}
+
+    # --- Intelligence Layer: Volume Profile ---
+    if intel and intel.volume_profile and INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
+        vp = intel.volume_profile
+        px = price.price # Current price
+        
+        # Penalty if far from POC
+        poc_dist_pct = abs(px - vp["poc_price"]) / vp["poc_price"]
+        if poc_dist_pct > VOLUME_PROFILE["poc_proximity_penalty_pct"]:
+            breakdown["penalty"] -= VOLUME_PROFILE["poc_penalty_pts"]
+            trace["codes"].append("VP_FAR_FROM_POC")
+            trace["context"]["vp_poc_dist_pct"] = poc_dist_pct
+        else:
+            trace["codes"].append("VP_NEAR_POC")
+            trace["context"]["vp_poc_dist_pct"] = poc_dist_pct
+
+        # Bonus if within Value Area
+        if vp["va_low"] <= px <= vp["va_high"]:
+            breakdown["momentum"] += VOLUME_PROFILE["va_bonus_pts"]
+            trace["codes"].append("VP_IN_VA")
+            trace["context"]["vp_in_va"] = True
+        else:
+            trace["context"]["vp_in_va"] = False
     intel = intel or IntelligenceBundle()
 
     if len(candles) < 40:
