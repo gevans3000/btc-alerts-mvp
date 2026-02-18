@@ -24,9 +24,7 @@ from collectors.social import FearGreedSnapshot, fetch_fear_greed, fetch_news
 from config import COOLDOWN_SECONDS, validate_config, INTELLIGENCE_FLAGS
 from intelligence import IntelligenceBundle
 from intelligence.squeeze import detect_squeeze
-from intelligence.liquidity import analyze_liquidity
-from intelligence.volume_profile import compute_volume_profile
-from collectors.orderbook import fetch_orderbook
+from intelligence.sentiment import analyze_sentiment
 from engine import AlertScore, compute_score
 from tools.outcome_tracker import resolve_outcomes
 from tools.paper_trader import Portfolio as PaperPortfolio
@@ -408,7 +406,9 @@ def _format_alert(score: AlertScore, provider_context: dict) -> str:
             "session": score.session,
             "quality": score.quality,
             "providers": provider_context,
+            "sentiment": provider_context.get("sentiment"),
         },
+        "squeeze_state": provider_context.get("squeeze"),
         "reason_codes": score.reason_codes,
         "score_breakdown": score.score_breakdown,
         "blockers": score.blockers,
@@ -440,10 +440,39 @@ def _format_alert(score: AlertScore, provider_context: dict) -> str:
         "score_breakdown": score.score_breakdown,
         "blockers": score.blockers,
         "decision_trace": score.decision_trace,
+        "squeeze_state": provider_context.get("squeeze"),
+        "sentiment": provider_context.get("sentiment"),
     }
     
     # Return the formatted message string with embedded JSON payload
     return f"--- ALERT ---\n*{score.symbol} {score.timeframe} {score.action} ({score.tier})*\n```{json.dumps(payload_for_display, indent=2)}```"
+
+
+def _collect_intelligence(candles, news, btc_price):
+    """Call all intelligence layers. Never crashes. Returns whatever succeeded."""
+    intel = IntelligenceBundle()
+    degraded = []
+
+    # Squeeze
+    if INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
+        try:
+            intel.squeeze = detect_squeeze(candles)
+        except Exception as e:
+            logger.warning(f"Squeeze degraded: {e}")
+            degraded.append("squeeze")
+    
+    # Sentiment
+    if INTELLIGENCE_FLAGS.get("sentiment_enabled", True):
+        try:
+            intel.sentiment = analyze_sentiment(news)
+        except Exception as e:
+            logger.warning(f"Sentiment degraded: {e}")
+            degraded.append("sentiment")
+    
+    if degraded:
+        logger.info(f"Intelligence degraded layers: {degraded}")
+
+    return intel
 
 
 def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: PersistentLogger, portfolio: PaperPortfolio):
@@ -594,32 +623,9 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                 # Initialize intelligence bundle for this timeframe
                 intel = IntelligenceBundle()
 
-                # Phase 1.3: Squeeze Detector
-                if INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
-                    try:
-                        intel.squeeze = detect_squeeze(candles)
-                        logger.debug(f"Squeeze intelligence for {tf}: {intel.squeeze}")
-                    except Exception as e:
-                        logger.error(f"Error in squeeze detection for {tf}: {e}", exc_info=True)
-
-                # Phase 2.3: Volume Profile
-                if INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
-                    try:
-                        intel.volume_profile = compute_volume_profile(candles, btc_price.price)
-                        logger.debug(f"Volume Profile intelligence for {tf}: {intel.volume_profile}")
-                    except Exception as e:
-                        logger.error(f"Error in volume profile calculation for {tf}: {e}", exc_info=True)
-
-                # --- Intelligence Layer: Liquidity ---
-                if INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
-                    try:
-                        orderbook = fetch_orderbook(bm)
-                        intel.liquidity = analyze_liquidity(orderbook)
-                        logger.debug(f"Liquidity intelligence for {tf}: {intel.liquidity}")
-                    except Exception as e:
-                        logger.error(f"Error in liquidity analysis for {tf}: {e}", exc_info=True)
 
                 # All intelligence layers are now prepared in 'intel' bundle
+                intel = _collect_intelligence(candles, news, btc_price)
                 computed_alert = compute_score(
                     symbol="BTC",
                     timeframe=tf,
@@ -704,7 +710,8 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
             "flows": flows.source if alert.symbol == "BTC" else "none", # Flows for BTC
             "spx_mode": "direct" if spx_source_map.get(alert.timeframe) == "^GSPC" else "proxy" if alert.symbol == "SPX_PROXY" else "n/a",
             "macro_regime": alert.regime,
-            "fear_greed": fg.label if alert.symbol == "BTC" else "N/A" # Include F&G for BTC alerts
+            "fear_greed": fg.label if alert.symbol == "BTC" else "N/A", # Include F&G for BTC alerts
+            "squeeze": alert.intel.squeeze if alert.intel and alert.intel.squeeze else "N/A", # Squeeze state
         }
 
         # Format the alert message

@@ -44,14 +44,26 @@ def rsi(values: List[float], period: int = 14) -> Optional[float]:
     return 100.0 - (100.0 / (1.0 + rs))
 
 
-def bollinger_bands(values: List[float], period: int = 20, multiplier: float = 2.0) -> Optional[tuple[float, float, float]]:
+def bollinger_bands(values: List[float], period: int = 20, multiplier: float = 2.0) -> Optional[tuple[float, float, float, float]]:
     if len(values) < period:
         return None
     recent = values[-period:]
     sma = sum(recent) / period
     variance = sum((x - sma) ** 2 for x in recent) / period
     std_dev = variance ** 0.5
-    return (sma + multiplier * std_dev, sma, sma - multiplier * std_dev)
+    return (sma + multiplier * std_dev, sma, sma - multiplier * std_dev, std_dev)
+
+
+def keltner_channels(candles: List[Candle], period: int = 20, atr_mult: float = 1.5) -> Optional[tuple[float, float, float, float]]:
+    """Returns (upper, middle, lower) for latest candle."""
+    if len(candles) < period:
+        return None
+    closes = [c.close for c in candles[-period:]]
+    middle = sum(closes) / len(closes)
+    atr_val = atr(candles, period)
+    if atr_val is None:
+        return None
+    return (middle + atr_mult * atr_val, middle, middle - atr_mult * atr_val, atr_val)
 
 
 def atr(candles: List[Candle], period: int = 14) -> Optional[float]:

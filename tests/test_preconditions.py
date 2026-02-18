@@ -29,9 +29,6 @@ def test_intelligence_bundle_instantiates_with_none():
     bundle = IntelligenceBundle()
     assert is_dataclass(bundle)
     assert bundle.squeeze is None
-    assert bundle.volume_profile is None
-    assert bundle.liquidity is None
-    assert bundle.macro is None
     assert bundle.sentiment is None
     assert bundle.confluence is None
 
@@ -126,9 +123,6 @@ def test_budget_manager_allows_yahoo_calls():
 def test_intelligence_flags_contain_expected_keys_and_are_booleans():
     expected_flags = [
         "squeeze_enabled",
-        "volume_profile_enabled",
-        "liquidity_enabled",
-        "macro_correlation_enabled",
         "sentiment_enabled",
         "confluence_enabled",
     ]

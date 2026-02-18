@@ -1,0 +1,26 @@
+{
+  "balance": 10000.0,
+  "positions": [
+    {
+      "alert_id": "test-uuid",
+      "symbol": "BTC",
+      "timeframe": "5m",
+      "direction": "LONG",
+      "entry_price": 60000.0,
+      "size_usdt": 6000.0,
+      "sl": 59000.0,
+      "tp1": 62000.0,
+      "opened_at": "2026-02-18T18:01:30.041589+00:00",
+      "status": "OPEN"
+    }
+  ],
+  "closed_trades": [],
+  "peak_balance": 10000.0,
+  "max_drawdown": 0.0,
+  "equity_curve": [
+    {
+      "timestamp": "2026-02-18T18:01:30.041082+00:00",
+      "balance": 10000.0
+    }
+  ]
+}

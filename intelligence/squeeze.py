@@ -1,17 +1,5 @@
 from typing import List, Dict, Any, Optional
-from utils import bollinger_bands, atr, Candle
-
-
-def keltner_channels(candles: List[Candle], period: int = 20, atr_mult: float = 1.5):
-    """Returns (upper, middle, lower) for latest candle."""
-    if len(candles) < period:
-        return None
-    closes = [c.close for c in candles[-period:]]
-    middle = sum(closes) / len(closes)
-    atr_val = atr(candles, period)
-    if atr_val is None:
-        return None
-    return (middle + atr_mult * atr_val, middle, middle - atr_mult * atr_val)
+from utils import bollinger_bands, atr, Candle, keltner_channels
 
 def detect_squeeze(candles: List[Candle]) -> Dict[str, Any]:
     """Detect TTM Squeeze state.
@@ -28,9 +16,17 @@ def detect_squeeze(candles: List[Candle]) -> Dict[str, Any]:
     if bb is None or kc is None:
         return {"state": "NONE", "pts": 0, "bb_width": 0.0, "kc_width": 0.0}
 
-    bb_upper, bb_mid, bb_lower = bb
-    kc_upper, kc_mid, kc_lower = kc
-    squeeze_on = bb_lower > kc_lower and bb_upper < kc_upper
+    bb_upper, bb_mid, bb_lower, bb_std = bb
+    kc_upper, kc_mid, kc_lower, kc_atr = kc
+
+    # Condition for SQUEEZE_ON: Bollinger Bands are within Keltner Channels
+    # (BB_lower > KC_lower) AND (BB_upper < KC_upper)
+    squeeze_on = (bb_lower > kc_lower) and (bb_upper < kc_upper)
+
+    with open("squeeze_debug.log", "a") as f:
+        # To get std_dev from bb and atr_val from kc, we need to modify utils.py to return these.
+        # For now, let's just log the existing values.
+        f.write(f"Candle: {len(candles)}, BB_upper: {bb_upper:.2f}, BB_lower: {bb_lower:.2f}, KC_upper: {kc_upper:.2f}, KC_lower: {kc_lower:.2f}, BB_std: {bb_std:.2f}, KC_atr: {kc_atr:.2f}, is_squeeze_on: {squeeze_on}\n")
 
     # Previous state (for FIRE detection)
     prev_closes = closes[:-1]

@@ -1,0 +1,62 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.7, pytest-9.0.2, pluggy-1.5.0 -- C:\ProgramData\miniconda3\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\lovel\trading\btc-alerts-mvp
+plugins: anyio-4.9.0, asyncio-1.3.0, xdist-3.8.0, cov-7.0.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 19 items
+
+tests/test_performance_loop.py::test_portfolio_on_alert ERROR            [  5%]
+tests/test_performance_loop.py::test_portfolio_update_win ERROR          [ 10%]
+tests/test_performance_loop.py::test_portfolio_update_loss ERROR         [ 15%]
+tests/test_performance_loop.py::test_max_positions ERROR                 [ 21%]
+tests/test_preconditions.py::test_alert_score_has_context_field PASSED   [ 26%]
+tests/test_preconditions.py::test_intelligence_bundle_instantiates_with_none FAILED [ 31%]
+tests/test_preconditions.py::test_compute_score_works_with_intel_none PASSED [ 36%]
+tests/test_preconditions.py::test_budget_manager_allows_yahoo_calls PASSED [ 42%]
+tests/test_preconditions.py::test_intelligence_flags_contain_expected_keys_and_are_booleans PASSED [ 47%]
+tests/test_sentiment.py::test_analyze_sentiment_empty_news PASSED        [ 52%]
+tests/test_sentiment.py::test_analyze_sentiment_positive_news PASSED     [ 57%]
+tests/test_sentiment.py::test_analyze_sentiment_negative_news PASSED     [ 63%]
+tests/test_sentiment.py::test_analyze_sentiment_mixed_news PASSED        [ 68%]
+tests/test_sentiment.py::test_analyze_sentiment_neutral_news PASSED      [ 73%]
+tests/test_sentiment.py::test_analyze_sentiment_with_crypto_lexicon PASSED [ 78%]
+tests/test_squeeze.py::test_squeeze_on PASSED                            [ 84%]
+tests/test_squeeze.py::test_squeeze_fire PASSED                          [ 89%]
+tests/test_squeeze.py::test_squeeze_none PASSED                          [ 94%]
+tests/test_squeeze.py::test_short_candles PASSED                         [100%]
+
+=================================== ERRORS ====================================
+__________________ ERROR at setup of test_portfolio_on_alert __________________
+..\..\AppData\Roaming\Python\Python312\site-packages\pytest_asyncio\plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+E   PermissionError: [WinError 5] Access is denied: 'C:\\Users\\lovel\\AppData\\Local\\Temp\\pytest-of-lovel'
+_________________ ERROR at setup of test_portfolio_update_win _________________
+..\..\AppData\Roaming\Python\Python312\site-packages\pytest_asyncio\plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+E   PermissionError: [WinError 5] Access is denied: 'C:\\Users\\lovel\\AppData\\Local\\Temp\\pytest-of-lovel'
+________________ ERROR at setup of test_portfolio_update_loss _________________
+..\..\AppData\Roaming\Python\Python312\site-packages\pytest_asyncio\plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+E   PermissionError: [WinError 5] Access is denied: 'C:\\Users\\lovel\\AppData\\Local\\Temp\\pytest-of-lovel'
+____________________ ERROR at setup of test_max_positions _____________________
+..\..\AppData\Roaming\Python\Python312\site-packages\pytest_asyncio\plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+E   PermissionError: [WinError 5] Access is denied: 'C:\\Users\\lovel\\AppData\\Local\\Temp\\pytest-of-lovel'
+================================== FAILURES ===================================
+_______________ test_intelligence_bundle_instantiates_with_none _______________
+tests\test_preconditions.py:32: in test_intelligence_bundle_instantiates_with_none
+    assert bundle.volume_profile is None
+           ^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'IntelligenceBundle' object has no attribute 'volume_profile'
+=========================== short test summary info ===========================
+FAILED tests/test_preconditions.py::test_intelligence_bundle_instantiates_with_none
+ERROR tests/test_performance_loop.py::test_portfolio_on_alert - PermissionErr...
+ERROR tests/test_performance_loop.py::test_portfolio_update_win - PermissionE...
+ERROR tests/test_performance_loop.py::test_portfolio_update_loss - Permission...
+ERROR tests/test_performance_loop.py::test_max_positions - PermissionError: [...
+=================== 1 failed, 14 passed, 4 errors in 0.34s ====================

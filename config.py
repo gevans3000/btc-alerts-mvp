@@ -54,11 +54,42 @@ TP_MULTIPLIERS = {
 
 INTELLIGENCE_FLAGS = {
     "squeeze_enabled": True,
-    "volume_profile_enabled": True,
-    "liquidity_enabled": True,
-    "macro_correlation_enabled": True,
     "sentiment_enabled": True,
     "confluence_enabled": True,
+}
+
+SENTIMENT = {
+    "positive_news_keywords": [
+        "bullish", "breakout", "rally", "surge", "gain", "up", "positive", "grow", "strong", "recover",
+        "innovat", "adopt", "partner", "launch", "success", "advance", "boom", "explod", "soar"
+    ],
+    "negative_news_keywords": [
+        "bearish", "dump", "crash", "fall", "down", "negative", "lose", "weak", "decline", "hack",
+        "scam", "fraud", "ban", "regul", "restrict", "capitulat", "drop", "slump", "dip", "threat"
+    ],
+    "crypto_lexicon": {
+        "btc": 0.8, "bitcoin": 0.8, "eth": 0.7, "ethereum": 0.7, "crypto": 0.6, "blockchain": 0.5,
+        "hodl": 0.7, "moon": 0.8, "lambo": 0.6, "pump": 0.6, "bull": 0.6, "bear": -0.6,
+        "fud": -0.7, "scam": -0.8, "hack": -0.9, "rug pull": -0.9, "liquidate": -0.7,
+        "ath": 0.7, "all-time high": 0.7, "atl": -0.7, "all-time low": -0.7,
+        "web3": 0.5, "defi": 0.5, "nft": 0.4, "metaverse": 0.4,
+        "sharding": 0.3, "scaling": 0.3, "layer 2": 0.4, "zk-rollup": 0.5,
+        "mining": 0.3, "halving": 0.6, "staking": 0.5,
+        "exchange": 0.2, "wallet": 0.2, "decentralized": 0.5, "centralized": -0.3,
+        "whale": 0.5, "retail": 0.2, "institutional": 0.6,
+        "adoption": 0.7, "regulation": -0.5, "policy": -0.4,
+        "airdrop": 0.6, "ico": 0.4, "ido": 0.4, "ieo": 0.4,
+        "tokenomics": 0.3, "utility": 0.3, "governance": 0.3,
+        "volatility": 0.0, "stablecoin": 0.2, "fiat": -0.2,
+        "bear market": -0.8, "bull market": 0.8, "crab market": 0.0,
+        "fear": -0.6, "greed": 0.6, "sentiment": 0.0
+    },
+    "extreme_greed_penalty_pts": 5.0,
+    "greed_penalty_pts": 2.0,
+    "extreme_fear_bonus_pts": 5.0,
+    "fear_bonus_pts": 2.0,
+    "positive_news_bonus_pts": 3.0,
+    "negative_news_penalty_pts": 3.0,
 }
 
 SQUEEZE = {
@@ -72,29 +103,9 @@ SQUEEZE = {
     "momentum_lookback": 14,
 }
 
-VOLUME_PROFILE = {
-    "num_buckets": 100, # Number of price buckets for VP calculation
-    "va_percentage": 0.70, # Percentage of total volume for Value Area calculation
-    "poc_proximity_penalty_pct": 0.005, # % distance from POC to incur penalty
-    "va_bonus_pct": 0.002, # % distance within VA to get bonus
-    "poc_penalty_pts": 5.0, # Points to deduct if far from POC
-    "va_bonus_pts": 3.0, # Points to add if within VA
-}
-
-LIQUIDITY = {
-    "depth_pct": 0.005,        # How far from mid-price to consider for volume (0.5%)
-    "wall_threshold_btc": 10.0,  # Minimum BTC quantity to consider a "wall"
-    "imbalance_threshold": 0.6,# How high of an imbalance (0.0 to 1.0) to flag
-    "imbalance_bonus_pts": 5.0,
-    "wall_bonus_pts": 10.0,
-    "wall_penalty_pts": 5.0,
-}
 
 
 def validate_config() -> None:
-    for k, v in LIQUIDITY.items():
-        if not isinstance(v, (int, float)):
-            raise ValueError(f"LIQUIDITY['{k}']: must be a number")
     for tf, cfg in TIMEFRAME_RULES.items():
         if cfg["trade_long"] <= cfg["watch_long"]:
             raise ValueError(f"{tf}: trade_long must be > watch_long")

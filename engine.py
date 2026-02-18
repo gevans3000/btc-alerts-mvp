@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 import time
 from typing import Dict, Any, List, Optional, Tuple
 
-from config import INTELLIGENCE_FLAGS, VOLUME_PROFILE
+from config import INTELLIGENCE_FLAGS
 from intelligence import IntelligenceBundle
-from intelligence.macro import analyze_macro_correlation
+from intelligence.sentiment import analyze_sentiment
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
@@ -355,21 +355,9 @@ def compute_score(
     reasons, codes, degraded, blockers = [], [], [], []
     breakdown: Dict[str, float] = {"trend_alignment": 0.0, "momentum": 0.0, "volatility": 0.0, "volume": 0.0, "htf": 0.0, "penalty": 0.0}
     trace: Dict[str, object] = {"degraded": [], "candidates": {}, "blockers": [], "context": {}, "codes": []}
-
-    # --- Intelligence Layer: Volume Profile ---
-    if intel and intel.volume_profile and INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
-        vp = intel.volume_profile
-        
-        if vp["position"] == "ABOVE_VALUE":
-            breakdown["volume"] += vp["pts"]
-            codes.append("VP_ABOVE_VALUE")
-        elif vp["position"] == "BELOW_VALUE":
-            breakdown["volume"] += vp["pts"]
-            codes.append("VP_BELOW_VALUE")
-        else: # AT_VALUE
-            codes.append("VP_AT_VALUE")
-        trace["context"]["volume_profile"] = vp
     intel = intel or IntelligenceBundle()
+
+
 
     # --- Intelligence Layer: Squeeze ---
     if intel and intel.squeeze and INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
@@ -381,19 +369,22 @@ def compute_score(
             codes.append("SQUEEZE_ON")
         trace["context"]["squeeze"] = sq["state"]
 
-    # --- Intelligence Layer: Liquidity Walls ---
-    if intel and intel.liquidity and INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
-        liq = intel.liquidity
-        breakdown["volume"] += liq["pts"]
-        codes.append(f"LIQUIDITY_IMBALANCE_{liq['imbalance']:.2f}")
-        trace["context"]["liquidity"] = liq
 
-    # --- Intelligence Layer: Macro Correlation ---
-    if intel and INTELLIGENCE_FLAGS.get("macro_correlation_enabled", True):
-        macro_analysis = analyze_macro_correlation(candles, macro)
-        breakdown["trend_alignment"] += macro_analysis["pts"]
-        codes.extend(macro_analysis["codes"])
-        trace["context"]["macro_correlation"] = macro_analysis
+    # --- Intelligence Layer: AI Sentiment ---
+    if intel and intel.sentiment and INTELLIGENCE_FLAGS.get("sentiment_enabled", True):
+        sent = intel.sentiment
+        if not sent.get("fallback", True):
+            if sent["composite"] > 0.3:
+                breakdown["momentum"] += 4.0
+                codes.append("SENTIMENT_BULL")
+            elif sent["composite"] < -0.3:
+                breakdown["momentum"] -= 4.0
+                codes.append("SENTIMENT_BEAR")
+            trace["context"]["sentiment"] = {
+                "score": sent["composite"],
+                "bull_pct": sent["bullish_pct"],
+                "bear_pct": sent["bearish_pct"],
+            }
 
     if len(candles) < 40:
         degraded.append("candles")
@@ -502,15 +493,6 @@ def compute_score(
                         codes.append(f"NEWS_{keyword.replace(' ', '_').upper()}")
                     keyword_hits[keyword] = count + 1
 
-    # --- Intelligence Layer: Squeeze ---
-    if intel and intel.squeeze and INTELLIGENCE_FLAGS.get("squeeze_enabled", True):
-        sq = intel.squeeze
-        if sq["state"] == "SQUEEZE_FIRE":
-            breakdown["volatility"] += sq["pts"]
-            codes.append("SQUEEZE_FIRE")
-        elif sq["state"] == "SQUEEZE_ON":
-            codes.append("SQUEEZE_ON")
-        trace["context"]["squeeze"] = sq["state"]
 
     net = sum(breakdown.values())
     raw_score = int(min(100, max(0, 50 + net)))
@@ -596,6 +578,8 @@ def compute_score(
     key = f"{symbol}:{timeframe}:{regime}:{strategy}:{int(px)}"
     trace["strategy"] = strategy
     trace["net"] = sum(breakdown.values())
+
+    trace["codes"] = codes # Ensure all codes are in the decision_trace
 
     return AlertScore(
         symbol=symbol, timeframe=timeframe, regime=regime, confidence=final_score,

@@ -1,0 +1,50 @@
+{
+  "balance": 10000.0,
+  "positions": [
+    {
+      "alert_id": "uuid-0",
+      "symbol": "BTC",
+      "timeframe": "0m",
+      "direction": "LONG",
+      "entry_price": 60000.0,
+      "size_usdt": 6000.0,
+      "sl": 59000.0,
+      "tp1": 62000.0,
+      "opened_at": "2026-02-18T18:01:30.057954+00:00",
+      "status": "OPEN"
+    },
+    {
+      "alert_id": "uuid-1",
+      "symbol": "BTC",
+      "timeframe": "1m",
+      "direction": "LONG",
+      "entry_price": 60000.0,
+      "size_usdt": 6000.0,
+      "sl": 59000.0,
+      "tp1": 62000.0,
+      "opened_at": "2026-02-18T18:01:30.059464+00:00",
+      "status": "OPEN"
+    },
+    {
+      "alert_id": "uuid-2",
+      "symbol": "BTC",
+      "timeframe": "2m",
+      "direction": "LONG",
+      "entry_price": 60000.0,
+      "size_usdt": 6000.0,
+      "sl": 59000.0,
+      "tp1": 62000.0,
+      "opened_at": "2026-02-18T18:01:30.059968+00:00",
+      "status": "OPEN"
+    }
+  ],
+  "closed_trades": [],
+  "peak_balance": 10000.0,
+  "max_drawdown": 0.0,
+  "equity_curve": [
+    {
+      "timestamp": "2026-02-18T18:01:30.056949+00:00",
+      "balance": 10000.0
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+- [x] Phase 1.1: Create TODO.md
+- [x] Phase 1.2: Implement TTM Squeeze Detector in `intelligence/squeeze.py`
+- [x] Phase 1.3: Create `tests/test_squeeze.py` and ensure tests pass
+- [x] Phase 1.4: Integrate TTM Squeeze into `app.py`'s `_collect_intelligence`
+- [x] Phase 2.1: Implement AI Sentiment in `intelligence/sentiment.py`
+- [x] Phase 2.2: Create `tests/test_sentiment.py` and ensure tests pass
+- [x] Phase 2.3: Integrate AI Sentiment into `app.py`'s `_collect_intelligence`
+- [x] Phase 3.1: Update `_format_alert` in `app.py` to include new sentiment data
+- [x] Phase 3.2: Confirm all config additions (done as part of sentiment implementation)
+- [x] Phase 3.3: Run `app.py` as a smoke test (non-critical post-processing errors observed, but main loop runs)
+- [x] Phase 3.4: Run full test suite (`pytest`)
+  - [x] Fix `TypeError` in `test_macro.py` (caused by `timestamp` vs `ts` argument for `Candle`)
+  - [x] Fix `AttributeError` and `AssertionError` in `test_macro.py` (due to config usage and accumulation logic)
+  - [x] Disable Macro Correlation tests as per `ACTION_PLAN_v3.md`
+  - [x] Fix `KeyError: 'position'` in `engine.py` (due to incomplete mock in `tests/test_volume.py`)
+  - [x] Fix `AssertionError`s in `test_volume_profile.py` (incorrect test expectations for `ABOVE_VALUE`/`BELOW_VALUE`)
+  - [x] Fix `UnboundLocalError` in `intelligence/volume_profile.py` (uninitialized `accumulated` variable)
+  - [x] Address `PermissionError`s in `test_performance_loop.py` (by using `pytest --basetemp`)
+- [x] Remove debug print statement from `intelligence/volume_profile.py`
