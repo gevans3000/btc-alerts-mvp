@@ -8,6 +8,9 @@ class IntelligenceBundle:
     squeeze: Optional[Dict[str, Any]] = None        # Phase 1
     sentiment: Optional[Dict[str, Any]] = None       # Phase 2
     confluence: Optional[Dict[str, Any]] = None      # Extra logic
+    volume_profile: Optional[Dict[str, Any]] = None
+    liquidity: Optional[Dict[str, Any]] = None
+    macro_correlation: Optional[Dict[str, Any]] = None
 
 @dataclass
 class AlertScore:

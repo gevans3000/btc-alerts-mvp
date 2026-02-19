@@ -39,7 +39,8 @@ class PersistentLogger:
             "outcome_timestamp": None,
             "outcome_price": None,
             "r_multiple": None,
-            "resolved": False
+            "resolved": False,
+            "decision_trace": score.decision_trace
         }
         try:
             with open(self.path, "a") as f:

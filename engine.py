@@ -95,6 +95,29 @@ def compute_score(
                 codes.append("SENTIMENT_BEAR")
             trace["context"]["sentiment"] = {"score": sent["composite"]}
 
+    if intel and intel.volume_profile and INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
+        vp = intel.volume_profile
+        if vp.get("near_poc"):
+            breakdown["momentum"] += vp["pts"]
+            codes.append("NEAR_POC")
+        trace["context"]["volume_profile"] = {"poc": vp["poc"], "near_poc": vp["near_poc"]}
+
+    if intel and intel.liquidity and INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
+        liq = intel.liquidity
+        breakdown["volume"] += liq["pts"]
+        if liq["support"]: codes.append("BID_WALL_SUPPORT")
+        if liq["resistance"]: codes.append("ASK_WALL_RESISTANCE")
+        trace["context"]["liquidity"] = liq
+
+    if intel and intel.macro_correlation and INTELLIGENCE_FLAGS.get("macro_correlation_enabled", True):
+        mc = intel.macro_correlation
+        breakdown["htf"] += mc["pts"]
+        if mc["dxy_trend"] == "falling": codes.append("DXY_FALLING_BULLISH")
+        elif mc["dxy_trend"] == "rising": codes.append("DXY_RISING_BEARISH")
+        if mc["gold_trend"] == "rising": codes.append("GOLD_RISING_BULLISH")
+        elif mc["gold_trend"] == "falling": codes.append("GOLD_FALLING_BEARISH")
+        trace["context"]["macro_correlation"] = {"dxy": mc["dxy_trend"], "gold": mc["gold_trend"]}
+
     if len(candles) < 40:
         degraded.append("candles")
     if _is_stale(candles, timeframe):
@@ -136,6 +159,13 @@ def compute_score(
 
     # Final score
     total_score = sum(breakdown.values())
+
+    # --- Confluence Heatmap ---
+    if INTELLIGENCE_FLAGS.get("confluence_enabled", True):
+        from intelligence.confluence import compute_confluence
+        confluence_data = compute_confluence(codes, breakdown)
+        trace["context"]["confluence"] = confluence_data
+
     confluence_count = len([c for c in codes if "REGIME" not in c and "SESSION" not in c])
     tier, action = _tier_and_action(int(total_score), blockers, timeframe, confluence_count)
 

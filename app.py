@@ -25,6 +25,10 @@ from config import COOLDOWN_SECONDS, validate_config, INTELLIGENCE_FLAGS
 from intelligence import IntelligenceBundle
 from intelligence.squeeze import detect_squeeze
 from intelligence.sentiment import analyze_sentiment
+from intelligence.volume_profile import compute_volume_profile
+from intelligence.liquidity import analyze_liquidity
+from intelligence.macro_correlation import analyze_macro_correlation
+from collectors.orderbook import fetch_orderbook
 from engine import AlertScore, compute_score
 from tools.outcome_tracker import resolve_outcomes
 from tools.paper_trader import Portfolio as PaperPortfolio
@@ -48,7 +52,7 @@ def _latest_spx_price(spx_tf: dict, timeframe: str) -> float:
     return candles[-1].close
 
 
-def _collect_intelligence(candles, news, btc_price):
+def _collect_intelligence(candles, news, btc_price, macro=None):
     """Call all intelligence layers. Never crashes. Returns whatever succeeded."""
     intel = IntelligenceBundle()
     degraded = []
@@ -69,6 +73,31 @@ def _collect_intelligence(candles, news, btc_price):
             logger.warning(f"Sentiment degraded: {e}")
             degraded.append("sentiment")
     
+    # Volume Profile
+    if INTELLIGENCE_FLAGS.get("volume_profile_enabled", True):
+        try:
+            intel.volume_profile = compute_volume_profile(candles)
+        except Exception as e:
+            logger.warning(f"Volume Profile degraded: {e}")
+            degraded.append("volume_profile")
+    
+    # Liquidity
+    if INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
+        try:
+            orderbook = fetch_orderbook(None)
+            intel.liquidity = analyze_liquidity(orderbook)
+        except Exception as e:
+            logger.warning(f"Liquidity degraded: {e}")
+            degraded.append("liquidity")
+    
+    # Macro Correlation
+    if INTELLIGENCE_FLAGS.get("macro_correlation_enabled", True) and macro:
+        try:
+            intel.macro_correlation = analyze_macro_correlation(macro)
+        except Exception as e:
+            logger.warning(f"Macro correlation degraded: {e}")
+            degraded.append("macro_correlation")
+    
     if degraded:
         logger.info(f"Intelligence degraded layers: {degraded}")
 
@@ -77,6 +106,9 @@ def _collect_intelligence(candles, news, btc_price):
 
 def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: PersistentLogger, a_logger: AuditLogger, portfolio: PaperPortfolio):
     """Main function to execute the BTC alert monitoring process."""
+    import time as _time
+    cycle_start = _time.monotonic()
+
     # Log the start of the main execution, indicating configuration validation is next.
     logger.info("Starting main execution cycle.")
     
@@ -225,7 +257,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
 
 
                 # All intelligence layers are now prepared in 'intel' bundle
-                intel = _collect_intelligence(candles, news, btc_price)
+                intel = _collect_intelligence(candles, news, btc_price, macro=macro)
                 computed_alert = compute_score(
                     symbol="BTC",
                     timeframe=tf,
@@ -332,6 +364,16 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                 current_price_for_state, alert.invalidation, alert.tp1, alert.action
             )
 
+    health = {
+        "btc_price": btc_price.healthy if btc_price else False,
+        "candle_timeframes": list(btc_tf.keys()),
+        "spx_available": bool(spx_tf),
+        "news_count": len(news),
+        "alerts_total": len(alerts),
+        "alerts_sent": sum(1 for a in alerts if a.action != "SKIP"),
+    }
+    logger.info("Cycle health summary", extra=health)
+
     # --- Summary and Reporting ---
     logger.info("Finished processing all alerts. Generating summary output.")
     print_market_overview(alerts)
@@ -350,6 +392,14 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         os.system(f"{sys.executable} scripts/pid-129/generate_dashboard.py")
     except Exception as e:
         logger.error(f"Error during loop house-keeping: {e}")
+
+    cycle_elapsed = _time.monotonic() - cycle_start
+    logger.info(f"Cycle completed in {cycle_elapsed:.2f}s", extra={
+        "cycle_duration_s": round(cycle_elapsed, 2),
+        "alerts_generated": len(alerts),
+        "btc_price_healthy": btc_price.healthy if btc_price else False,
+    })
+
 
 
 # --- Main execution block ---

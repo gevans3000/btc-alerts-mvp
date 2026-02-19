@@ -11,6 +11,23 @@ def _format_intel_lines(score) -> str:
     if score.context.get("sentiment"):
         s = score.context["sentiment"]
         intel_lines.append(f"Sentiment: {s['score']:.2f} ({s.get('bull_pct', 0)}% bull)")
+    if score.context.get("volume_profile"):
+        vp = score.context["volume_profile"]
+        intel_lines.append(f"POC: ${vp['poc']:,.0f} ({'AT POC' if vp['near_poc'] else 'away'})")
+    if score.context.get("liquidity"):
+        liq = score.context["liquidity"]
+        parts = []
+        if liq.get("support"): parts.append(f"{liq['bid_walls']} bid walls")
+        if liq.get("resistance"): parts.append(f"{liq['ask_walls']} ask walls")
+        if parts: intel_lines.append(f"Liquidity: {', '.join(parts)}")
+    if score.context.get("macro_correlation"):
+        mc = score.context["macro_correlation"]
+        intel_lines.append(f"Macro: DXY {mc['dxy']}, Gold {mc['gold']}")
+    if score.context.get("confluence"):
+        cf = score.context["confluence"]
+        intel_lines.append(
+            f"Confluence: {cf['strength']} ({cf['bullish_count']}🟢 vs {cf['bearish_count']}🔴)"
+        )
     if intel_lines:
         return "\n🧠 Intel:\n" + "\n".join(f"  {l}" for l in intel_lines)
     return ""
