@@ -21,14 +21,24 @@ class OrderBookSnapshot:
             self.healthy = False
 
 def fetch_orderbook(budget_manager) -> OrderBookSnapshot:
-    # Placeholder for actual API call
-    # This function would interact with a real-time order book API
-    # For MVP, we will return a mock snapshot
-    return OrderBookSnapshot(
-        ts=int(datetime.now().timestamp()),
-        bids=[(100.0 - i * 0.1, 10 + i) for i in range(10)],
-        asks=[(100.0 + i * 0.1, 10 + i) for i in range(10)],
-    )
+    try:
+        from collectors.base import request_json
+        if budget_manager:
+            budget_manager.record_call("bybit_ob")
+        payload = request_json(
+            "https://api.bybit.com/v5/market/orderbook",
+            params={"category": "linear", "symbol": "BTCUSDT", "limit": 50},
+            timeout=5.0
+        )
+        result = payload.get("result", {})
+        bids = [(float(p), float(q)) for p, q in result.get("b", [])]
+        asks = [(float(p), float(q)) for p, q in result.get("a", [])]
+        ts_ms = payload.get("time", int(datetime.now().timestamp() * 1000))
+        return OrderBookSnapshot(ts=int(ts_ms / 1000), bids=bids, asks=asks)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Orderbook fetch failed: %s", e)
+        return OrderBookSnapshot(ts=int(datetime.now().timestamp()), bids=[], asks=[], healthy=False)
 
 def _detect_walls(
     orderbook: OrderBookSnapshot,

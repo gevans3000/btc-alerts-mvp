@@ -145,6 +145,33 @@ def compute_score(
     breakdown["htf"] += macro_pts
     codes.extend(macro_reasons)
 
+    # Map HTF Bias to Radar Codes
+    if htf_bias > 0: codes.append("HTF_ALIGNED")
+    elif htf_bias < 0: codes.append("HTF_COUNTER")
+
+    # Map Fear & Greed to Radar Codes
+    if fg and fg.healthy:
+        if fg.value <= 25: codes.append("FG_EXTREME_FEAR")
+        elif fg.value <= 45: codes.append("FG_FEAR")
+        elif fg.value >= 75: codes.append("FG_EXTREME_GREED")
+        elif fg.value >= 55: codes.append("FG_GREED")
+
+    # Map Derivatives to Radar Codes
+    if derivatives and derivatives.healthy:
+        code_fr = derivatives.funding_rate
+        if code_fr <= -0.01: codes.append("FUNDING_EXTREME_LOW")
+        elif code_fr < 0: codes.append("FUNDING_LOW")
+        elif code_fr >= 0.01: codes.append("FUNDING_EXTREME_HIGH")
+        elif code_fr > 0: codes.append("FUNDING_HIGH")
+        
+        oi_pct = derivatives.oi_change_pct
+        if oi_pct >= 5.0: codes.append("OI_SURGE_MAJOR")
+        elif oi_pct >= 2.0: codes.append("OI_SURGE_MINOR")
+        
+        basis = derivatives.basis_pct
+        if basis >= 0.5: codes.append("BASIS_BULLISH")
+        elif basis <= -0.5: codes.append("BASIS_BEARISH")
+
     # Candidates
     candidates, c_reasons, c_codes = _detector_candidates(candles)
     reasons.extend(c_reasons)
@@ -159,6 +186,13 @@ def compute_score(
 
     # Final score
     total_score = sum(breakdown.values())
+
+    # Map ML Mock / Fallback
+    # If the score is extreme, we assume high algorithmic conviction.
+    if total_score >= 35:
+        codes.append("ML_CONFIDENCE_BOOST")
+    elif total_score <= -35:
+        codes.append("ML_SKEPTICISM")
 
     # --- Confluence Heatmap ---
     if INTELLIGENCE_FLAGS.get("confluence_enabled", True):
@@ -190,6 +224,10 @@ def compute_score(
     risk = abs(last_price - invalidation)
     reward = abs(tp1 - last_price)
     rr = reward / risk if risk > 0 else 0.0
+
+    trace["codes"] = list(set(codes))
+    trace["degraded"] = degraded
+    trace["blockers"] = blockers
 
     return AlertScore(
         symbol=symbol,
