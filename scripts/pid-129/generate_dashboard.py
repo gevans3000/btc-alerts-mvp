@@ -490,29 +490,30 @@ def generate_html():
         <div class="chart-container">{equity_svg}</div>
         """
     vctx = build_verdict_context(alerts, portfolio)
-    signals_html = "".join(f"<span class='pill badge-neutral'>{c}</span>" for c in vctx["verdict"]["reason_codes"][:8]) or "<span class='mini'>No active reason codes.</span>"
-    gate_color = "var(--accent)" if vctx["gate_verdict"] == "GREEN" else ("#ffd700" if vctx["gate_verdict"] == "AMBER" else "#ff4d4d")
-    gate_bg = "rgba(0,255,204,0.05)" if vctx["gate_verdict"] == "GREEN" else ("rgba(255,215,0,0.08)" if vctx["gate_verdict"] == "AMBER" else "rgba(255,77,77,0.08)")
+    latest_codes = ((_latest_btc_alert(alerts).get("decision_trace") or {}).get("codes") or [])[:8]
+    signals_html = "".join(f"<span class='pill badge-neutral'>{c}</span>" for c in latest_codes) or "<span class='mini'>No active reason codes.</span>"
+    gate_color = "var(--accent)" if vctx["gate"] == "GREEN" else ("#ffd700" if vctx["gate"] == "AMBER" else "#ff4d4d")
+    gate_bg = "rgba(0,255,204,0.05)" if vctx["gate"] == "GREEN" else ("rgba(255,215,0,0.08)" if vctx["gate"] == "AMBER" else "rgba(255,77,77,0.08)")
     gate_rows = "".join(
-        f"<div class='mini' style='color:{'var(--text)' if c['pass'] else '#ff4d4d'}'>{c['icon_pass'] if c['pass'] else c['icon_fail']} {c['label']}</div>"
-        for c in vctx["gate_checks"].values()
+        f"<div class='mini' style='color:{'var(--text)' if ok else '#ff4d4d'}'>{'✅' if ok else '❌'} {label}</div>"
+        for label, ok in vctx["checks"]
     )
-    a_count, t_probes = vctx["aligned_count"], vctx["total_probes"]
+    a_count, t_probes = vctx["aligned"], vctx["total"]
     radar_color = "var(--accent)" if a_count >= 7 else ("#ffd700" if a_count >= 4 else "#ff4d4d")
     radar_label = "STRONG" if a_count >= 7 else ("MODERATE" if a_count >= 4 else "WEAK")
     radar_rows = "".join(
-        f"<div class='mini'>{'🟢' if p['status']=='aligned' else ('🔴' if p['status']=='against' else '⚫')} <span style='color:{'var(--accent)' if p['status']=='aligned' else ('#ff4d4d' if p['status']=='against' else 'var(--text-muted)')}'>{p['label']}</span></div>"
-        for p in vctx["alignment_results"]
+        f"<div class='mini'>{icon} <span style='color:{color}'>{label}</span></div>"
+        for label, icon, color in vctx["rows"]
     )
     execute_html = ""
-    if vctx["verdict"]["direction"] != "WAIT":
-        label = "⚠️ EXECUTE (HIGH RISK)" if vctx["gate_verdict"] == "RED" else "1-CLICK EXECUTE"
-        bg = "background:#ff4d4d;" if vctx["gate_verdict"] == "RED" else ""
-        execute_html = f"<button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;{bg}' onclick=\"requestExecute('{vctx['verdict']['alert_id']}')\">{label}</button>"
+    if vctx["direction"] in {"LONG", "SHORT"}:
+        label = "⚠️ EXECUTE (HIGH RISK)" if vctx["gate"] == "RED" else "1-CLICK EXECUTE"
+        bg = "background:#ff4d4d;" if vctx["gate"] == "RED" else ""
+        execute_html = f"<button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;{bg}' onclick=\"requestExecute('latest-btc')\">{label}</button>"
     verdict_html = f"""
     <section class='panel'>
       <h2>Verdict Center</h2>
-      <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill {badge_class_for_direction(vctx['verdict']['direction'])}'>{vctx['verdict']['direction']}</span></div>
+      <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill {badge_class_for_direction(vctx['direction'])}'>{vctx['direction']}</span></div>
       <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-size:1.6rem;font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
         <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
@@ -523,7 +524,7 @@ def generate_html():
         <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;'><div style='height:100%;width:{int((a_count/t_probes)*100) if t_probes else 0}%;background:{radar_color};'></div></div>
         <div style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'>{radar_rows}</div>
       </div>
-      <div style='background:{gate_bg};border:1px solid {gate_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'><div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span class='pill' style='border:1px solid {gate_color};color:{gate_color};'>{vctx['gate_verdict']} ({vctx['gate_pass_count']}/{vctx['gate_total']})</span></div>{gate_rows}</div>
+      <div style='background:{gate_bg};border:1px solid {gate_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'><div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span class='pill' style='border:1px solid {gate_color};color:{gate_color};'>{vctx['gate']}</span></div>{gate_rows}</div>
       {execute_html}
     </section>
     <div id='executeModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;'>
@@ -534,11 +535,6 @@ def generate_html():
     edge_html = render_edge_scoreboard(portfolio)
     lifecycle_html = render_lifecycle_panel(alerts)
     vctx = build_verdict_context(alerts, portfolio)
-    gate_color = "var(--accent)" if vctx["gate"] == "GREEN" else ("#ffb020" if vctx["gate"] == "AMBER" else "#ff4d4d")
-    radar_label = "STRONG" if vctx["aligned"] >= 7 else ("MODERATE" if vctx["aligned"] >= 4 else "WEAK")
-    radar_pct = int((vctx["aligned"] / max(vctx["total"], 1)) * 100)
-    risk_checks_html = "".join([f"<div class='mini'>{'✅' if ok else '❌'} {name}</div>" for name, ok in vctx["checks"]])
-    radar_rows_html = "".join([f"<div class='mini' style='color:{c}'>{i} {n}</div>" for n, i, c in vctx["rows"]])
     balance = (portfolio or {}).get("balance", 10000)
     html = f"""
 <!DOCTYPE html>
@@ -599,30 +595,6 @@ def generate_html():
     <section class="panel"><h2>Live Tape</h2><div class="live-grid"><div class="stat-card"><div class="stat-label">BTC Mid</div><div id="live-mid" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Confluence</div><div id="live-confluence" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Radar</div><div id="live-radar" class="live-value">--</div></div></div><div class="live-grid"><div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div><div class="stat-card"><div class="stat-label">Win Rate</div><div id="live-winrate" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Profit Factor</div><div id="live-pf" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div></div></section>
     {verdict_html}
     {execution_html}
-    <section class="panel">
-        <h2>Trade Verdict</h2>
-        <div class="stats-grid" style="grid-template-columns: 1.4fr 1fr;">
-            <div class="stat-card">
-                <div class="stat-label">Direction</div><div class="stat-value" id="verdictDirection">{vctx['direction']}</div>
-                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; margin-top: 0.6rem; border: 1px solid var(--border);">
-                    <div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="stat-label">Live BTC Price</div><div id="livePrice" style="font-size:1.6rem;font-weight:800;font-family:'JetBrains Mono',monospace;">Loading...</div></div><div style="text-align:right;"><div class="stat-label">Unrealized PnL</div><div id="livePnL" style="font-size:1rem;font-weight:700;">—</div></div></div>
-                    <div style="display:flex;gap:1rem;margin-top:.5rem" class="mini"><div>→ TP1 <span id="distTP1">—</span></div><div>→ STOP <span id="distStop">—</span></div><div>SPREAD <span id="liveSpread">—</span></div></div>
-                </div>
-                <div class="mini" style="margin-top:.5rem;">Entry ${vctx['entry']:,.0f} · TP1 ${vctx['tp1']:,.0f} · Stop ${vctx['stop']:,.0f}</div>
-            </div>
-            <div class="stat-card" style="border:1px solid {gate_color};">
-                <div class="stat-label">Risk Gate</div>
-                <div class="stat-value" style="color:{gate_color};">{vctx['gate']}</div>
-                {risk_checks_html}
-                <button id="executeBtn" class="pill {'badge-bad' if vctx['gate']=='RED' else 'badge-good'}" style="margin-top:.6rem;border:0;cursor:pointer;">{'⚠️ EXECUTE (HIGH RISK)' if vctx['gate']=='RED' else 'EXECUTE PLAN'}</button>
-            </div>
-        </div>
-        <div class="stat-card" style="margin-top:1rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;"><span class="stat-label">Confluence Radar</span><span style="font-family:'JetBrains Mono',monospace;color:{gate_color}">{vctx['aligned']} / {vctx['total']} {radar_label}</span></div>
-            <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;margin:.6rem 0 1rem;"><div style="height:100%;width:{radar_pct}%;background:{gate_color};border-radius:3px;"></div></div>
-            <div class="grid" style="grid-template-columns:1fr 1fr;">{radar_rows_html}</div>
-        </div>
-    </section>
     <section>
         <h2>Performance Metrics</h2>
         {p_html}
@@ -645,34 +617,34 @@ def generate_html():
       <div style="display:flex;gap:.5rem;margin-top:1rem;"><button id="cancelExec" class="pill badge-neutral" style="border:0;cursor:pointer;">Cancel</button><button id="confirmExec" class="pill badge-good" style="border:0;cursor:pointer;" disabled>Confirm</button></div>
     </dialog>
     <script>
-    const state = {{livePrice:0,spread:0,entryPrice:{vctx['entry']},tp1Price:{vctx['tp1']},stopPrice:{vctx['stop']},direction:"{vctx['direction']}"}};
-    function updateLive() {{
-      const p=state.livePrice; if(!p) return; const fmt=(n)=>'$'+n.toLocaleString(undefined,{{maximumFractionDigits:0}});
-      document.getElementById('livePrice').textContent=fmt(p); document.getElementById('liveSpread').textContent=state.spread.toFixed(2);
-      const toTp=state.direction==='SHORT'?p-state.tp1Price:state.tp1Price-p; const toSt=state.direction==='SHORT'?state.stopPrice-p:p-state.stopPrice;
-      const pctTp=((toTp/Math.max(p,1))*100).toFixed(2);
-      const pctSt=((toSt/Math.max(p,1))*100).toFixed(2);
-      document.getElementById('distTP1').textContent='$'+toTp.toFixed(0)+' ('+pctTp+'%)';
-      document.getElementById('distStop').textContent='$'+toSt.toFixed(0)+' ('+pctSt+'%)';
-      const pnl=(state.direction==='SHORT'?(state.entryPrice-p):(p-state.entryPrice)); const pnlEl=document.getElementById('livePnL'); pnlEl.textContent=(pnl>=0?'+':'')+fmt(pnl); pnlEl.style.color=pnl>=0?'var(--accent)':'#ff4d4d';
-    }}
-    function connectWS() {{ const proto=location.protocol==='https:'?'wss':'ws'; const ws=new WebSocket(proto+'://'+location.host+'/ws');
-      ws.onmessage=(e)=>{{ const d=JSON.parse(e.data); state.livePrice=((d.orderbook||{{}}).mid)||0; state.spread=((d.orderbook||{{}}).spread)||0; updateLive(); }};
-      ws.onclose=()=>setTimeout(connectWS,2000);
-    }}
-    connectWS();
-    const modal=document.getElementById('execModal'),btn=document.getElementById('executeBtn'),cancel=document.getElementById('cancelExec'),confirm=document.getElementById('confirmExec'),count=document.getElementById('execCountdown');
-    btn?.addEventListener('click',()=>{{ let n=3; confirm.disabled=true; count.textContent=`Confirm available in ${{n}}s`; modal.showModal(); const t=setInterval(()=>{{n--; count.textContent=n>0?`Confirm available in ${{n}}s`:'Ready to confirm'; if(n<=0){{clearInterval(t); confirm.disabled=false;}}}},1000); }});
-    cancel?.addEventListener('click',()=>modal.close()); confirm?.addEventListener('click',()=>{{ modal.close(); alert('Execution confirmed (paper mode).'); }});
-    <script>(()=>{{const els={{badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),gate:document.getElementById('live-gate')}};let attempt=0,lastUpdateMs=0;const wsUrl=()=>`${{window.location.protocol==='https:'?'wss:':'ws:'}}//${{window.location.hostname}}:8000/ws`,fmtMoney=n=>Number.isFinite(n)?`$${{n.toLocaleString(undefined,{{minimumFractionDigits:2,maximumFractionDigits:2}})}}`:'--',fmtNum=(n,d=2)=>Number.isFinite(n)?n.toFixed(d):'--',setBadge=(t,s=false)=>{{els.badge.textContent=t;els.badge.classList.toggle('badge-stale',s);}},deriveConfluence=a=>{{const t=['5m','15m','1h'],m=Object.create(null);for(const x of a||[])if(x.symbol==='BTC'&&t.includes(x.timeframe))m[x.timeframe]=x;const p=t.map(tf=>m[tf]).filter(Boolean);if(p.length<3)return'Partial';const d=p.map(x=>String(x.direction||'NEUTRAL').toUpperCase());return d.every(x=>x===d[0]&&x!=='NEUTRAL')?`${{d[0]}} aligned`:'Mixed';}},deriveRadar=a=>{{let b=0;for(const x of a||[])b+=Array.isArray(x.blockers)?x.blockers.length:0;return b?`${{b}} blockers`:'Clear';}},deriveGate=s=>{{const pf=Number(s?.profit_factor??0),avgR=Number(s?.avg_r??0);if(pf>=1.4&&avgR>0)return'OPEN';if(pf>=1.0)return'WATCH';return'LOCK';}},apply=p=>{{const ob=p?.orderbook||{{}},po=p?.portfolio||{{}},al=p?.alerts||[],st=p?.stats||{{}};els.mid.textContent=fmtMoney(Number(ob.mid));els.spread.textContent=fmtNum(Number(ob.spread),2);els.balance.textContent=fmtMoney(Number(po.balance));els.winrate.textContent=`${{fmtNum(Number(st.win_rate),2)}}%`;els.pf.textContent=fmtNum(Number(st.profit_factor),2);els.gate.textContent=deriveGate(st);els.confluence.textContent=deriveConfluence(al);els.radar.textContent=deriveRadar(al);lastUpdateMs=Date.now();els.sync.textContent=`Synced: ${{new Date().toLocaleString()}}`;setBadge('Live Feed: Online');}},connect=()=>{{const ws=new WebSocket(wsUrl());ws.onopen=()=>{{attempt=0;setBadge('Live Feed: Online');}};ws.onmessage=e=>{{try{{apply(JSON.parse(e.data));}}catch(_err){{}}}};ws.onclose=()=>{{setBadge('Live Feed: Reconnecting',true);attempt+=1;window.setTimeout(connect,Math.min(10000,1000*(2**Math.min(attempt,4))));}};ws.onerror=()=>ws.close();}};window.setInterval(()=>{{if(!lastUpdateMs||Date.now()-lastUpdateMs>8000)setBadge('Live Feed: Stale',true);}},2000);connect();}})();</script>
-    <script>
-      let state = {{livePrice:0,spread:0,inTrade:{'true' if bool(portfolio and portfolio.get('positions')) else 'false'},entryPrice:{vctx['verdict']['entry']},tp1Price:{vctx['verdict']['tp1']},stopPrice:{vctx['verdict']['invalidation']},direction:"{vctx['verdict']['direction']}"}};
-      function updateLivePrice() {{ const el=document.getElementById('livePrice'); if(!el||!state.livePrice) return; el.innerText='$'+state.livePrice.toLocaleString(undefined,{{maximumFractionDigits:0}}); if(state.entryPrice>0&&state.tp1Price>0&&state.stopPrice>0){{const a=state.tp1Price-state.livePrice,b=state.stopPrice-state.livePrice; document.getElementById('distTP1').innerText=(a>=0?'+':'')+'$'+Math.abs(a).toFixed(0)+' ('+((a/state.livePrice)*100).toFixed(2)+'%)'; document.getElementById('distStop').innerText=(b>=0?'+':'')+'$'+Math.abs(b).toFixed(0)+' ('+((b/state.livePrice)*100).toFixed(2)+'%)';}} document.getElementById('liveSpread').innerText='$'+(state.spread||0).toFixed(1); if(state.inTrade&&state.entryPrice>0){{const m=state.direction==='LONG'?1:-1,p=(state.livePrice-state.entryPrice)*m,pct=(p/state.entryPrice)*100,pel=document.getElementById('livePnL'); pel.innerText=(p>=0?'+':'')+'$'+p.toFixed(0)+' ('+pct.toFixed(2)+'%)'; pel.style.color=p>=0?'var(--accent)':'#ff4d4d';}} if(state.entryPrice>0){{const above=state.livePrice>=state.entryPrice,fav=(state.direction==='LONG'&&above)||(state.direction==='SHORT'&&!above); el.style.color=fav?'var(--accent)':'#ff4d4d';}} }}
-      function closeExecuteModal() {{ document.getElementById('executeModal').style.display='none'; }}
-      function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: $'+(state.livePrice||0).toLocaleString(); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>executeTrade(alertId);}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
-      async function executeTrade(alertId) {{ console.log('execute', alertId); closeExecuteModal(); }}
-      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); if(data.orderbook&&data.orderbook.mid){{state.livePrice=data.orderbook.mid; state.spread=data.orderbook.spread||0;}} updateLivePrice(); }} catch(e) {{}} }}; ws.onclose=()=>setTimeout(connectWS,1500); }}
-      connectWS(); updateLivePrice();
+      let state = {{livePrice:0,spread:0,inTrade:{'true' if bool(portfolio and portfolio.get('positions')) else 'false'},entryPrice:{vctx['entry']},tp1Price:{vctx['tp1']},stopPrice:{vctx['stop']},direction:"{vctx['direction']}"}};
+      const els = {{badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),gate:document.getElementById('live-gate')}};
+      function fmtMoney(n,d=0) {{ return Number.isFinite(n) ? '$' + n.toLocaleString(undefined,{{minimumFractionDigits:d,maximumFractionDigits:d}}) : '--'; }}
+      function deriveConfluence(alerts) {{ const t=['5m','15m','1h'],m=Object.create(null); for (const a of (alerts||[])) if (a.symbol==='BTC' && t.includes(a.timeframe)) m[a.timeframe]=a; const p=t.map(tf=>m[tf]).filter(Boolean); if (p.length<3) return 'Partial'; const d=p.map(x=>String(x.direction||'NEUTRAL').toUpperCase()); return d.every(x=>x===d[0]&&x!=='NEUTRAL') ? d[0] + ' aligned' : 'Mixed'; }}
+      function updateLivePrice() {{
+        if(!state.livePrice) return;
+        const priceEl=document.getElementById('livePrice');
+        if(priceEl) priceEl.textContent=fmtMoney(state.livePrice,0);
+        const spreadEl=document.getElementById('liveSpread');
+        if(spreadEl) spreadEl.textContent='$'+state.spread.toFixed(1);
+        if(state.entryPrice>0&&state.tp1Price>0&&state.stopPrice>0){{
+          const toTp=state.direction==='SHORT' ? state.livePrice-state.tp1Price : state.tp1Price-state.livePrice;
+          const toStop=state.direction==='SHORT' ? state.stopPrice-state.livePrice : state.livePrice-state.stopPrice;
+          document.getElementById('distTP1').textContent=(toTp>=0?'+':'-')+'$'+Math.abs(toTp).toFixed(0)+' ('+((toTp/state.livePrice)*100).toFixed(2)+'%)';
+          document.getElementById('distStop').textContent=(toStop>=0?'+':'-')+'$'+Math.abs(toStop).toFixed(0)+' ('+((toStop/state.livePrice)*100).toFixed(2)+'%)';
+        }}
+        if(state.inTrade && state.entryPrice>0){{
+          const mult=state.direction==='SHORT'?-1:1;
+          const pnl=(state.livePrice-state.entryPrice)*mult;
+          const pnlEl=document.getElementById('livePnL');
+          if(pnlEl){{pnlEl.textContent=(pnl>=0?'+':'-')+'$'+Math.abs(pnl).toFixed(0); pnlEl.style.color=pnl>=0?'var(--accent)':'#ff4d4d';}}
+        }}
+      }}
+      function closeExecuteModal() {{ const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }}
+      function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
+      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); els.gate.textContent=(Number(st.profit_factor||0)>=1.4&&Number(st.avg_r||0)>0)?'OPEN':'WATCH'; els.confluence.textContent=deriveConfluence(data.alerts||[]); els.radar.textContent='{a_count}/{t_probes} {radar_label}'; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
+      connectWS();
+      updateLivePrice();
     </script>
 </body>
 </html>
