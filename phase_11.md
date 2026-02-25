@@ -245,17 +245,17 @@ python scripts/pid-129/dashboard_server.py
 ```
 Open `http://localhost:8000` and confirm ALL of the following:
 
-- [ ] Confluence Radar card appears between "Conviction Signals" and "Trade Safety"
-- [ ] Radar shows `X/10 STRONG|MODERATE|WEAK` with badge styled in green/amber/red
-- [ ] Progress bar fills proportionally (width = aligned/10 × 100%)
-- [ ] All 10 probe rows show 🟢, 🔴, or ⚫ with correct labels
-- [ ] Net score strip at bottom of radar shows `Net: +N` or `Net: -N`
-- [ ] The number breakdown shows `🟢 N 🔴 N ⚫ N`
-- [ ] Live Tape "Radar" tile updates when new WS data arrives
-- [ ] Radar card (score badge, bar, probe rows, net score) updates live when new WS data arrives
-- [ ] Live price ticker still updates (no regression)
-- [ ] Trade Safety gate still works (no regression)
-- [ ] No JavaScript console errors (open DevTools → Console → check for red errors)
+- [x] Confluence Radar card appears between "Conviction Signals" and "Trade Safety"
+- [x] Radar shows `X/10 STRONG|MODERATE|WEAK` with badge styled in green/amber/red
+- [x] Progress bar fills proportionally (width = aligned/10 × 100%)
+- [x] All 10 probe rows show 🟢, 🔴, or ⚫ with correct labels
+- [x] Net score strip at bottom of radar shows `Net: +N` or `Net: -N`
+- [x] The number breakdown shows `🟢 N 🔴 N ⚫ N`
+- [x] Live Tape "Radar" tile updates when new WS data arrives
+- [x] Radar card (score badge, bar, probe rows, net score) updates live when new WS data arrives
+- [x] Live price ticker still updates (no regression)
+- [x] Trade Safety gate still works (no regression)
+- [x] No JavaScript console errors (open DevTools → Console → check for red errors)
 
 ---
 

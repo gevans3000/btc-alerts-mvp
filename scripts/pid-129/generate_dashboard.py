@@ -114,60 +114,6 @@ def execution_decision(latest):
     return "EXECUTE", "good", ["All timeframes aligned and 5m trigger passed."]
 
 
-def build_verdict_context(alerts, portfolio):
-    latest = latest_btc_by_timeframe(alerts)
-    decision, tone, reasons = execution_decision(latest)
-    a5 = latest.get("5m", {})
-    ctx = get_context(a5)
-    verdict = {
-        "alert_id": str(a5.get("id") or a5.get("alert_id") or "latest-btc"),
-        "direction": get_direction(a5 if a5 else {"direction": "WAIT"}) if decision == "EXECUTE" else "WAIT",
-        "entry": float(a5.get("entry_price") or a5.get("entry") or 0.0),
-        "tp1": float(a5.get("tp1") or 0.0),
-        "invalidation": float(a5.get("invalidation") or 0.0),
-        "rr_ratio": float(a5.get("rr_ratio") or 0.0),
-        "ml_prob": float(a5.get("ml_prob") or a5.get("ml_probability") or get_confidence(a5) / 100.0),
-        "reason_codes": (a5.get("decision_trace") or {}).get("codes", []) if isinstance(a5, dict) else [],
-    }
-    tf_bias = {tf: {"direction": get_direction(a)} for tf, a in latest.items()}
-    directions = [v["direction"] for v in tf_bias.values() if v["direction"] != "NEUTRAL"]
-    tf_aligned = len(set(directions)) == 1 and len(directions) >= 2
-    stats = {"streak": 0, "max_dd": 0.0}
-    if isinstance(portfolio, dict):
-        stats["streak"] = -max_losing_streak(portfolio.get("closed_trades", []))
-        stats["max_dd"] = float(portfolio.get("max_drawdown") or 0.0) * 100
-    gate_checks = {
-        "tf_aligned": {"pass": tf_aligned, "label": "Timeframes Aligned", "icon_pass": "✅", "icon_fail": "⚠️"},
-        "ml_confident": {"pass": verdict["ml_prob"] * 100 >= 60, "label": "ML Confidence ≥ 60%", "icon_pass": "✅", "icon_fail": "❌"},
-        "streak_ok": {"pass": stats["streak"] >= -2, "label": "Streak ≥ -2", "icon_pass": "✅", "icon_fail": "🧊"},
-        "dd_ok": {"pass": stats["max_dd"] < 10, "label": "Drawdown < 10%", "icon_pass": "✅", "icon_fail": "🔴"},
-        "rr_ok": {"pass": verdict["rr_ratio"] >= 1.5, "label": "R:R ≥ 1.5x", "icon_pass": "✅", "icon_fail": "⚠️"},
-    }
-    gate_pass_count = sum(1 for g in gate_checks.values() if g["pass"])
-    gate_verdict = "GREEN" if gate_pass_count >= 4 else ("AMBER" if gate_pass_count >= 3 else "RED")
-    active_codes = set(verdict["reason_codes"])
-    probes = [
-        ("squeeze", "Squeeze", ["SQUEEZE_FIRE"], []), ("trend", "Trend (HTF)", ["HTF_ALIGNED"], ["HTF_COUNTER"]),
-        ("momentum", "Momentum", ["SENTIMENT_BULL"], ["SENTIMENT_BEAR"]), ("ml", "ML Model", ["ML_CONFIDENCE_BOOST"], ["ML_SKEPTICISM"]),
-        ("funding", "Funding", ["FUNDING_EXTREME_LOW", "FUNDING_LOW"], ["FUNDING_EXTREME_HIGH", "FUNDING_HIGH"]),
-        ("macro_dxy", "DXY Macro", ["DXY_FALLING_BULLISH"], ["DXY_RISING_BEARISH"]), ("macro_gold", "Gold Macro", ["GOLD_RISING_BULLISH"], ["GOLD_FALLING_BEARISH"]),
-        ("fear_greed", "Fear & Greed", ["FG_EXTREME_FEAR", "FG_FEAR"], ["FG_EXTREME_GREED", "FG_GREED"]),
-        ("orderbook", "Order Book", ["BID_WALL_SUPPORT"], ["ASK_WALL_RESISTANCE"]), ("deriv", "OI / Basis", ["OI_SURGE_MAJOR", "OI_SURGE_MINOR", "BASIS_BULLISH"], ["BASIS_BEARISH"]),
-    ]
-    alignment_results = []
-    for probe_id, label, bulls, bears in probes:
-        has_bull, has_bear = any(c in active_codes for c in bulls), any(c in active_codes for c in bears)
-        if verdict["direction"] == "LONG":
-            status = "aligned" if has_bull else ("against" if has_bear else "inactive")
-        elif verdict["direction"] == "SHORT":
-            status = "aligned" if has_bear else ("against" if has_bull else "inactive")
-        else:
-            status = "inactive"
-        alignment_results.append({"id": probe_id, "label": label, "status": status})
-    return {"decision": decision, "tone": tone, "reasons": reasons, "verdict": verdict, "tf_bias": tf_bias, "gate_checks": gate_checks,
-            "gate_pass_count": gate_pass_count, "gate_total": len(gate_checks), "gate_verdict": gate_verdict, "alignment_results": alignment_results,
-            "aligned_count": sum(1 for r in alignment_results if r["status"] == "aligned"), "against_count": sum(1 for r in alignment_results if r["status"] == "against"),
-            "total_probes": len(alignment_results), "confluence_layers": ctx.get("score_breakdown") if isinstance(ctx.get("score_breakdown"), dict) else {}}
 def percentile_used(age_seconds, tf):
     max_s = MAX_DURATION_SECONDS.get(tf, 24 * 3600)
     return (age_seconds / max_s) * 100 if max_s > 0 else 0
@@ -437,7 +383,8 @@ def build_verdict_context(alerts, portfolio):
         against = (direction == "LONG" and has_bear) or (direction == "SHORT" and has_bull)
         rows.append((label, "🟢" if aligned else "🔴" if against else "⚫", "var(--accent)" if aligned else "#ff4d4d" if against else "var(--text-muted)"))
     aligned_count = sum(1 for _, icon, _ in rows if icon == "🟢")
-    return {"direction": direction, "entry": entry, "tp1": tp1, "stop": stop, "checks": checks, "gate": gate, "rows": rows, "aligned": aligned_count, "total": len(rows)}
+    against_count = sum(1 for _, icon, _ in rows if icon == "🔴")
+    return {"direction": direction, "entry": entry, "tp1": tp1, "stop": stop, "checks": checks, "gate": gate, "rows": rows, "aligned": aligned_count, "against": against_count, "total": len(rows)}
 def generate_html():
     state = get_state()
     portfolio = get_portfolio()
@@ -498,9 +445,14 @@ def generate_html():
         f"<div class='mini' style='color:{'var(--text)' if ok else '#ff4d4d'}'>{'✅' if ok else '❌'} {label}</div>"
         for label, ok in vctx["checks"]
     )
-    a_count, t_probes = vctx["aligned"], vctx["total"]
+    a_count = vctx["aligned"]
+    ag_count = vctx.get("against", 0)
+    t_probes = vctx["total"]
+    net_score = a_count - ag_count
     radar_color = "var(--accent)" if a_count >= 7 else ("#ffd700" if a_count >= 4 else "#ff4d4d")
     radar_label = "STRONG" if a_count >= 7 else ("MODERATE" if a_count >= 4 else "WEAK")
+    net_color = "var(--accent)" if net_score >= 0 else "#ff4d4d"
+    inactive_count = t_probes - a_count - ag_count
     radar_rows = "".join(
         f"<div class='mini'>{icon} <span style='color:{color}'>{label}</span></div>"
         for label, icon, color in vctx["rows"]
@@ -519,10 +471,11 @@ def generate_html():
         <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
       </div>
       <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div>{signals_html}</div>
-      <div style='background:rgba(255,255,255,.03);border:1px solid {radar_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-        <div style='display:flex;justify-content:space-between;'><span class='mini'>Confluence Radar</span><span class='pill' style='border:1px solid {radar_color};color:{radar_color};'>{a_count}/{t_probes} {radar_label}</span></div>
-        <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;'><div style='height:100%;width:{int((a_count/t_probes)*100) if t_probes else 0}%;background:{radar_color};'></div></div>
-        <div style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'>{radar_rows}</div>
+      <div id='radarCard' style='background:rgba(255,255,255,.03);border:1px solid {radar_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'>
+        <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;'><span class='mini'>Confluence Radar</span><span id='radarScore' class='pill' style='border:1px solid {radar_color};color:{radar_color};'>{a_count}/{t_probes} {radar_label}</span></div>
+        <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;overflow:hidden;'><div id='radarBar' style='height:100%;width:{int((a_count/t_probes)*100) if t_probes else 0}%;background:{radar_color};transition:width 0.4s ease;'></div></div>
+        <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'>{radar_rows}</div>
+        <div style='margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.4rem;font-size:.7rem;font-family:JetBrains Mono,monospace;color:var(--text-muted);'>Net: <span id='radarNet' style='color:{net_color};font-weight:700;'>{net_score:+d}</span> &nbsp;🟢 {a_count} &nbsp;🔴 {ag_count} &nbsp;⚫ {inactive_count}</div>
       </div>
       <div style='background:{gate_bg};border:1px solid {gate_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'><div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span class='pill' style='border:1px solid {gate_color};color:{gate_color};'>{vctx['gate']}</span></div>{gate_rows}</div>
       {execute_html}
@@ -642,7 +595,7 @@ def generate_html():
       }}
       function closeExecuteModal() {{ const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }}
       function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
-      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); els.gate.textContent=(Number(st.profit_factor||0)>=1.4&&Number(st.avg_r||0)>0)?'OPEN':'WATCH'; els.confluence.textContent=deriveConfluence(data.alerts||[]); els.radar.textContent='{a_count}/{t_probes} {radar_label}'; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
+      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); els.gate.textContent=(Number(st.profit_factor||0)>=1.4&&Number(st.avg_r||0)>0)?'OPEN':'WATCH'; els.confluence.textContent=deriveConfluence(data.alerts||[]); const wsLatest=(data.alerts||[]).slice(-1)[0]||{{}};const wsDir=String(wsLatest.direction||state.direction).toUpperCase();const wsCS=new Set(((wsLatest.decision_trace||{{}}).codes)||[]);const wsPD=[[['SQUEEZE_FIRE'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL'],['SENTIMENT_BEAR'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH'],['BASIS_BEARISH'],'OI / Basis']];let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}};els.radar.textContent=wsAl+'/'+wsT+' '+wsLbl; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
       connectWS();
       updateLivePrice();
     </script>
