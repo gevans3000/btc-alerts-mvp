@@ -396,6 +396,48 @@ def generate_svg_equity(curve):
         <path d="M0,{height} {' '.join(['L' + p for p in svg_points])} L{width},{height} Z" fill="url(#grad)" />
     </svg>
     """
+
+
+def _latest_btc_alert(alerts):
+    for a in reversed(alerts):
+        if a.get("symbol") == "BTC":
+            return a
+    return {}
+
+
+def build_verdict_context(alerts, portfolio):
+    alert = _latest_btc_alert(alerts)
+    direction = str(alert.get("direction") or "NEUTRAL").upper()
+    entry = float(alert.get("entry_price") or alert.get("entry") or 0)
+    tp1 = float(alert.get("tp1") or 0)
+    stop = float(alert.get("invalidation") or 0)
+    confidence = int(alert.get("confidence_score") or alert.get("confidence") or 0)
+    active_codes = set(((alert.get("decision_trace") or {}).get("codes") or []))
+    checks = [
+        ("TF Alignment", "HTF_COUNTER" not in active_codes),
+        ("ML Conviction", confidence >= 70),
+        ("R:R >= 1.2", abs(tp1 - entry) / max(abs(entry - stop), 1e-9) >= 1.2 if entry and tp1 and stop else False),
+        ("Max DD <= 12%", float((portfolio or {}).get("max_drawdown", 0)) <= 0.12),
+        ("No HTF conflict", not any(c in active_codes for c in ["HTF_CONFLICT_15M", "HTF_CONFLICT_1H"])),
+    ]
+    passed = sum(1 for _, ok in checks if ok)
+    gate = "GREEN" if passed >= 4 else ("AMBER" if passed >= 3 else "RED")
+    probes = [
+        ("Squeeze", ["SQUEEZE_FIRE"], []), ("Trend (HTF)", ["HTF_ALIGNED"], ["HTF_COUNTER"]),
+        ("Momentum", ["SENTIMENT_BULL"], ["SENTIMENT_BEAR"]), ("ML Model", ["ML_CONFIDENCE_BOOST"], ["ML_SKEPTICISM"]),
+        ("Funding", ["FUNDING_EXTREME_LOW", "FUNDING_LOW"], ["FUNDING_EXTREME_HIGH", "FUNDING_HIGH"]),
+        ("DXY Macro", ["DXY_FALLING_BULLISH"], ["DXY_RISING_BEARISH"]), ("Gold Macro", ["GOLD_RISING_BULLISH"], ["GOLD_FALLING_BEARISH"]),
+        ("Fear & Greed", ["FG_EXTREME_FEAR", "FG_FEAR"], ["FG_EXTREME_GREED", "FG_GREED"]),
+        ("Order Book", ["BID_WALL_SUPPORT"], ["ASK_WALL_RESISTANCE"]), ("OI / Basis", ["OI_SURGE_MAJOR", "OI_SURGE_MINOR", "BASIS_BULLISH"], ["BASIS_BEARISH"]),
+    ]
+    rows = []
+    for label, bulls, bears in probes:
+        has_bull, has_bear = any(c in active_codes for c in bulls), any(c in active_codes for c in bears)
+        aligned = (direction == "LONG" and has_bull) or (direction == "SHORT" and has_bear)
+        against = (direction == "LONG" and has_bear) or (direction == "SHORT" and has_bull)
+        rows.append((label, "🟢" if aligned else "🔴" if against else "⚫", "var(--accent)" if aligned else "#ff4d4d" if against else "var(--text-muted)"))
+    aligned_count = sum(1 for _, icon, _ in rows if icon == "🟢")
+    return {"direction": direction, "entry": entry, "tp1": tp1, "stop": stop, "checks": checks, "gate": gate, "rows": rows, "aligned": aligned_count, "total": len(rows)}
 def generate_html():
     state = get_state()
     portfolio = get_portfolio()
@@ -491,6 +533,12 @@ def generate_html():
     execution_html = render_execution_matrix(alerts)
     edge_html = render_edge_scoreboard(portfolio)
     lifecycle_html = render_lifecycle_panel(alerts)
+    vctx = build_verdict_context(alerts, portfolio)
+    gate_color = "var(--accent)" if vctx["gate"] == "GREEN" else ("#ffb020" if vctx["gate"] == "AMBER" else "#ff4d4d")
+    radar_label = "STRONG" if vctx["aligned"] >= 7 else ("MODERATE" if vctx["aligned"] >= 4 else "WEAK")
+    radar_pct = int((vctx["aligned"] / max(vctx["total"], 1)) * 100)
+    risk_checks_html = "".join([f"<div class='mini'>{'✅' if ok else '❌'} {name}</div>" for name, ok in vctx["checks"]])
+    radar_rows_html = "".join([f"<div class='mini' style='color:{c}'>{i} {n}</div>" for n, i, c in vctx["rows"]])
     balance = (portfolio or {}).get("balance", 10000)
     html = f"""
 <!DOCTYPE html>
@@ -537,7 +585,7 @@ def generate_html():
         .live-value {{ font-size: 1.15rem; font-weight: 700; }}
     </style>
 </head>
-<body>
+    <body>
     <header>
         <div>
             <h1>EMBER COMMAND</h1>
@@ -551,6 +599,30 @@ def generate_html():
     <section class="panel"><h2>Live Tape</h2><div class="live-grid"><div class="stat-card"><div class="stat-label">BTC Mid</div><div id="live-mid" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Confluence</div><div id="live-confluence" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Radar</div><div id="live-radar" class="live-value">--</div></div></div><div class="live-grid"><div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div><div class="stat-card"><div class="stat-label">Win Rate</div><div id="live-winrate" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Profit Factor</div><div id="live-pf" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div></div></section>
     {verdict_html}
     {execution_html}
+    <section class="panel">
+        <h2>Trade Verdict</h2>
+        <div class="stats-grid" style="grid-template-columns: 1.4fr 1fr;">
+            <div class="stat-card">
+                <div class="stat-label">Direction</div><div class="stat-value" id="verdictDirection">{vctx['direction']}</div>
+                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; margin-top: 0.6rem; border: 1px solid var(--border);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="stat-label">Live BTC Price</div><div id="livePrice" style="font-size:1.6rem;font-weight:800;font-family:'JetBrains Mono',monospace;">Loading...</div></div><div style="text-align:right;"><div class="stat-label">Unrealized PnL</div><div id="livePnL" style="font-size:1rem;font-weight:700;">—</div></div></div>
+                    <div style="display:flex;gap:1rem;margin-top:.5rem" class="mini"><div>→ TP1 <span id="distTP1">—</span></div><div>→ STOP <span id="distStop">—</span></div><div>SPREAD <span id="liveSpread">—</span></div></div>
+                </div>
+                <div class="mini" style="margin-top:.5rem;">Entry ${vctx['entry']:,.0f} · TP1 ${vctx['tp1']:,.0f} · Stop ${vctx['stop']:,.0f}</div>
+            </div>
+            <div class="stat-card" style="border:1px solid {gate_color};">
+                <div class="stat-label">Risk Gate</div>
+                <div class="stat-value" style="color:{gate_color};">{vctx['gate']}</div>
+                {risk_checks_html}
+                <button id="executeBtn" class="pill {'badge-bad' if vctx['gate']=='RED' else 'badge-good'}" style="margin-top:.6rem;border:0;cursor:pointer;">{'⚠️ EXECUTE (HIGH RISK)' if vctx['gate']=='RED' else 'EXECUTE PLAN'}</button>
+            </div>
+        </div>
+        <div class="stat-card" style="margin-top:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span class="stat-label">Confluence Radar</span><span style="font-family:'JetBrains Mono',monospace;color:{gate_color}">{vctx['aligned']} / {vctx['total']} {radar_label}</span></div>
+            <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;margin:.6rem 0 1rem;"><div style="height:100%;width:{radar_pct}%;background:{gate_color};border-radius:3px;"></div></div>
+            <div class="grid" style="grid-template-columns:1fr 1fr;">{radar_rows_html}</div>
+        </div>
+    </section>
     <section>
         <h2>Performance Metrics</h2>
         {p_html}
@@ -568,6 +640,30 @@ def generate_html():
     <footer style="margin-top: 2rem; text-align: center; color: var(--text-muted); padding-bottom: 2rem;">
         &copy; 2026 EMBER Loop | BTC Alerts MVP
     </footer>
+    <dialog id="execModal" style="max-width:420px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);padding:1rem;">
+      <h3 style="margin-bottom:.5rem;">Confirm Execution</h3><p class="mini" id="execCountdown">Arming confirmation...</p>
+      <div style="display:flex;gap:.5rem;margin-top:1rem;"><button id="cancelExec" class="pill badge-neutral" style="border:0;cursor:pointer;">Cancel</button><button id="confirmExec" class="pill badge-good" style="border:0;cursor:pointer;" disabled>Confirm</button></div>
+    </dialog>
+    <script>
+    const state = {{livePrice:0,spread:0,entryPrice:{vctx['entry']},tp1Price:{vctx['tp1']},stopPrice:{vctx['stop']},direction:"{vctx['direction']}"}};
+    function updateLive() {{
+      const p=state.livePrice; if(!p) return; const fmt=(n)=>'$'+n.toLocaleString(undefined,{{maximumFractionDigits:0}});
+      document.getElementById('livePrice').textContent=fmt(p); document.getElementById('liveSpread').textContent=state.spread.toFixed(2);
+      const toTp=state.direction==='SHORT'?p-state.tp1Price:state.tp1Price-p; const toSt=state.direction==='SHORT'?state.stopPrice-p:p-state.stopPrice;
+      const pctTp=((toTp/Math.max(p,1))*100).toFixed(2);
+      const pctSt=((toSt/Math.max(p,1))*100).toFixed(2);
+      document.getElementById('distTP1').textContent='$'+toTp.toFixed(0)+' ('+pctTp+'%)';
+      document.getElementById('distStop').textContent='$'+toSt.toFixed(0)+' ('+pctSt+'%)';
+      const pnl=(state.direction==='SHORT'?(state.entryPrice-p):(p-state.entryPrice)); const pnlEl=document.getElementById('livePnL'); pnlEl.textContent=(pnl>=0?'+':'')+fmt(pnl); pnlEl.style.color=pnl>=0?'var(--accent)':'#ff4d4d';
+    }}
+    function connectWS() {{ const proto=location.protocol==='https:'?'wss':'ws'; const ws=new WebSocket(proto+'://'+location.host+'/ws');
+      ws.onmessage=(e)=>{{ const d=JSON.parse(e.data); state.livePrice=((d.orderbook||{{}}).mid)||0; state.spread=((d.orderbook||{{}}).spread)||0; updateLive(); }};
+      ws.onclose=()=>setTimeout(connectWS,2000);
+    }}
+    connectWS();
+    const modal=document.getElementById('execModal'),btn=document.getElementById('executeBtn'),cancel=document.getElementById('cancelExec'),confirm=document.getElementById('confirmExec'),count=document.getElementById('execCountdown');
+    btn?.addEventListener('click',()=>{{ let n=3; confirm.disabled=true; count.textContent=`Confirm available in ${{n}}s`; modal.showModal(); const t=setInterval(()=>{{n--; count.textContent=n>0?`Confirm available in ${{n}}s`:'Ready to confirm'; if(n<=0){{clearInterval(t); confirm.disabled=false;}}}},1000); }});
+    cancel?.addEventListener('click',()=>modal.close()); confirm?.addEventListener('click',()=>{{ modal.close(); alert('Execution confirmed (paper mode).'); }});
     <script>(()=>{{const els={{badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),gate:document.getElementById('live-gate')}};let attempt=0,lastUpdateMs=0;const wsUrl=()=>`${{window.location.protocol==='https:'?'wss:':'ws:'}}//${{window.location.hostname}}:8000/ws`,fmtMoney=n=>Number.isFinite(n)?`$${{n.toLocaleString(undefined,{{minimumFractionDigits:2,maximumFractionDigits:2}})}}`:'--',fmtNum=(n,d=2)=>Number.isFinite(n)?n.toFixed(d):'--',setBadge=(t,s=false)=>{{els.badge.textContent=t;els.badge.classList.toggle('badge-stale',s);}},deriveConfluence=a=>{{const t=['5m','15m','1h'],m=Object.create(null);for(const x of a||[])if(x.symbol==='BTC'&&t.includes(x.timeframe))m[x.timeframe]=x;const p=t.map(tf=>m[tf]).filter(Boolean);if(p.length<3)return'Partial';const d=p.map(x=>String(x.direction||'NEUTRAL').toUpperCase());return d.every(x=>x===d[0]&&x!=='NEUTRAL')?`${{d[0]}} aligned`:'Mixed';}},deriveRadar=a=>{{let b=0;for(const x of a||[])b+=Array.isArray(x.blockers)?x.blockers.length:0;return b?`${{b}} blockers`:'Clear';}},deriveGate=s=>{{const pf=Number(s?.profit_factor??0),avgR=Number(s?.avg_r??0);if(pf>=1.4&&avgR>0)return'OPEN';if(pf>=1.0)return'WATCH';return'LOCK';}},apply=p=>{{const ob=p?.orderbook||{{}},po=p?.portfolio||{{}},al=p?.alerts||[],st=p?.stats||{{}};els.mid.textContent=fmtMoney(Number(ob.mid));els.spread.textContent=fmtNum(Number(ob.spread),2);els.balance.textContent=fmtMoney(Number(po.balance));els.winrate.textContent=`${{fmtNum(Number(st.win_rate),2)}}%`;els.pf.textContent=fmtNum(Number(st.profit_factor),2);els.gate.textContent=deriveGate(st);els.confluence.textContent=deriveConfluence(al);els.radar.textContent=deriveRadar(al);lastUpdateMs=Date.now();els.sync.textContent=`Synced: ${{new Date().toLocaleString()}}`;setBadge('Live Feed: Online');}},connect=()=>{{const ws=new WebSocket(wsUrl());ws.onopen=()=>{{attempt=0;setBadge('Live Feed: Online');}};ws.onmessage=e=>{{try{{apply(JSON.parse(e.data));}}catch(_err){{}}}};ws.onclose=()=>{{setBadge('Live Feed: Reconnecting',true);attempt+=1;window.setTimeout(connect,Math.min(10000,1000*(2**Math.min(attempt,4))));}};ws.onerror=()=>ws.close();}};window.setInterval(()=>{{if(!lastUpdateMs||Date.now()-lastUpdateMs>8000)setBadge('Live Feed: Stale',true);}},2000);connect();}})();</script>
     <script>
       let state = {{livePrice:0,spread:0,inTrade:{'true' if bool(portfolio and portfolio.get('positions')) else 'false'},entryPrice:{vctx['verdict']['entry']},tp1Price:{vctx['verdict']['tp1']},stopPrice:{vctx['verdict']['invalidation']},direction:"{vctx['verdict']['direction']}"}};
