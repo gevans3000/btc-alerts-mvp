@@ -1,12 +1,12 @@
-﻿# Phase 11: Confluence Alignment Radar ΓÇö Unified Signal Intelligence
+# Phase 11: Confluence Alignment Radar — Unified Signal Intelligence
 
-> **INSTRUCTIONS FOR AI AGENT:** Execute every step below IN ORDER. After each step, run the verification command. If it passes, mark the checkbox `[ ]` ΓåÆ `[x]`. If it fails, fix the issue before moving to the next step. Do NOT skip steps. Do NOT commit until ALL checkboxes are marked `[x]`.
+> **INSTRUCTIONS FOR AI AGENT:** Execute every step below IN ORDER. After each step, run the verification command. If it passes, mark the checkbox `[ ]` → `[x]`. If it fails, fix the issue before moving to the next step. Do NOT skip steps. Do NOT commit until ALL checkboxes are marked `[x]`.
 
 ---
 
-## ΓÜá∩╕Å CRITICAL RULES (Read Before Starting)
+## ⚠️ CRITICAL RULES (Read Before Starting)
 
-1. **You are editing exactly 1 file:** `scripts/pid-129/generate_dashboard.py`. The output file `dashboard.html` is auto-generated ΓÇö never edit it directly.
+1. **You are editing exactly 1 file:** `scripts/pid-129/generate_dashboard.py`. The output file `dashboard.html` is auto-generated — never edit it directly.
 2. **Python f-string + JavaScript conflict:** The generated HTML uses Python f-strings. JavaScript `{}` braces MUST be doubled `{{}}`. JavaScript template literals (`${var}`) MUST use helper variables:
    ```python
    JS_OPEN = "${"
@@ -14,22 +14,22 @@
    ```
 3. **All paths are relative to project root:** `c:\Users\lovel\trading\btc-alerts-mvp\`
 4. **Do NOT install new packages.** Only use: `json`, `pathlib`, `datetime` (Python); `Chart.js` v4.4.1 (CDN already loaded); TradingView widget (CDN already loaded).
-5. **Verification command after every step:** `python scripts/pid-129/generate_dashboard.py` ΓÇö it must print `Dashboard updated:` with no errors.
+5. **Verification command after every step:** `python scripts/pid-129/generate_dashboard.py` — it must print `Dashboard updated:` with no errors.
 6. **After ALL steps complete:** Run `python -m pytest tests/ -k "not test_genetic_optimization" -x -q` to ensure nothing is broken.
 
 ---
 
-## ≡ƒºá Why This Phase Exists
+## 🧠 Why This Phase Exists
 
 The dashboard currently shows confluence data in **three disconnected places:**
 
-1. **Conviction Signals**: A text list of fired codes like "Γ£à Squeeze Firing", "Γ£à ML Conviction High" ΓÇö but it only shows the active ones with no sense of total coverage.
-2. **Confluence Heatmap**: A bar chart of score breakdown categories (Trend, Momentum, Volatility, Volume, HTF) ΓÇö great for score magnitude, but doesn't tell the operator "how many independent signals are actually confirming this trade."
-3. **Risk Gate**: A safety checklist (TF Alignment, ML, Streak, DD, R:R) ΓÇö but this checks risk, not directional confluence.
+1. **Conviction Signals**: A text list of fired codes like "✅ Squeeze Firing", "✅ ML Conviction High" — but it only shows the active ones with no sense of total coverage.
+2. **Confluence Heatmap**: A bar chart of score breakdown categories (Trend, Momentum, Volatility, Volume, HTF) — great for score magnitude, but doesn't tell the operator "how many independent signals are actually confirming this trade."
+3. **Risk Gate**: A safety checklist (TF Alignment, ML, Streak, DD, R:R) — but this checks risk, not directional confluence.
 
 **The operator needs ONE unified answer:** *"Out of the 10 things I track, how many support THIS direction right now?"*
 
-This phase adds a **Confluence Alignment Radar** to the Verdict card ΓÇö a compact, visually rich component that:
+This phase adds a **Confluence Alignment Radar** to the Verdict card — a compact, visually rich component that:
 - Lists **every trackable confluence variable** (10 total).
 - Shows which are **active/aligned** vs **inactive/against** the proposed direction.
 - Displays a bold summary: `7 / 10 ALIGNED` with a color-coded progress bar.
@@ -37,7 +37,7 @@ This phase adds a **Confluence Alignment Radar** to the Verdict card ΓÇö a co
 
 ---
 
-## ≡ƒôÉ Architecture Reference
+## 📐 Architecture Reference
 
 ### Available Signal Codes (from `engine.py`)
 
@@ -97,17 +97,17 @@ The engine emits `reason_codes` in each alert's `decision_trace.codes`. Here are
 ### How to determine "aligned with direction"
 
 For a `LONG` trade:
-- A **bullish** signal is **aligned** Γ£à
-- A **bearish** signal is **against** Γ¥î
-- Absence of a signal is **inactive** ΓÜ¬
+- A **bullish** signal is **aligned** ✅
+- A **bearish** signal is **against** ❌
+- Absence of a signal is **inactive** ⚪
 
 For a `SHORT` trade:
-- A **bearish** signal is **aligned** Γ£à
-- A **bullish** signal is **against** Γ¥î
+- A **bearish** signal is **aligned** ✅
+- A **bullish** signal is **against** ❌
 
 ---
 
-## ≡ƒôï EXECUTION STEPS
+## 📋 EXECUTION STEPS
 
 ---
 
@@ -116,20 +116,20 @@ For a `SHORT` trade:
 
 **File:** `scripts/pid-129/generate_dashboard.py`
 
-**What:** Compute a list of 10 confluence "probes" ΓÇö each representing one trackable signal ΓÇö and determine whether it's aligned, against, or inactive relative to the proposed direction.
+**What:** Compute a list of 10 confluence "probes" — each representing one trackable signal — and determine whether it's aligned, against, or inactive relative to the proposed direction.
 
 **Action 1:** In the `build_context()` function, find the `# Risk Gate checks` comment (around line 261). Add the following code BEFORE that line (after the `regime` fallback block, before Risk Gate):
 
 ```python
-    # ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ──────────────────────────────────────────────
     # CONFLUENCE ALIGNMENT RADAR (Phase 11)
-    # ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ──────────────────────────────────────────────
     direction = verdict["direction"]
     active_codes = set(verdict["reason_codes"])
 
     # Define 10 confluence probes
     # Each probe: (id, label, bullish_codes, bearish_codes)
-    # If a bullish code fires ΓåÆ aligned with LONG, against SHORT (and vice versa)
+    # If a bullish code fires → aligned with LONG, against SHORT (and vice versa)
     confluence_probes = [
         ("squeeze",   "Squeeze",     ["SQUEEZE_FIRE"],                     []),
         ("trend",     "Trend (HTF)", ["HTF_ALIGNED"],                      ["HTF_COUNTER"]),
@@ -181,7 +181,7 @@ For a `SHORT` trade:
         "total_probes": total_probes,
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors.
 
 ---
 
@@ -195,24 +195,24 @@ For a `SHORT` trade:
 **Action 1:** In `generate_html()`, find the line `gate_html += '</div>'` (the end of the Risk Gate HTML block, around line 376). Add the following code AFTER that line:
 
 ```python
-    # ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ──────────────────────────────────────────────
     # CONFLUENCE ALIGNMENT RADAR HTML (Phase 11)
-    # ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ──────────────────────────────────────────────
     a_count = ctx["aligned_count"]
     ag_count = ctx["against_count"]
     t_probes = ctx["total_probes"]
     
     # Color based on alignment ratio
     if a_count >= 7:
-        radar_color = "var(--accent)"         # green ΓÇö strong alignment
+        radar_color = "var(--accent)"         # green — strong alignment
         radar_bg = "rgba(0,255,204,0.06)"
         radar_label = "STRONG"
     elif a_count >= 4:
-        radar_color = "var(--warning)"        # amber ΓÇö moderate
+        radar_color = "var(--warning)"        # amber — moderate
         radar_bg = "rgba(255,170,0,0.06)"
         radar_label = "MODERATE"
     else:
-        radar_color = "var(--danger)"         # red ΓÇö weak/conflicting
+        radar_color = "var(--danger)"         # red — weak/conflicting
         radar_bg = "rgba(255,77,109,0.06)"
         radar_label = "WEAK"
     
@@ -231,13 +231,13 @@ For a `SHORT` trade:
     
     for probe in ctx["alignment_results"]:
         if probe["status"] == "aligned":
-            icon = "≡ƒƒó"
+            icon = "🟢"
             p_color = "var(--accent)"
         elif probe["status"] == "against":
-            icon = "≡ƒö┤"
+            icon = "🔴"
             p_color = "var(--danger)"
         else:
-            icon = "ΓÜ½"
+            icon = "⚫"
             p_color = "var(--text-secondary)"
         
         radar_html += f'''
@@ -251,7 +251,7 @@ For a `SHORT` trade:
     </div>'''
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors.
 
 ---
 
@@ -262,7 +262,7 @@ For a `SHORT` trade:
 
 **What:** Place the `{radar_html}` inside the Verdict card, between the Conviction Signals section and the Risk Gate section. This creates a visual funnel:
   1. Conviction Signals (what's firing)
-  2. **Confluence Radar** (how many agree ΓÇö NEW)
+  2. **Confluence Radar** (how many agree — NEW)
   3. Risk Gate (safety checks)
   4. Execute button
 
@@ -287,7 +287,7 @@ So the final sequence in the Verdict card should be:
 <button ...>1-CLICK EXECUTE</button>
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors. Open `dashboard.html` locally in a browser. Confirm the Confluence Radar appears between the signals and the safety gate.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors. Open `dashboard.html` locally in a browser. Confirm the Confluence Radar appears between the signals and the safety gate.
 
 ---
 
@@ -314,11 +314,11 @@ Replace it with:
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                         <div class="metric-label" style="margin-bottom: 0;">Confluence Heatmap</div>
                         <div style="font-size: 0.75rem; font-family: var(--font-mono);">
-                            <span style="color: var(--accent);">≡ƒƒó {ctx["aligned_count"]}</span>
-                            <span style="margin: 0 4px; color: var(--text-secondary);">┬╖</span>
-                            <span style="color: var(--danger);">≡ƒö┤ {ctx["against_count"]}</span>
-                            <span style="margin: 0 4px; color: var(--text-secondary);">┬╖</span>
-                            <span style="color: var(--text-secondary);">ΓÜ½ {ctx["total_probes"] - ctx["aligned_count"] - ctx["against_count"]}</span>
+                            <span style="color: var(--accent);">🟢 {ctx["aligned_count"]}</span>
+                            <span style="margin: 0 4px; color: var(--text-secondary);">·</span>
+                            <span style="color: var(--danger);">🔴 {ctx["against_count"]}</span>
+                            <span style="margin: 0 4px; color: var(--text-secondary);">·</span>
+                            <span style="color: var(--text-secondary);">⚫ {ctx["total_probes"] - ctx["aligned_count"] - ctx["against_count"]}</span>
                         </div>
                     </div>
                     {heatmap_html}
@@ -328,7 +328,7 @@ Replace it with:
                 </div>
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors. Open dashboard, confirm the heatmap header now shows the green/red/grey counts and a net score at the bottom.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors. Open dashboard, confirm the heatmap header now shows the green/red/grey counts and a net score at the bottom.
 
 ---
 
@@ -415,7 +415,7 @@ Also add an `id` to the progress bar fill div:
             }}
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors.
 
 ---
 
@@ -433,7 +433,7 @@ python -m pytest tests/ -k "not test_genetic_optimization" -x -q
 - [x] Confluence Radar appears between Conviction Signals and Risk Gate
 - [x] Radar shows `X / 10 STRONG|MODERATE|WEAK` with color coding
 - [x] Progress bar fills proportionally to aligned count
-- [x] Each of the 10 probes shows ≡ƒƒó (aligned), ≡ƒö┤ (against), or ΓÜ½ (inactive)
+- [x] Each of the 10 probes shows 🟢 (aligned), 🔴 (against), or ⚫ (inactive)
 - [x] Confluence Heatmap header shows green/red/grey counts
 - [x] Heatmap footer shows net score
 - [x] Live price ticker still works (no regression)
@@ -443,10 +443,10 @@ python -m pytest tests/ -k "not test_genetic_optimization" -x -q
 
 ---
 
-## ≡ƒÜ½ Out of Scope (Do NOT Implement)
+## 🚫 Out of Scope (Do NOT Implement)
 
-- No new Python files ΓÇö all changes are in `generate_dashboard.py`
-- No new API endpoints ΓÇö use existing WebSocket payload
+- No new Python files — all changes are in `generate_dashboard.py`
+- No new API endpoints — use existing WebSocket payload
 - No external JS libraries beyond Chart.js (already loaded)
 - No database or persistent storage changes
 - No changes to `engine.py` or `intelligence/confluence.py`
@@ -456,7 +456,7 @@ python -m pytest tests/ -k "not test_genetic_optimization" -x -q
 
 ---
 
-## ≡ƒôü Files Modified
+## 📁 Files Modified
 
 | File | Change |
 |:--|:--|
@@ -465,7 +465,7 @@ python -m pytest tests/ -k "not test_genetic_optimization" -x -q
 
 ---
 
-## Γ£à COMPLETION CRITERIA
+## ✅ COMPLETION CRITERIA
 
 All 6 checkboxes above must be `[x]`. Then:
 1. Run `python scripts/pid-129/generate_dashboard.py` one final time
@@ -473,7 +473,7 @@ All 6 checkboxes above must be `[x]`. Then:
 3. Open `http://localhost:8000` in browser
 4. Confirm all 10 manual checks pass
 5. Take a screenshot for operator review
-6. **DO NOT COMMIT** ΓÇö wait for operator approval
+6. **DO NOT COMMIT** — wait for operator approval
 
 ---
-*Phase 11 ΓÇö Confluence Alignment Radar | Created: 2026-02-24*
+*Phase 11 — Confluence Alignment Radar | Created: 2026-02-24*
