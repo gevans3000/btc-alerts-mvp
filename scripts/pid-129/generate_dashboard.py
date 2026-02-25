@@ -112,6 +112,62 @@ def execution_decision(latest):
     if reasons:
         return "WAIT", "warn", reasons
     return "EXECUTE", "good", ["All timeframes aligned and 5m trigger passed."]
+
+
+def build_verdict_context(alerts, portfolio):
+    latest = latest_btc_by_timeframe(alerts)
+    decision, tone, reasons = execution_decision(latest)
+    a5 = latest.get("5m", {})
+    ctx = get_context(a5)
+    verdict = {
+        "alert_id": str(a5.get("id") or a5.get("alert_id") or "latest-btc"),
+        "direction": get_direction(a5 if a5 else {"direction": "WAIT"}) if decision == "EXECUTE" else "WAIT",
+        "entry": float(a5.get("entry_price") or a5.get("entry") or 0.0),
+        "tp1": float(a5.get("tp1") or 0.0),
+        "invalidation": float(a5.get("invalidation") or 0.0),
+        "rr_ratio": float(a5.get("rr_ratio") or 0.0),
+        "ml_prob": float(a5.get("ml_prob") or a5.get("ml_probability") or get_confidence(a5) / 100.0),
+        "reason_codes": (a5.get("decision_trace") or {}).get("codes", []) if isinstance(a5, dict) else [],
+    }
+    tf_bias = {tf: {"direction": get_direction(a)} for tf, a in latest.items()}
+    directions = [v["direction"] for v in tf_bias.values() if v["direction"] != "NEUTRAL"]
+    tf_aligned = len(set(directions)) == 1 and len(directions) >= 2
+    stats = {"streak": 0, "max_dd": 0.0}
+    if isinstance(portfolio, dict):
+        stats["streak"] = -max_losing_streak(portfolio.get("closed_trades", []))
+        stats["max_dd"] = float(portfolio.get("max_drawdown") or 0.0) * 100
+    gate_checks = {
+        "tf_aligned": {"pass": tf_aligned, "label": "Timeframes Aligned", "icon_pass": "✅", "icon_fail": "⚠️"},
+        "ml_confident": {"pass": verdict["ml_prob"] * 100 >= 60, "label": "ML Confidence ≥ 60%", "icon_pass": "✅", "icon_fail": "❌"},
+        "streak_ok": {"pass": stats["streak"] >= -2, "label": "Streak ≥ -2", "icon_pass": "✅", "icon_fail": "🧊"},
+        "dd_ok": {"pass": stats["max_dd"] < 10, "label": "Drawdown < 10%", "icon_pass": "✅", "icon_fail": "🔴"},
+        "rr_ok": {"pass": verdict["rr_ratio"] >= 1.5, "label": "R:R ≥ 1.5x", "icon_pass": "✅", "icon_fail": "⚠️"},
+    }
+    gate_pass_count = sum(1 for g in gate_checks.values() if g["pass"])
+    gate_verdict = "GREEN" if gate_pass_count >= 4 else ("AMBER" if gate_pass_count >= 3 else "RED")
+    active_codes = set(verdict["reason_codes"])
+    probes = [
+        ("squeeze", "Squeeze", ["SQUEEZE_FIRE"], []), ("trend", "Trend (HTF)", ["HTF_ALIGNED"], ["HTF_COUNTER"]),
+        ("momentum", "Momentum", ["SENTIMENT_BULL"], ["SENTIMENT_BEAR"]), ("ml", "ML Model", ["ML_CONFIDENCE_BOOST"], ["ML_SKEPTICISM"]),
+        ("funding", "Funding", ["FUNDING_EXTREME_LOW", "FUNDING_LOW"], ["FUNDING_EXTREME_HIGH", "FUNDING_HIGH"]),
+        ("macro_dxy", "DXY Macro", ["DXY_FALLING_BULLISH"], ["DXY_RISING_BEARISH"]), ("macro_gold", "Gold Macro", ["GOLD_RISING_BULLISH"], ["GOLD_FALLING_BEARISH"]),
+        ("fear_greed", "Fear & Greed", ["FG_EXTREME_FEAR", "FG_FEAR"], ["FG_EXTREME_GREED", "FG_GREED"]),
+        ("orderbook", "Order Book", ["BID_WALL_SUPPORT"], ["ASK_WALL_RESISTANCE"]), ("deriv", "OI / Basis", ["OI_SURGE_MAJOR", "OI_SURGE_MINOR", "BASIS_BULLISH"], ["BASIS_BEARISH"]),
+    ]
+    alignment_results = []
+    for probe_id, label, bulls, bears in probes:
+        has_bull, has_bear = any(c in active_codes for c in bulls), any(c in active_codes for c in bears)
+        if verdict["direction"] == "LONG":
+            status = "aligned" if has_bull else ("against" if has_bear else "inactive")
+        elif verdict["direction"] == "SHORT":
+            status = "aligned" if has_bear else ("against" if has_bull else "inactive")
+        else:
+            status = "inactive"
+        alignment_results.append({"id": probe_id, "label": label, "status": status})
+    return {"decision": decision, "tone": tone, "reasons": reasons, "verdict": verdict, "tf_bias": tf_bias, "gate_checks": gate_checks,
+            "gate_pass_count": gate_pass_count, "gate_total": len(gate_checks), "gate_verdict": gate_verdict, "alignment_results": alignment_results,
+            "aligned_count": sum(1 for r in alignment_results if r["status"] == "aligned"), "against_count": sum(1 for r in alignment_results if r["status"] == "against"),
+            "total_probes": len(alignment_results), "confluence_layers": ctx.get("score_breakdown") if isinstance(ctx.get("score_breakdown"), dict) else {}}
 def percentile_used(age_seconds, tf):
     max_s = MAX_DURATION_SECONDS.get(tf, 24 * 3600)
     return (age_seconds / max_s) * 100 if max_s > 0 else 0
@@ -391,6 +447,47 @@ def generate_html():
         </div>
         <div class="chart-container">{equity_svg}</div>
         """
+    vctx = build_verdict_context(alerts, portfolio)
+    signals_html = "".join(f"<span class='pill badge-neutral'>{c}</span>" for c in vctx["verdict"]["reason_codes"][:8]) or "<span class='mini'>No active reason codes.</span>"
+    gate_color = "var(--accent)" if vctx["gate_verdict"] == "GREEN" else ("#ffd700" if vctx["gate_verdict"] == "AMBER" else "#ff4d4d")
+    gate_bg = "rgba(0,255,204,0.05)" if vctx["gate_verdict"] == "GREEN" else ("rgba(255,215,0,0.08)" if vctx["gate_verdict"] == "AMBER" else "rgba(255,77,77,0.08)")
+    gate_rows = "".join(
+        f"<div class='mini' style='color:{'var(--text)' if c['pass'] else '#ff4d4d'}'>{c['icon_pass'] if c['pass'] else c['icon_fail']} {c['label']}</div>"
+        for c in vctx["gate_checks"].values()
+    )
+    a_count, t_probes = vctx["aligned_count"], vctx["total_probes"]
+    radar_color = "var(--accent)" if a_count >= 7 else ("#ffd700" if a_count >= 4 else "#ff4d4d")
+    radar_label = "STRONG" if a_count >= 7 else ("MODERATE" if a_count >= 4 else "WEAK")
+    radar_rows = "".join(
+        f"<div class='mini'>{'🟢' if p['status']=='aligned' else ('🔴' if p['status']=='against' else '⚫')} <span style='color:{'var(--accent)' if p['status']=='aligned' else ('#ff4d4d' if p['status']=='against' else 'var(--text-muted)')}'>{p['label']}</span></div>"
+        for p in vctx["alignment_results"]
+    )
+    execute_html = ""
+    if vctx["verdict"]["direction"] != "WAIT":
+        label = "⚠️ EXECUTE (HIGH RISK)" if vctx["gate_verdict"] == "RED" else "1-CLICK EXECUTE"
+        bg = "background:#ff4d4d;" if vctx["gate_verdict"] == "RED" else ""
+        execute_html = f"<button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;{bg}' onclick=\"requestExecute('{vctx['verdict']['alert_id']}')\">{label}</button>"
+    verdict_html = f"""
+    <section class='panel'>
+      <h2>Verdict Center</h2>
+      <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill {badge_class_for_direction(vctx['verdict']['direction'])}'>{vctx['verdict']['direction']}</span></div>
+      <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
+        <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-size:1.6rem;font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
+        <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
+      </div>
+      <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div>{signals_html}</div>
+      <div style='background:rgba(255,255,255,.03);border:1px solid {radar_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'>
+        <div style='display:flex;justify-content:space-between;'><span class='mini'>Confluence Radar</span><span class='pill' style='border:1px solid {radar_color};color:{radar_color};'>{a_count}/{t_probes} {radar_label}</span></div>
+        <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;'><div style='height:100%;width:{int((a_count/t_probes)*100) if t_probes else 0}%;background:{radar_color};'></div></div>
+        <div style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'>{radar_rows}</div>
+      </div>
+      <div style='background:{gate_bg};border:1px solid {gate_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'><div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span class='pill' style='border:1px solid {gate_color};color:{gate_color};'>{vctx['gate_verdict']} ({vctx['gate_pass_count']}/{vctx['gate_total']})</span></div>{gate_rows}</div>
+      {execute_html}
+    </section>
+    <div id='executeModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;'>
+      <div style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;max-width:360px;width:90%;'><h3 style='margin-bottom:.6rem;'>Confirm Execute</h3><div id='executeMeta' class='mini'></div><div style='margin-top:1rem;display:flex;gap:.5rem;justify-content:flex-end;'><button class='pill badge-neutral' onclick='closeExecuteModal()'>Cancel</button><button id='confirmExecuteBtn' class='pill badge-good' disabled>Confirm (3)</button></div></div>
+    </div>
+    """
     execution_html = render_execution_matrix(alerts)
     edge_html = render_edge_scoreboard(portfolio)
     lifecycle_html = render_lifecycle_panel(alerts)
@@ -447,6 +544,7 @@ def generate_html():
             <p style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: {now}</p>
         </div>
     </header>
+    {verdict_html}
     {execution_html}
     <section>
         <h2>Performance Metrics</h2>
@@ -465,6 +563,15 @@ def generate_html():
     <footer style="margin-top: 2rem; text-align: center; color: var(--text-muted); padding-bottom: 2rem;">
         &copy; 2026 EMBER Loop | BTC Alerts MVP
     </footer>
+    <script>
+      let state = {{livePrice:0,spread:0,inTrade:{'true' if bool(portfolio and portfolio.get('positions')) else 'false'},entryPrice:{vctx['verdict']['entry']},tp1Price:{vctx['verdict']['tp1']},stopPrice:{vctx['verdict']['invalidation']},direction:"{vctx['verdict']['direction']}"}};
+      function updateLivePrice() {{ const el=document.getElementById('livePrice'); if(!el||!state.livePrice) return; el.innerText='$'+state.livePrice.toLocaleString(undefined,{{maximumFractionDigits:0}}); if(state.entryPrice>0&&state.tp1Price>0&&state.stopPrice>0){{const a=state.tp1Price-state.livePrice,b=state.stopPrice-state.livePrice; document.getElementById('distTP1').innerText=(a>=0?'+':'')+'$'+Math.abs(a).toFixed(0)+' ('+((a/state.livePrice)*100).toFixed(2)+'%)'; document.getElementById('distStop').innerText=(b>=0?'+':'')+'$'+Math.abs(b).toFixed(0)+' ('+((b/state.livePrice)*100).toFixed(2)+'%)';}} document.getElementById('liveSpread').innerText='$'+(state.spread||0).toFixed(1); if(state.inTrade&&state.entryPrice>0){{const m=state.direction==='LONG'?1:-1,p=(state.livePrice-state.entryPrice)*m,pct=(p/state.entryPrice)*100,pel=document.getElementById('livePnL'); pel.innerText=(p>=0?'+':'')+'$'+p.toFixed(0)+' ('+pct.toFixed(2)+'%)'; pel.style.color=p>=0?'var(--accent)':'#ff4d4d';}} if(state.entryPrice>0){{const above=state.livePrice>=state.entryPrice,fav=(state.direction==='LONG'&&above)||(state.direction==='SHORT'&&!above); el.style.color=fav?'var(--accent)':'#ff4d4d';}} }}
+      function closeExecuteModal() {{ document.getElementById('executeModal').style.display='none'; }}
+      function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: $'+(state.livePrice||0).toLocaleString(); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>executeTrade(alertId);}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
+      async function executeTrade(alertId) {{ console.log('execute', alertId); closeExecuteModal(); }}
+      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); if(data.orderbook&&data.orderbook.mid){{state.livePrice=data.orderbook.mid; state.spread=data.orderbook.spread||0;}} updateLivePrice(); }} catch(e) {{}} }}; ws.onclose=()=>setTimeout(connectWS,1500); }}
+      connectWS(); updateLivePrice();
+    </script>
 </body>
 </html>
     """
