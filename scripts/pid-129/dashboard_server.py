@@ -81,6 +81,9 @@ def _portfolio_stats(portfolio):
 
 
 def get_dashboard_data():
+    # WebSocket payload contract used by generate_dashboard.py:
+    # - orderbook.mid (float), orderbook.spread (float)
+    # - portfolio (dict), alerts (list), stats (dict)
     alerts = _load_alerts(limit=50)
     portfolio = _safe_json(PORTFOLIO_PATH, {"balance": 10000, "positions": [], "closed_trades": [], "max_drawdown": 0})
     mid = _latest_price(alerts)
