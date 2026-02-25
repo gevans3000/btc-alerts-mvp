@@ -491,6 +491,7 @@ def generate_html():
     execution_html = render_execution_matrix(alerts)
     edge_html = render_edge_scoreboard(portfolio)
     lifecycle_html = render_lifecycle_panel(alerts)
+    balance = (portfolio or {}).get("balance", 10000)
     html = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -510,7 +511,8 @@ def generate_html():
         section {{ margin-bottom: 1.5rem; }}
         .panel {{ background: var(--surface); border-radius: 18px; border: 1px solid var(--border); padding: 1.2rem; }}
         .status {{ text-align: right; }}
-        .badge-live {{ background: rgba(0,255,204,0.1); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }}
+        .badge-live {{ background: rgba(0,255,204,0.1); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; border: 1px solid rgba(0,255,204,0.4); }}
+        .badge-stale {{ background: rgba(255,77,77,0.12); color: #ff4d4d; border-color: rgba(255,77,77,0.4); }}
         .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }}
         .card {{ background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 1.2rem; }}
         .stats-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }}
@@ -531,6 +533,8 @@ def generate_html():
         .playbook {{ margin-top: 0.8rem; color: var(--text-muted); font-size: 0.92rem; }}
         .scorecard-section {{ background: var(--surface); border-radius: 18px; padding: 1.2rem; border: 1px solid var(--border); }}
         pre {{ font-family: 'JetBrains Mono', monospace; white-space: pre-wrap; font-size: 0.85rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 12px; }}
+        .live-grid {{ display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 0.8rem; margin-top: 0.8rem; }}
+        .live-value {{ font-size: 1.15rem; font-weight: 700; }}
     </style>
 </head>
 <body>
@@ -540,10 +544,11 @@ def generate_html():
             <p style="color: var(--text-muted); font-weight: 300;">PID-129 | Self-Validating Trading Loop</p>
         </div>
         <div class="status">
-            <span class="badge-live">System Active</span>
-            <p style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: {now}</p>
+            <span id="connection-badge" class="badge-live">Live Feed: Connecting</span>
+            <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: {now}</p>
         </div>
     </header>
+    <section class="panel"><h2>Live Tape</h2><div class="live-grid"><div class="stat-card"><div class="stat-label">BTC Mid</div><div id="live-mid" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Confluence</div><div id="live-confluence" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Radar</div><div id="live-radar" class="live-value">--</div></div></div><div class="live-grid"><div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div><div class="stat-card"><div class="stat-label">Win Rate</div><div id="live-winrate" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Profit Factor</div><div id="live-pf" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div></div></section>
     {verdict_html}
     {execution_html}
     <section>
@@ -563,6 +568,7 @@ def generate_html():
     <footer style="margin-top: 2rem; text-align: center; color: var(--text-muted); padding-bottom: 2rem;">
         &copy; 2026 EMBER Loop | BTC Alerts MVP
     </footer>
+    <script>(()=>{{const els={{badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),gate:document.getElementById('live-gate')}};let attempt=0,lastUpdateMs=0;const wsUrl=()=>`${{window.location.protocol==='https:'?'wss:':'ws:'}}//${{window.location.hostname}}:8000/ws`,fmtMoney=n=>Number.isFinite(n)?`$${{n.toLocaleString(undefined,{{minimumFractionDigits:2,maximumFractionDigits:2}})}}`:'--',fmtNum=(n,d=2)=>Number.isFinite(n)?n.toFixed(d):'--',setBadge=(t,s=false)=>{{els.badge.textContent=t;els.badge.classList.toggle('badge-stale',s);}},deriveConfluence=a=>{{const t=['5m','15m','1h'],m=Object.create(null);for(const x of a||[])if(x.symbol==='BTC'&&t.includes(x.timeframe))m[x.timeframe]=x;const p=t.map(tf=>m[tf]).filter(Boolean);if(p.length<3)return'Partial';const d=p.map(x=>String(x.direction||'NEUTRAL').toUpperCase());return d.every(x=>x===d[0]&&x!=='NEUTRAL')?`${{d[0]}} aligned`:'Mixed';}},deriveRadar=a=>{{let b=0;for(const x of a||[])b+=Array.isArray(x.blockers)?x.blockers.length:0;return b?`${{b}} blockers`:'Clear';}},deriveGate=s=>{{const pf=Number(s?.profit_factor??0),avgR=Number(s?.avg_r??0);if(pf>=1.4&&avgR>0)return'OPEN';if(pf>=1.0)return'WATCH';return'LOCK';}},apply=p=>{{const ob=p?.orderbook||{{}},po=p?.portfolio||{{}},al=p?.alerts||[],st=p?.stats||{{}};els.mid.textContent=fmtMoney(Number(ob.mid));els.spread.textContent=fmtNum(Number(ob.spread),2);els.balance.textContent=fmtMoney(Number(po.balance));els.winrate.textContent=`${{fmtNum(Number(st.win_rate),2)}}%`;els.pf.textContent=fmtNum(Number(st.profit_factor),2);els.gate.textContent=deriveGate(st);els.confluence.textContent=deriveConfluence(al);els.radar.textContent=deriveRadar(al);lastUpdateMs=Date.now();els.sync.textContent=`Synced: ${{new Date().toLocaleString()}}`;setBadge('Live Feed: Online');}},connect=()=>{{const ws=new WebSocket(wsUrl());ws.onopen=()=>{{attempt=0;setBadge('Live Feed: Online');}};ws.onmessage=e=>{{try{{apply(JSON.parse(e.data));}}catch(_err){{}}}};ws.onclose=()=>{{setBadge('Live Feed: Reconnecting',true);attempt+=1;window.setTimeout(connect,Math.min(10000,1000*(2**Math.min(attempt,4))));}};ws.onerror=()=>ws.close();}};window.setInterval(()=>{{if(!lastUpdateMs||Date.now()-lastUpdateMs>8000)setBadge('Live Feed: Stale',true);}},2000);connect();}})();</script>
     <script>
       let state = {{livePrice:0,spread:0,inTrade:{'true' if bool(portfolio and portfolio.get('positions')) else 'false'},entryPrice:{vctx['verdict']['entry']},tp1Price:{vctx['verdict']['tp1']},stopPrice:{vctx['verdict']['invalidation']},direction:"{vctx['verdict']['direction']}"}};
       function updateLivePrice() {{ const el=document.getElementById('livePrice'); if(!el||!state.livePrice) return; el.innerText='$'+state.livePrice.toLocaleString(undefined,{{maximumFractionDigits:0}}); if(state.entryPrice>0&&state.tp1Price>0&&state.stopPrice>0){{const a=state.tp1Price-state.livePrice,b=state.stopPrice-state.livePrice; document.getElementById('distTP1').innerText=(a>=0?'+':'')+'$'+Math.abs(a).toFixed(0)+' ('+((a/state.livePrice)*100).toFixed(2)+'%)'; document.getElementById('distStop').innerText=(b>=0?'+':'')+'$'+Math.abs(b).toFixed(0)+' ('+((b/state.livePrice)*100).toFixed(2)+'%)';}} document.getElementById('liveSpread').innerText='$'+(state.spread||0).toFixed(1); if(state.inTrade&&state.entryPrice>0){{const m=state.direction==='LONG'?1:-1,p=(state.livePrice-state.entryPrice)*m,pct=(p/state.entryPrice)*100,pel=document.getElementById('livePnL'); pel.innerText=(p>=0?'+':'')+'$'+p.toFixed(0)+' ('+pct.toFixed(2)+'%)'; pel.style.color=p>=0?'var(--accent)':'#ff4d4d';}} if(state.entryPrice>0){{const above=state.livePrice>=state.entryPrice,fav=(state.direction==='LONG'&&above)||(state.direction==='SHORT'&&!above); el.style.color=fav?'var(--accent)':'#ff4d4d';}} }}
