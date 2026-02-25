@@ -23,11 +23,6 @@ def detect_squeeze(candles: List[Candle]) -> Dict[str, Any]:
     # (BB_lower > KC_lower) AND (BB_upper < KC_upper)
     squeeze_on = (bb_lower > kc_lower) and (bb_upper < kc_upper)
 
-    with open("squeeze_debug.log", "a") as f:
-        # To get std_dev from bb and atr_val from kc, we need to modify utils.py to return these.
-        # For now, let's just log the existing values.
-        f.write(f"Candle: {len(candles)}, BB_upper: {bb_upper:.2f}, BB_lower: {bb_lower:.2f}, KC_upper: {kc_upper:.2f}, KC_lower: {kc_lower:.2f}, BB_std: {bb_std:.2f}, KC_atr: {kc_atr:.2f}, is_squeeze_on: {squeeze_on}\n")
-
     # Previous state (for FIRE detection)
     prev_closes = closes[:-1]
     prev_bb = bollinger_bands(prev_closes, period=20, multiplier=2.0)

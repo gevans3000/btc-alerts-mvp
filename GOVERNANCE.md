@@ -1,13 +1,14 @@
-# PID-129 — EMBER Progressive Capability Loop (BTC Alerts MVP)
+# PID-129 — EMBER Autonomous Trading Intelligence (v5.0)
 
 ## Objective
-Continuously improve EMBER in **2-hour cycles** on the **BTC Alerts MVP** subject so each interval is measurably better than the previous one.
+Continuously improve EMBER in **2-hour cycles** on the **BTC Alerts MVP** subject, evolving from a guided tool to a self-improving autonomous agent.
 
 ## Scope
 ### In
 - 2-hour recurring improvement cycles on BTC Alerts MVP
-- **OpenClaw governance:** Multi-platform automation (systemd/Mac, PowerShell/Windows), health checks, watchdogs, scorecards
-- **Remote operations:** Control from Mac mini (Strategic Command) to any target (Windows PC/Nitro 5)
+- **Autonomous Operations:** Nightly self-tuning, 6 AM briefings, and automated pipelines.
+- **Operations Manual:** [OPERATOR.md](OPERATOR.md) as the primary interface for humans and agents.
+- **OpenClaw governance:** Multi-platform automation (systemd/Mac, PowerShell/Windows), health checks, watchdogs, scorecards.
 - Failure & outcome matrix handling
 - Pre-gate checks before each cycle
 

@@ -23,9 +23,9 @@ DETECTORS = {
 }
 
 TIMEFRAME_RULES = {
-    "5m": {"min_rr": 1.35, "trade_long": 74, "trade_short": 26, "watch_long": 60, "watch_short": 40},
-    "15m": {"min_rr": 1.25, "trade_long": 72, "trade_short": 28, "watch_long": 58, "watch_short": 42},
-    "1h": {"min_rr": 1.15, "trade_long": 68, "trade_short": 32, "watch_long": 56, "watch_short": 44},
+    "5m":  {"min_rr": 1.35, "trade_long": 78, "trade_short": 22, "watch_long": 62, "watch_short": 38},
+    "15m": {"min_rr": 1.25, "trade_long": 76, "trade_short": 24, "watch_long": 60, "watch_short": 40},
+    "1h":  {"min_rr": 1.15, "trade_long": 72, "trade_short": 28, "watch_long": 58, "watch_short": 42},
 }
 
 STALE_SECONDS = {"5m": 12 * 60, "15m": 35 * 60, "1h": 130 * 60}
@@ -42,7 +42,7 @@ SESSION_WEIGHTS = {
     "unknown": {"BREAKOUT": 1.0, "MEAN_REVERSION": 1.0, "TREND_CONTINUATION": 1.0, "VOLATILITY_EXPANSION": 1.0},
 }
 
-CONFLUENCE_RULES = {"A+": 4, "B": 2}
+CONFLUENCE_RULES = {"A+": 5, "B": 3}
 
 TP_MULTIPLIERS = {
     "trend": {"tp1": 1.8, "tp2": 3.0, "inv": 1.1},
@@ -56,6 +56,9 @@ INTELLIGENCE_FLAGS = {
     "squeeze_enabled": True,
     "sentiment_enabled": True,
     "confluence_enabled": True,
+    "volume_profile_enabled": True,
+    "liquidity_enabled": True,
+    "macro_correlation_enabled": True,
 }
 
 SENTIMENT = {
@@ -101,6 +104,26 @@ SQUEEZE = {
     "squeeze_lookback": 14,
     "no_squeeze_lookback": 20,
     "momentum_lookback": 14,
+}
+
+VOLUME_PROFILE = {
+    "lookback_candles": 100,
+    "num_bins": 50,
+    "poc_proximity_pct": 0.005,
+    "poc_pts": 5,
+}
+
+LIQUIDITY = {
+    "depth_pct": 0.02,
+    "wall_threshold_btc": 5.0,
+    "support_wall_pts": 3,
+    "resistance_wall_pts": -3,
+}
+
+MACRO_CORRELATION = {
+    "dxy_falling_pts": 3, "dxy_rising_pts": -3,
+    "gold_rising_pts": 2, "gold_falling_pts": -2,
+    "min_candles": 25,
 }
 
 
