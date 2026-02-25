@@ -1,12 +1,12 @@
-﻿# Phase 10: The Operator's Edge ΓÇö Trading Intelligence Hardening
+# Phase 10: The Operator's Edge — Trading Intelligence Hardening
 
-> **INSTRUCTIONS FOR AI AGENT:** Execute every step below IN ORDER. After each step, run the verification command. If it passes, mark the checkbox `[ ]` ΓåÆ `[x]`. If it fails, fix the issue before moving to the next step. Do NOT skip steps. Do NOT commit until ALL checkboxes are marked `[x]`.
+> **INSTRUCTIONS FOR AI AGENT:** Execute every step below IN ORDER. After each step, run the verification command. If it passes, mark the checkbox `[ ]` → `[x]`. If it fails, fix the issue before moving to the next step. Do NOT skip steps. Do NOT commit until ALL checkboxes are marked `[x]`.
 
 ---
 
-## ΓÜá∩╕Å CRITICAL RULES (Read Before Starting)
+## ⚠️ CRITICAL RULES (Read Before Starting)
 
-1. **You are editing exactly 2 files:** `scripts/pid-129/generate_dashboard.py` and `scripts/pid-129/dashboard_server.py`. The output file `dashboard.html` is auto-generated ΓÇö never edit it directly.
+1. **You are editing exactly 2 files:** `scripts/pid-129/generate_dashboard.py` and `scripts/pid-129/dashboard_server.py`. The output file `dashboard.html` is auto-generated — never edit it directly.
 2. **Python f-string + JavaScript conflict:** The generated HTML uses Python f-strings. JavaScript `{}` braces MUST be doubled `{{}}`. JavaScript template literals (`${var}`) MUST use helper variables:
    ```python
    JS_OPEN = "${"
@@ -14,29 +14,29 @@
    ```
 3. **All paths are relative to project root:** `c:\Users\lovel\trading\btc-alerts-mvp\`
 4. **Do NOT install new packages.** Only use: `json`, `pathlib`, `datetime` (Python); `Chart.js` v4.4.1 (CDN already loaded); TradingView widget (CDN already loaded).
-5. **Verification command after every step:** `python scripts/pid-129/generate_dashboard.py` ΓÇö it must print `Dashboard updated:` with no errors.
+5. **Verification command after every step:** `python scripts/pid-129/generate_dashboard.py` — it must print `Dashboard updated:` with no errors.
 6. **After ALL steps complete:** Run `python -m pytest tests/ -x -q` to ensure nothing is broken.
 
 ---
 
-## ≡ƒºá Why This Phase Exists
+## 🧠 Why This Phase Exists
 
 The Phase 9 dashboard looks premium but has **critical gaps for actual trading decisions:**
 
-1. **No live BTC price** ΓÇö the operator cannot see where price is relative to their entry/TP/SL without scanning the TradingView chart manually.
-2. **No risk gate** ΓÇö the system recommends LONG with 98% ML confidence while on a -1 streak and conflicting timeframes. The operator has no warning.
-3. **No equity curve** ΓÇö the operator can't tell if the system is in a drawdown phase or on a heater.
-4. **Empty confluence heatmap** ΓÇö the `score_breakdown` data sometimes isn't available, leaving the heatmap blank.
-5. **"UNKNOWN REGIME"** ΓÇö the regime detection falls through when alerts don't contain that field.
-6. **No confirmation before executing** ΓÇö 1-Click Execute fires immediately with no "Are you sure?" gate.
+1. **No live BTC price** — the operator cannot see where price is relative to their entry/TP/SL without scanning the TradingView chart manually.
+2. **No risk gate** — the system recommends LONG with 98% ML confidence while on a -1 streak and conflicting timeframes. The operator has no warning.
+3. **No equity curve** — the operator can't tell if the system is in a drawdown phase or on a heater.
+4. **Empty confluence heatmap** — the `score_breakdown` data sometimes isn't available, leaving the heatmap blank.
+5. **"UNKNOWN REGIME"** — the regime detection falls through when alerts don't contain that field.
+6. **No confirmation before executing** — 1-Click Execute fires immediately with no "Are you sure?" gate.
 
 This phase fixes all of these problems.
 
 ---
 
-## ≡ƒôÉ Architecture Reference
+## 📐 Architecture Reference
 
-**Existing data already available in WebSocket payload (`dashboard_server.py` ΓåÆ `get_dashboard_data()`):**
+**Existing data already available in WebSocket payload (`dashboard_server.py` → `get_dashboard_data()`):**
 ```json
 {
   "orderbook": {"bid": 64300, "ask": 64310, "mid": 64305, "spread": 10},
@@ -51,7 +51,7 @@ This phase fixes all of these problems.
 
 ---
 
-## ≡ƒôï EXECUTION STEPS
+## 📋 EXECUTION STEPS
 
 ---
 
@@ -65,7 +65,7 @@ This phase fixes all of these problems.
 **Action 1:** Add an HTML element inside the Verdict card, AFTER the direction text and BEFORE the price levels grid. Place this inside the `<div class="glass-card card-verdict ...">` block:
 
 ```html
-<!-- Live Price Ticker ΓÇö insert AFTER the direction div, BEFORE the price grid -->
+<!-- Live Price Ticker — insert AFTER the direction div, BEFORE the price grid -->
 <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid var(--border);">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
@@ -74,21 +74,21 @@ This phase fixes all of these problems.
         </div>
         <div style="text-align: right;">
             <div class="metric-label">Unrealized PnL</div>
-            <div id="livePnL" style="font-size: 1.2rem; font-weight: 800; font-family: var(--font-mono); color: var(--text-secondary);">ΓÇö</div>
+            <div id="livePnL" style="font-size: 1.2rem; font-weight: 800; font-family: var(--font-mono); color: var(--text-secondary);">—</div>
         </div>
     </div>
     <div style="display: flex; gap: 1.5rem; margin-top: 0.8rem; font-size: 0.75rem; font-family: var(--font-mono);">
         <div>
-            <span style="color: var(--text-secondary);">ΓåÆ TP1: </span>
-            <span id="distTP1" style="color: var(--accent);">ΓÇö</span>
+            <span style="color: var(--text-secondary);">→ TP1: </span>
+            <span id="distTP1" style="color: var(--accent);">—</span>
         </div>
         <div>
-            <span style="color: var(--text-secondary);">ΓåÆ STOP: </span>
-            <span id="distStop" style="color: var(--danger);">ΓÇö</span>
+            <span style="color: var(--text-secondary);">→ STOP: </span>
+            <span id="distStop" style="color: var(--danger);">—</span>
         </div>
         <div>
             <span style="color: var(--text-secondary);">SPREAD: </span>
-            <span id="liveSpread" style="color: var(--text-secondary);">ΓÇö</span>
+            <span id="liveSpread" style="color: var(--text-secondary);">—</span>
         </div>
     </div>
 </div>
@@ -163,7 +163,7 @@ if (data.orderbook && data.orderbook.mid) {{
 }}
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors. Start the server (`python scripts/pid-129/dashboard_server.py`), open `http://localhost:8000`, confirm the live price ticks every 2 seconds.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors. Start the server (`python scripts/pid-129/dashboard_server.py`), open `http://localhost:8000`, confirm the live price ticks every 2 seconds.
 
 ---
 
@@ -182,11 +182,11 @@ if (data.orderbook && data.orderbook.mid) {{
     tf_aligned = len(set(tf_directions)) == 1 and len(tf_directions) > 1
     
     gate_checks = {
-        "tf_aligned": {"pass": tf_aligned, "label": "Timeframes Aligned", "icon_pass": "Γ£à", "icon_fail": "ΓÜá∩╕Å"},
-        "ml_confident": {"pass": ml_pct >= 60 if best_idea else False, "label": "ML Confidence ΓëÑ 60%", "icon_pass": "Γ£à", "icon_fail": "Γ¥î"},
-        "streak_ok": {"pass": streak >= -2, "label": "Streak ΓëÑ -2", "icon_pass": "Γ£à", "icon_fail": "≡ƒºè"},
-        "dd_ok": {"pass": max_dd < 10, "label": "Drawdown < 10%", "icon_pass": "Γ£à", "icon_fail": "≡ƒö┤"},
-        "rr_ok": {"pass": verdict["rr_ratio"] >= 1.5, "label": "R:R ΓëÑ 1.5x", "icon_pass": "Γ£à", "icon_fail": "ΓÜá∩╕Å"},
+        "tf_aligned": {"pass": tf_aligned, "label": "Timeframes Aligned", "icon_pass": "✅", "icon_fail": "⚠️"},
+        "ml_confident": {"pass": ml_pct >= 60 if best_idea else False, "label": "ML Confidence ≥ 60%", "icon_pass": "✅", "icon_fail": "❌"},
+        "streak_ok": {"pass": streak >= -2, "label": "Streak ≥ -2", "icon_pass": "✅", "icon_fail": "🧊"},
+        "dd_ok": {"pass": max_dd < 10, "label": "Drawdown < 10%", "icon_pass": "✅", "icon_fail": "🔴"},
+        "rr_ok": {"pass": verdict["rr_ratio"] >= 1.5, "label": "R:R ≥ 1.5x", "icon_pass": "✅", "icon_fail": "⚠️"},
     }
     
     gate_pass_count = sum(1 for g in gate_checks.values() if g["pass"])
@@ -203,11 +203,11 @@ Note: `ml_pct` is calculated later so we need to handle this. Instead, compute t
 ```python
     _ml_pct = verdict["ml_prob"] * 100
     gate_checks = {
-        "tf_aligned": {"pass": tf_aligned, "label": "Timeframes Aligned", "icon_pass": "Γ£à", "icon_fail": "ΓÜá∩╕Å"},
-        "ml_confident": {"pass": _ml_pct >= 60, "label": "ML Confidence ΓëÑ 60%", "icon_pass": "Γ£à", "icon_fail": "Γ¥î"},
-        "streak_ok": {"pass": streak >= -2, "label": "Streak ΓëÑ -2", "icon_pass": "Γ£à", "icon_fail": "≡ƒºè"},
-        "dd_ok": {"pass": max_dd < 10, "label": "Drawdown < 10%", "icon_pass": "Γ£à", "icon_fail": "≡ƒö┤"},
-        "rr_ok": {"pass": verdict["rr_ratio"] >= 1.5, "label": "R:R ΓëÑ 1.5x", "icon_pass": "Γ£à", "icon_fail": "ΓÜá∩╕Å"},
+        "tf_aligned": {"pass": tf_aligned, "label": "Timeframes Aligned", "icon_pass": "✅", "icon_fail": "⚠️"},
+        "ml_confident": {"pass": _ml_pct >= 60, "label": "ML Confidence ≥ 60%", "icon_pass": "✅", "icon_fail": "❌"},
+        "streak_ok": {"pass": streak >= -2, "label": "Streak ≥ -2", "icon_pass": "✅", "icon_fail": "🧊"},
+        "dd_ok": {"pass": max_dd < 10, "label": "Drawdown < 10%", "icon_pass": "✅", "icon_fail": "🔴"},
+        "rr_ok": {"pass": verdict["rr_ratio"] >= 1.5, "label": "R:R ≥ 1.5x", "icon_pass": "✅", "icon_fail": "⚠️"},
     }
 ```
 
@@ -253,10 +253,10 @@ And add `{gate_html}` on the line directly before it.
 
 **Action 4:** If gate_verdict is RED, change the execute button styling. Replace the existing execute button line with:
 ```python
-                {f'<button class="action-btn" style="{"background: var(--danger);" if ctx["gate_verdict"] == "RED" else ""}" onclick="executeTrade(\'{ctx["verdict"]["alert_id"]}\')">{"ΓÜá∩╕Å EXECUTE (HIGH RISK)" if ctx["gate_verdict"] == "RED" else "1-CLICK EXECUTE"}</button>' if ctx["verdict"]["direction"] != "WAIT" else ""}
+                {f'<button class="action-btn" style="{"background: var(--danger);" if ctx["gate_verdict"] == "RED" else ""}" onclick="executeTrade(\'{ctx["verdict"]["alert_id"]}\')">{"⚠️ EXECUTE (HIGH RISK)" if ctx["gate_verdict"] == "RED" else "1-CLICK EXECUTE"}</button>' if ctx["verdict"]["direction"] != "WAIT" else ""}
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors. Open dashboard, confirm the safety checklist renders with pass/fail icons.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors. Open dashboard, confirm the safety checklist renders with pass/fail icons.
 
 ---
 
@@ -373,13 +373,13 @@ Replace the ENTIRE performance `glass-card` div with:
     }}
 ```
 
-**IMPORTANT f-string note:** The `{ctx["equity_labels"]}` and `{ctx["equity_curve"]}` will render as Python lists which are valid JSON arrays. The `(ctx)` in the tooltip callback is a JavaScript variable ΓÇö it does NOT conflict with the Python `ctx` because it's inside doubled braces `{{}}`. However, the `(ctx)` will be eaten by the f-string parser. **Rename the JS callback parameter** to avoid this:
+**IMPORTANT f-string note:** The `{ctx["equity_labels"]}` and `{ctx["equity_curve"]}` will render as Python lists which are valid JSON arrays. The `(ctx)` in the tooltip callback is a JavaScript variable — it does NOT conflict with the Python `ctx` because it's inside doubled braces `{{}}`. However, the `(ctx)` will be eaten by the f-string parser. **Rename the JS callback parameter** to avoid this:
 
 ```javascript
                             label: (c) => '$' + c.parsed.y.toLocaleString()
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors. Open `dashboard.html`, confirm the sparkline chart shows the equity curve.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors. Open `dashboard.html`, confirm the sparkline chart shows the equity curve.
 
 ---
 
@@ -393,7 +393,7 @@ Replace the ENTIRE performance `glass-card` div with:
 **Action:** In `build_context()`, find the `# Confluence layers from verdict` section. Replace it with:
 
 ```python
-    # Confluence layers from verdict ΓÇö with fallbacks
+    # Confluence layers from verdict — with fallbacks
     confluence_layers = {}
     if best_idea:
         trace = best_idea.get("decision_trace", {})
@@ -424,12 +424,12 @@ Replace the ENTIRE performance `glass-card` div with:
                 elif fg > 75:
                     sb["fear_greed"] = -3.0  # contrarian bearish
                 ml_prob = trace.get("models", {}).get("ml_prob", 0.5)
-                sb["ml_confidence"] = round((ml_prob - 0.5) * 20, 1)  # scale to ┬▒10
+                sb["ml_confidence"] = round((ml_prob - 0.5) * 20, 1)  # scale to ±10
 
         confluence_layers = {k: v for k, v in sb.items() if k != "penalty" and v != 0}
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors. Open dashboard, confluence heatmap should now show bars.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors. Open dashboard, confluence heatmap should now show bars.
 
 ---
 
@@ -443,7 +443,7 @@ Replace the ENTIRE performance `glass-card` div with:
 **Action:** In `build_context()`, find the `# Regime from latest alert` section. Replace it with:
 
 ```python
-    # Regime from latest alert ΓÇö with smart fallback
+    # Regime from latest alert — with smart fallback
     regime = "unknown"
     if best_idea:
         regime = best_idea.get("decision_trace", {}).get("context", {}).get("regime", "unknown")
@@ -471,7 +471,7 @@ Replace the ENTIRE performance `glass-card` div with:
         regime = "indeterminate"
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors. Badge should no longer show "UNKNOWN".
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors. Badge should no longer show "UNKNOWN".
 
 ---
 
@@ -556,12 +556,12 @@ Replace the ENTIRE performance `glass-card` div with:
             const result = await response.json();
             const statusBar = document.getElementById('opState');
             if (result.status === "SUCCESS") {{
-                statusBar.innerText = "Γ£à TRADE EXECUTED SUCCESSFULLY";
+                statusBar.innerText = "✅ TRADE EXECUTED SUCCESSFULLY";
                 statusBar.style.background = "rgba(34, 197, 94, 0.1)";
                 statusBar.style.color = "var(--win)";
                 statusBar.style.borderColor = "var(--win)";
             }} else {{
-                statusBar.innerText = "Γ¥î EXECUTION FAILED: " + (result.message || "Unknown error");
+                statusBar.innerText = "❌ EXECUTION FAILED: " + (result.message || "Unknown error");
                 statusBar.style.background = "rgba(255, 77, 109, 0.1)";
                 statusBar.style.color = "var(--danger)";
                 statusBar.style.borderColor = "var(--danger)";
@@ -581,7 +581,7 @@ Replace with:
 onclick="requestExecute(
 ```
 
-**Verify:** `python scripts/pid-129/generate_dashboard.py` ΓÇö no errors. Click execute button in browser, confirm modal appears with 3-second countdown.
+**Verify:** `python scripts/pid-129/generate_dashboard.py` — no errors. Click execute button in browser, confirm modal appears with 3-second countdown.
 
 ---
 
@@ -600,7 +600,7 @@ python -m pytest tests/ -x -q
 - [x] Distance to TP1 and Stop displayed in $ and %
 - [x] Unrealized PnL shows when in a position
 - [x] Risk Gate checklist shows 5 items with pass/fail icons
-- [x] Execute button shows "ΓÜá∩╕Å EXECUTE (HIGH RISK)" when gate is RED
+- [x] Execute button shows "⚠️ EXECUTE (HIGH RISK)" when gate is RED
 - [x] Equity curve sparkline renders with Chart.js
 - [x] Confluence heatmap is no longer empty
 - [x] Regime badge no longer shows "UNKNOWN"
@@ -609,30 +609,30 @@ python -m pytest tests/ -x -q
 
 ---
 
-## ≡ƒÜ½ Out of Scope (Do NOT Implement)
+## 🚫 Out of Scope (Do NOT Implement)
 
 - No external JS frameworks (React, Vue, etc.)
 - No new Python dependencies
-- No new API endpoints ΓÇö use existing WebSocket payload
+- No new API endpoints — use existing WebSocket payload
 - No audio/sound features
 - No position management buttons (FLATTEN, SCALE OUT)
-- No mobile app ΓÇö responsive web only
+- No mobile app — responsive web only
 - No multi-exchange funding rate comparison (Phase 11)
 - No pattern recognition / ghost patterns
 
 ---
 
-## ≡ƒôü Files Modified
+## 📁 Files Modified
 
 | File | Change |
 |:--|:--|
 | `scripts/pid-129/generate_dashboard.py` | Live price ticker, risk gate, equity curve, confluence fix, regime fix, exec modal |
-| `scripts/pid-129/dashboard_server.py` | No changes ΓÇö existing `orderbook.mid` and `stats` payload already provides needed data |
+| `scripts/pid-129/dashboard_server.py` | No changes — existing `orderbook.mid` and `stats` payload already provides needed data |
 | `dashboard.html` | Auto-generated output (never edit directly) |
 
 ---
 
-## Γ£à COMPLETION CRITERIA
+## ✅ COMPLETION CRITERIA
 
 All 7 checkboxes above must be `[x]`. Then:
 1. Run `python scripts/pid-129/generate_dashboard.py` one final time
@@ -640,7 +640,7 @@ All 7 checkboxes above must be `[x]`. Then:
 3. Open `http://localhost:8000` in browser
 4. Confirm all 10 manual checks pass
 5. Take a screenshot for operator review
-6. **DO NOT COMMIT** ΓÇö wait for operator approval
+6. **DO NOT COMMIT** — wait for operator approval
 
 ---
-*Phase 10 ΓÇö The Operator's Edge | Created: 2026-02-24*
+*Phase 10 — The Operator's Edge | Created: 2026-02-24*
