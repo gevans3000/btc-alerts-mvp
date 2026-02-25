@@ -38,6 +38,11 @@ python scripts/toggle.py off
 python scripts/toggle.py on
 ```
 
+# 4. Dashboard (optional local view)
+python scripts/pid-129/generate_dashboard.py
+python scripts/pid-129/dashboard_server.py
+# Open http://localhost:8000
+
 ---
 
 ## Architecture

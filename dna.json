@@ -1,0 +1,68 @@
+{
+  "id": "trend_baseline",
+  "params": {
+    "DETECTORS": {
+      "donchian_lookback": 20,
+      "zscore_period": 20,
+      "zscore_extreme": 1.8,
+      "rsi_period": 14,
+      "rsi_oversold": 35,
+      "rsi_overbought": 65,
+      "volume_multiplier": 1.4
+    },
+    "TIMEFRAME_RULES": {
+      "5m": {
+        "min_rr": 1.35,
+        "trade_long": 60,
+        "trade_short": 40,
+        "watch_long": 44,
+        "watch_short": 56
+      },
+      "15m": {
+        "min_rr": 1.25,
+        "trade_long": 60,
+        "trade_short": 40,
+        "watch_long": 44,
+        "watch_short": 56
+      },
+      "1h": {
+        "min_rr": 1.15,
+        "trade_long": 60,
+        "trade_short": 40,
+        "watch_long": 44,
+        "watch_short": 56
+      }
+    },
+    "TP_MULTIPLIERS": {
+      "trend": {
+        "tp1": 1.8,
+        "tp2": 3.0,
+        "inv": 1.1
+      },
+      "range": {
+        "tp1": 1.2,
+        "tp2": 2.0,
+        "inv": 0.9
+      },
+      "vol_chop": {
+        "tp1": 1.0,
+        "tp2": 1.6,
+        "inv": 0.8
+      },
+      "default": {
+        "tp1": 1.6,
+        "tp2": 2.8,
+        "inv": 1.1
+      }
+    }
+  },
+  "fitness": -1000.0,
+  "generation": 0,
+  "regime": "trend",
+  "metadata": {
+    "net_profit": 0.0,
+    "win_rate": 0,
+    "trade_count": 0
+  },
+  "timestamp": "2026-02-21T21:58:40.428496+00:00"
+}

@@ -16,6 +16,8 @@
 | **Get Briefing** | `python scripts/morning_briefing.py` |
 | **Self-Tune** | `python tools/auto_tune.py` |
 | **Full Pipeline** | `powershell -File scripts/pipeline.ps1` |
+| **Generate Dashboard** | `python scripts/pid-129/generate_dashboard.py` |
+| **Serve Dashboard (localhost:8000)** | `python scripts/pid-129/dashboard_server.py` |
 
 ---
 
