@@ -1,10 +1,10 @@
-﻿# Phase 10: The Operator's Edge ΓÇö Trading Intelligence Hardening
+﻿# Phase 10: The Operator's Edge Trading Intelligence Hardening
 
 > **INSTRUCTIONS FOR AI AGENT:** Execute every step below IN ORDER. After each step, run the verification command. If it passes, mark the checkbox `[ ]` ΓåÆ `[x]`. If it fails, fix the issue before moving to the next step. Do NOT skip steps. Do NOT commit until ALL checkboxes are marked `[x]`.
 
 ---
 
-## ΓÜá∩╕Å CRITICAL RULES (Read Before Starting)
+## CRITICAL RULES (Read Before Starting)
 
 1. **You are editing exactly 2 files:** `scripts/pid-129/generate_dashboard.py` and `scripts/pid-129/dashboard_server.py`. The output file `dashboard.html` is auto-generated ΓÇö never edit it directly.
 2. **Python f-string + JavaScript conflict:** The generated HTML uses Python f-strings. JavaScript `{}` braces MUST be doubled `{{}}`. JavaScript template literals (`${var}`) MUST use helper variables:
@@ -65,7 +65,7 @@ This phase fixes all of these problems.
 **Action 1:** Add an HTML element inside the Verdict card, AFTER the direction text and BEFORE the price levels grid. Place this inside the `<div class="glass-card card-verdict ...">` block:
 
 ```html
-<!-- Live Price Ticker ΓÇö insert AFTER the direction div, BEFORE the price grid -->
+<!-- Live Price Ticker insert AFTER the direction div, BEFORE the price grid -->
 <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid var(--border);">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
@@ -643,4 +643,4 @@ All 7 checkboxes above must be `[x]`. Then:
 6. **DO NOT COMMIT** ΓÇö wait for operator approval
 
 ---
-*Phase 10 ΓÇö The Operator's Edge | Created: 2026-02-24*
+*Phase 10 The Operator's Edge | Created: 2026-02-24*
