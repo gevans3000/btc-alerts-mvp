@@ -135,5 +135,28 @@
 - ✅ **Verified**: Gating logic fixed (abs score comparison corrected)
 
 
+### Phase 19: Wake Up Every Confluence Probe ✅ DONE
+> Full spec: `Phase_19.md` — 14-fix implementation playbook
+
+**Core problem:** 9 of 15 confluence radar probes were permanently gray (dead). Confidence scores were 1-13/100 but labeled "A+". Execution Decision was binary WAIT/EXECUTE with no detail. Stale NEUTRAL trades inflated drawdown.
+
+#### Critical Fixes (🔴)
+- ✅ **FIX 12**: Score normalization — 3x multiplier fills 0-100 range meaningfully
+- ✅ **FIX 10**: A+ tier guard — stale alerts with low confidence downgraded
+- ✅ **FIX 13**: Graduated Execution Decision — shows "2/3 aligned" with TF details
+- ✅ **FIX 14**: Auto-close stale NEUTRAL trades — lifecycle panel cleaned, NEUTRAL = resolved
+
+#### Probe Activation Fixes (🟢)
+- ✅ **FIX 4**: VP Status probe — pipe `ABOVE_VALUE`/`BELOW_VALUE` codes into radar
+- ✅ **FIX 9**: ML Model probe — threshold aligned to normalized score range
+- ✅ **FIX 8**: OI/Basis probe — lowered dead-zone thresholds (OI 0.3%, Basis 0.02%)
+- ✅ **FIX 6**: Funding probe — `else` fallback emits `FUNDING_LOW` in normal conditions
+- ✅ **FIX 1**: Structure probe — bias codes emitted even without live BOS/CHoCH breakout
+- ✅ **FIX 3**: AVWAP probe — band extremes emit `RECLAIM_BULL`/`REJECT_BEAR`
+- ✅ **FIX 2**: Levels probe — proximity codes fire when price near PDH/PDL
+- ✅ **FIX 7**: Gold Macro probe — lowered min candles + DXY-inverse fallback
+- ✅ **FIX 5**: Auto R:R probe — moved computation before confluence heatmap
+- ✅ **FIX 11**: Trade Safety gate — ML Conviction threshold lowered to 40
+
 ---
-_v18.0 | EMBER Collective_
+_v19.0 | EMBER Collective_
