@@ -1,7 +1,7 @@
 # BTC Alerts MVP — Phase Roadmap for AI Agents
 
 **Project:** PID-129 — EMBER Autonomous Trading Intelligence
-**Current State:** v5.0 Autonomous
+**Current State:** v17.0 Autonomous
 **Last Updated:** 2026-02-26
 
 ---
@@ -56,9 +56,7 @@
 
 ---
 
-## 🚀 Future Roadmap
-
-### Phase 13: Dashboard Perfection ✅ DONE
+## Phase 13: Dashboard Perfection ✅ DONE
 - ✅ Live Tape Win Rate & PF Logic
 - ✅ Radar Probe Threshold Tuning
 - ✅ Improved Spread Estimation
@@ -86,9 +84,7 @@
 
 ---
 
-## 🚀 Future Roadmap
-
-### Phase 17: Confluence Indicator Minimum Stack ✅ DONE
+## Phase 17: Confluence Indicator Minimum Stack ✅ DONE
 - ✅ **Market Structure**: BOS/CHoCH detection
 - ✅ **Liquidity Sweeps**: Equal Highs/Lows + Session Sweep detection
 - ✅ **Anchored VWAP**: Dynamic S/R from swing points
@@ -97,4 +93,14 @@
 - ✅ **Expanded Radar**: 3 new dashboard probes (Structure, Levels, AVWAP)
 
 ---
-_v15.0 | EMBER Collective_
+
+## 🚀 Future Roadmap
+
+### Phase 18: Dashboard Precision & Signal Refinement
+- [ ] **Expansion Detector**: ATR percentile transition logic (Low → Expansion).
+- [ ] **VP Code Wiring**: Connect Volume Profile `codes` (LVN, Value Area) to the engine/radar.
+- [ ] **New Probes**: Add radar probes for LVN/Value Area and Auto R:R status.
+- [ ] **Impulse Polarity**: Split Volume Impulse into Bullish/Bearish based on candle close.
+
+---
+_v17.0 | EMBER Collective_
