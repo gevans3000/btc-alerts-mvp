@@ -130,7 +130,11 @@ def get_dashboard_data():
         for a in alerts:
             dt = a.get("decision_trace")
             if isinstance(dt, dict):
-                dt.pop("context", None)
+                ctx = dt.get("context")
+                if isinstance(ctx, dict):
+                    # Keep only the small context keys needed by the dashboard JS
+                    keep_keys = {"session_levels", "volume_profile", "avwap", "structure", "volume_impulse", "auto_rr"}
+                    dt["context"] = {k: v for k, v in ctx.items() if k in keep_keys}
 
         return {
             "timestamp": datetime.now(timezone.utc).isoformat(),

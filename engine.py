@@ -42,10 +42,23 @@ def _tier_and_action(score: int, blockers: List[str], timeframe: str, confluence
     tier = "NO-TRADE"
     action = "SKIP"
 
-    if score >= cfg["trade_long"] or score <= cfg["trade_short"]:
+    # Precise direction-based gating
+    is_a_plus = False
+    is_b_tier = False
+
+    if score >= cfg["trade_long"]:
+        is_a_plus = True
+    elif score <= (cfg["trade_short"] if cfg["trade_short"] < 0 else -cfg["trade_short"]):
+        is_a_plus = True
+    elif score >= cfg["watch_long"]:
+        is_b_tier = True
+    elif score <= (cfg["watch_short"] if cfg["watch_short"] < 0 else -cfg["watch_short"]):
+        is_b_tier = True
+
+    if is_a_plus:
         tier = "A+"
         action = "TRADE"
-    elif score >= cfg["watch_long"] or score <= cfg["watch_short"]:
+    elif is_b_tier:
         tier = "B"
         action = "WATCH"
 
@@ -107,7 +120,10 @@ def compute_score(
         if vp.get("near_poc"):
             breakdown["momentum"] += vp["pts"]
             codes.append("NEAR_POC")
-        trace["context"]["volume_profile"] = {"poc": vp["poc"], "near_poc": vp["near_poc"]}
+        trace["context"]["volume_profile"] = {
+            "poc": vp["poc"], "vah": vp.get("vah"), "val": vp.get("val"),
+            "near_poc": vp["near_poc"], "lvn_zones": vp.get("lvn_zones", []),
+        }
 
     if intel and intel.liquidity and INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
         liq = intel.liquidity
@@ -198,7 +214,11 @@ def compute_score(
         struct = detect_structure(candles)
         codes.extend(struct["codes"])
         breakdown["momentum"] += struct["pts"]
-        trace["context"]["structure"] = {"trend": struct["trend"], "event": struct["last_event"]}
+        trace["context"]["structure"] = {
+            "trend": struct["trend"], "event": struct["last_event"],
+            "last_pivot_high": struct.get("last_pivot_high"),
+            "last_pivot_low": struct.get("last_pivot_low"),
+        }
     except Exception:
         pass
 
@@ -207,7 +227,11 @@ def compute_score(
         sess_lvl = compute_session_levels(candles)
         codes.extend(sess_lvl["codes"])
         breakdown["htf"] += sess_lvl["pts"]
-        trace["context"]["session_levels"] = {"pdh": sess_lvl["pdh"], "pdl": sess_lvl["pdl"]}
+        trace["context"]["session_levels"] = {
+            "pdh": sess_lvl["pdh"], "pdl": sess_lvl["pdl"],
+            "session_high": sess_lvl.get("session_high"),
+            "session_low": sess_lvl.get("session_low"),
+        }
     except Exception:
         pass
 
@@ -234,7 +258,10 @@ def compute_score(
         vimp = detect_volume_impulse(candles)
         codes.extend(vimp["codes"])
         breakdown["volume"] += vimp["pts"]
-        trace["context"]["volume_impulse"] = {"rvol": vimp["rvol"], "regime": vimp["vol_regime"]}
+        trace["context"]["volume_impulse"] = {
+            "rvol": vimp["rvol"], "regime": vimp["vol_regime"],
+            "atr_percentile": vimp.get("atr_percentile", 50),
+        }
     except Exception:
         pass
 
@@ -289,7 +316,10 @@ def compute_score(
     try:
         auto_rr = compute_auto_rr(candles, direction)
         codes.extend(auto_rr["codes"])
-        trace["context"]["auto_rr"] = {"rr": auto_rr["rr"], "target": auto_rr["target"], "stop": auto_rr["stop"]}
+        trace["context"]["auto_rr"] = {
+            "rr": auto_rr["rr"], "target": auto_rr["target"],
+            "stop": auto_rr["stop"], "entry": auto_rr.get("entry"),
+        }
     except Exception:
         pass
     

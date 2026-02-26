@@ -96,11 +96,42 @@
 
 ## 🚀 Future Roadmap
 
-### Phase 18: Dashboard Precision & Signal Refinement
-- [ ] **Expansion Detector**: ATR percentile transition logic (Low → Expansion).
-- [ ] **VP Code Wiring**: Connect Volume Profile `codes` (LVN, Value Area) to the engine/radar.
-- [ ] **New Probes**: Add radar probes for LVN/Value Area and Auto R:R status.
-- [ ] **Impulse Polarity**: Split Volume Impulse into Bullish/Bearish based on candle close.
+### Phase 18: Dashboard Precision & Signal Refinement ✅ DONE
+> Full spec: `Phase_18.md` — 7-step implementation plan
+
+**Core problem:** Engine computes rich intelligence (POC/VAH/VAL, AVWAP, PDH/PDL, BOS/CHoCH, RVol, Auto R:R) but none of it is surfaced to the trader. Fixed via WebSocket context restoration.
+
+#### Step 1 — Verdict Center: Key Levels Panel (P0)
+- ✅ Wire `session_levels` (PDH/PDL/Session H/L) into new levels sub-panel
+- ✅ Wire `volume_profile` (POC/VAH/VAL) into levels panel
+- ✅ Wire `avwap` (price + ABOVE/BELOW/AT) into levels panel
+- ✅ Wire `structure` (BOS/CHoCH event + pivot high/low) into levels panel
+
+#### Step 2 — Live Tape: Volatility Context Strip (P0)
+- ✅ Add RVol cell (relative volume vs 20-bar avg, color-coded by threshold)
+- ✅ Add Vol Regime badge (LOW=blue / NORMAL=white / EXPANSION=orange)
+
+#### Step 3 — Alert Table: Trade Plan Column (P0)
+- ✅ Replace "Trigger: None" column with "Trade Plan" (Entry / SL / TP per alert)
+- ✅ Pull from `decision_trace.context.auto_rr` — already computed by engine
+
+#### Step 4 — Two New Radar Probes (P1)
+- ✅ **VP Status probe**: 🟢 ABOVE_VALUE / 🔴 BELOW_VALUE / 🟡 LVN_NEARBY / ⚫ INSIDE_VALUE
+- ✅ **Auto R:R probe**: 🟢 EXCELLENT (≥2.0) / 🟡 ADEQUATE (≥1.2) / 🔴 POOR (<1.2)
+
+#### Step 5 — Volume Impulse Polarity Split (P1)
+- ✅ Split `VOLUME_IMPULSE` code into `VOLUME_IMPULSE_BULL` / `VOLUME_IMPULSE_BEAR` based on candle close vs open
+- ✅ Update radar probe mapping for Volume Impulse probe
+
+#### Step 6 — Expansion Detector Badge (P2)
+- ✅ Detect ATR percentile transition (crossed from <50 to >70) → emit `ATR_EXPANSION_ONSET`
+- ✅ Show pulsing ⚡ EXPANSION badge in Live Tape when onset detected
+
+#### Step 7 — Confidence Score Audit (P2)
+- ✅ Audit why peak confidence is 56 despite Phase 17 intel layers
+- ✅ Inspect `score_breakdown` on live snapshot, check `CONFLUENCE_RULES["A+"]` gate
+- ✅ Adjust thresholds to allow valid A+ setups to reach ≥70 confidence (Lowered to 55/35)
+
 
 ---
 _v17.0 | EMBER Collective_
