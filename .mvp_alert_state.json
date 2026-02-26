@@ -1,28 +1,24 @@
 {
-    "lifecycle_key": "bearish_bias:SHORT:68999",
-    "regime": "bearish_bias",
-    "last_sent": 1771165300,
-    "tp1_hit": false,
     "BTC": {
-        "1h": {
-            "lifecycle_key": "BTC:1h:mean_reversion:SHORT:69060",
+        "15m": {
+            "lifecycle_key": "BTC:15m:none:NEUTRAL:68100",
             "tier": "A+",
-            "last_sent": 1772049127,
-            "last_candle_ts": 1772046000,
+            "last_sent": 1772113810,
+            "last_candle_ts": 1772113500,
             "tp1_hit": false
         },
-        "15m": {
-            "lifecycle_key": "BTC:15m:trend_continuation:LONG:69060",
+        "1h": {
+            "lifecycle_key": "BTC:1h:trend_continuation:LONG:68100",
             "tier": "B",
-            "last_sent": 1772049127,
-            "last_candle_ts": 1772048700,
+            "last_sent": 1772113810,
+            "last_candle_ts": 1772110800,
             "tp1_hit": false
         },
         "5m": {
-            "lifecycle_key": "BTC:5m:trend_continuation:LONG:69060",
-            "tier": "B",
-            "last_sent": 1772049127,
-            "last_candle_ts": 1772049000,
+            "lifecycle_key": "BTC:5m:trend_continuation:SHORT:68100",
+            "tier": "A+",
+            "last_sent": 1772113810,
+            "last_candle_ts": 1772113500,
             "tp1_hit": false
         }
     }
