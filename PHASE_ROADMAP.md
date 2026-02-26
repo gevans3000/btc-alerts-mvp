@@ -1,7 +1,7 @@
 # BTC Alerts MVP — Phase Roadmap for AI Agents
 
 **Project:** PID-129 — EMBER Autonomous Trading Intelligence
-**Current State:** v17.0 Autonomous
+**Current State:** v18.0 Precision
 **Last Updated:** 2026-02-26
 
 ---
@@ -130,8 +130,10 @@
 #### Step 7 — Confidence Score Audit (P2)
 - ✅ Audit why peak confidence is 56 despite Phase 17 intel layers
 - ✅ Inspect `score_breakdown` on live snapshot, check `CONFLUENCE_RULES["A+"]` gate
-- ✅ Adjust thresholds to allow valid A+ setups to reach ≥70 confidence (Lowered to 55/35)
+- ✅ Adjust thresholds to allow valid A+ setups to reach ≥70 confidence (Lowered to 45/25)
+- ✅ **Verified**: Dashboard live update bug fixed (context restoration)
+- ✅ **Verified**: Gating logic fixed (abs score comparison corrected)
 
 
 ---
-_v17.0 | EMBER Collective_
+_v18.0 | EMBER Collective_

@@ -1,7 +1,7 @@
 # 🤖 EMBER OPERATOR GUIDE
 
 > **System Purpose:** Autonomous BTC intelligence, alerting, and self-tuning.
-> **Current Engine:** v5 (Confluence + Auto-Tuning + Morning Briefing)
+> **Current Engine:** v18.0 (Precision Dashboard + Confluence + Auto-Tuning)
 
 ---
 
@@ -50,4 +50,4 @@ If you are an AI agent helping with this project, follow these rules:
 - **Missing dashboard data?** Ensure `app.py` is running or has run recently to populate `decision_trace` in the logs.
 
 ---
-_Build v5.0 | Last Updated: 2026-02-18_
+_Build v18.0 | Last Updated: 2026-02-26_

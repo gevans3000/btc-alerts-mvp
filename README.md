@@ -4,7 +4,7 @@
 High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy** (secondary), optimized for **5m / 15m / 1h** timeframes.
 
 **Project:** PID-129 — EMBER Autonomous Trading Intelligence
-**Status:** v17.0 High-Density Confluence
+**Status:** v18.0 Precision
 **Last Updated:** 2026-02-26
 
 ---
@@ -139,6 +139,7 @@ This project is in **Phase 15 (v15.0)**:
 - ✅ Phase 15: Universal Provider Fallback (Resilience)
 - ✅ Phase 16: Stabilization & Bug Sweep
 - ✅ Phase 17: Confluence Indicator Minimum Stack
+- ✅ Phase 18: Dashboard Precision & Signal Refinement
 
 ---
 
@@ -152,5 +153,5 @@ This project is in **Phase 15 (v15.0)**:
 ---
 
 **Last Updated:** 2026-02-26
-**Version:** 17.0
-**Status:** High-Density Confluence
+**Version:** 18.0
+**Status:** Precision Dashboard
