@@ -358,7 +358,9 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         # Save the state after sending the alert
         state.save(alert, current_price_for_state)
         alert_id = p_logger.log_alert(alert, current_price_for_state)
-        if alert_id:
+        
+        # Phase 19 FIX 14: NEUTRAL = no conviction, skip portfolio entry
+        if alert_id and alert.direction != "NEUTRAL":
             portfolio.on_alert(
                 alert_id, alert.symbol, alert.timeframe, alert.direction, 
                 current_price_for_state, alert.invalidation, alert.tp1, alert.action

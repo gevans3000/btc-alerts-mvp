@@ -18,12 +18,16 @@ def analyze_macro_correlation(macro: Dict[str, List[Candle]]) -> Dict[str, Any]:
             elif e9 > e21: dxy_trend, pts = "rising", pts + cfg["dxy_rising_pts"]
 
     gold = macro.get("gold", [])
-    if len(gold) >= cfg["min_candles"]:
+    if len(gold) >= 10:  # Phase 19: lowered from cfg["min_candles"]
         closes = [c.close for c in gold]
         e9, e21 = ema(closes, 9), ema(closes, 21)
         if e9 is not None and e21 is not None:
             if e9 > e21: gold_trend, pts = "rising", pts + cfg["gold_rising_pts"]
             elif e9 < e21: gold_trend, pts = "falling", pts + cfg["gold_falling_pts"]
+
+    # Phase 19: infer gold from DXY inverse correlation if no gold data
+    if gold_trend == "neutral" and dxy_trend != "neutral":
+        gold_trend = "rising" if dxy_trend == "falling" else "falling"
 
     return {"dxy_trend": dxy_trend, "gold_trend": gold_trend, "pts": pts,
             "details": {"dxy_candles": len(dxy), "gold_candles": len(gold)}}

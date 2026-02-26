@@ -80,6 +80,28 @@ def compute_session_levels(candles: List[Candle]) -> Dict[str, Any]:
         codes.append("PDL_BREAK_BEAR")
         pts -= 3.0
 
+    # -- Phase 19: proximity codes for Levels probe --
+    last_price = candles[-1].close
+    proximity_pct = 0.003  # 0.3% = roughly $200 on BTC
+
+    if pdl > 0 and last_price > 0:
+        if last_price < pdl:
+            if "PDL_BREAK_BEAR" not in codes:
+                codes.append("PDL_BREAK_BEAR")
+        elif abs(last_price - pdl) / last_price <= proximity_pct:
+            if "PDL_SWEEP_BULL" not in codes:
+                codes.append("PDL_SWEEP_BULL")
+                pts += 2.0
+
+    if pdh > 0 and last_price > 0:
+        if last_price > pdh:
+            if "PDH_RECLAIM_BULL" not in codes:
+                codes.append("PDH_RECLAIM_BULL")
+        elif abs(last_price - pdh) / last_price <= proximity_pct:
+            if "PDH_SWEEP_BEAR" not in codes:
+                codes.append("PDH_SWEEP_BEAR")
+                pts -= 1.0
+
     # Session level sweep
     if session_high > 0 and last.high > session_high and last.close < session_high and len(session_candles) > 5:
         codes.append("SESSION_HIGH_SWEEP")

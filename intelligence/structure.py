@@ -101,6 +101,16 @@ def detect_structure(candles: List[Candle], left: int = 3, right: int = 3) -> Di
         pts = -6.0
         trend = "shift_bearish"
 
+    # -- Phase 19: Emit trend bias codes even when no active BOS/CHoCH event --
+    # This ensures the Structure probe is not permanently gray in ranging markets.
+    if not codes:
+        if hh and hl:
+            codes.append("STRUCTURE_BOS_BULL")   # trending bullish bias
+            pts = 2.0
+        elif lh and ll:
+            codes.append("STRUCTURE_BOS_BEAR")   # trending bearish bias
+            pts = -2.0
+
     return {
         "trend": trend,
         "last_event": event,

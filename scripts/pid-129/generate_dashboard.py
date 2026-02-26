@@ -112,22 +112,52 @@ def execution_decision(latest):
     five = latest.get("5m", {})
     reasons = []
     if not one_h or not fifteen or not five:
-        return "WAIT", "warn", ["Missing one or more BTC timeframes (5m/15m/1h)."]
+        return "WAIT", "warn", ["Missing one or more BTC timeframes (5m/15m/1h)."], 0.0
+
     d1, d15, d5 = get_direction(one_h), get_direction(fifteen), get_direction(five)
     a5 = str(five.get("action") or "SKIP").upper()
+    tier5 = get_tier(five)
     c5 = get_confidence(five)
     b5 = get_blockers(five)
+
+    # -- Phase 19 CRITICAL-2: Graduated alignment scoring --
+    dirs = {"1h": d1, "15m": d15, "5m": d5}
+    non_neutral = {tf: d for tf, d in dirs.items() if d != "NEUTRAL"}
+    aligned_count = 0
+    if non_neutral:
+        majority_dir = max(set(non_neutral.values()), key=list(non_neutral.values()).count)
+        aligned_count = sum(1 for d in non_neutral.values() if d == majority_dir)
+        # Show which TFs agree and which don't
+        aligned_tfs = [tf for tf, d in dirs.items() if d == majority_dir]
+        misaligned_tfs = [tf for tf, d in dirs.items() if d != majority_dir]
+        if misaligned_tfs:
+            reasons.append(f"{aligned_count}/3 aligned ({', '.join(aligned_tfs)} = {majority_dir}). Waiting on {', '.join(misaligned_tfs)} to flip.")
+    else:
+        reasons.append("All timeframes NEUTRAL — no directional bias.")
+
     if d1 == "NEUTRAL" or d15 == "NEUTRAL" or d5 == "NEUTRAL":
-        reasons.append("At least one timeframe is neutral.")
-    if not (d1 == d15 == d5):
-        reasons.append("Direction mismatch across 1h/15m/5m.")
+        neutral_tfs = [tf for tf, d in dirs.items() if d == "NEUTRAL"]
+        reasons.append(f"Neutral on: {', '.join(neutral_tfs)}.")
+
     if any(b in {"HTF_CONFLICT_15M", "HTF_CONFLICT_1H"} for b in b5):
         reasons.append("5m has HTF conflict blocker.")
     if not (a5 == "TRADE" or (a5 == "WATCH" and c5 >= 70)):
-        reasons.append("5m trigger is not TRADE or high-confidence WATCH.")
-    if reasons:
-        return "WAIT", "warn", reasons
-    return "EXECUTE", "good", ["All timeframes aligned and 5m trigger passed."]
+        reasons.append(f"5m trigger is {a5} (confidence {c5}).")
+
+    # EXECUTE only if all 3 non-neutral directions match
+    all_aligned = len(non_neutral) == 3 and aligned_count == 3
+    decision = "EXECUTE" if all_aligned and not any("conflict" in r.lower() for r in reasons) else "WAIT"
+    tone = "good" if decision == "EXECUTE" else "warn"
+
+    risk_pct = 0.0
+    if decision == "EXECUTE":
+        if tier5 == "A+": risk_pct = 2.0
+        elif tier5 == "B": risk_pct = 0.5
+
+    if not reasons:
+        reasons = ["All timeframes aligned."]
+
+    return decision, tone, reasons, risk_pct
 
 
 def percentile_used(age_seconds, tf):
@@ -135,7 +165,8 @@ def percentile_used(age_seconds, tf):
     return (age_seconds / max_s) * 100 if max_s > 0 else 0
 def render_execution_matrix(alerts):
     latest = latest_btc_by_timeframe(alerts)
-    decision, tone, reasons = execution_decision(latest)
+    decision, tone, reasons, risk_pct = execution_decision(latest)
+    risk_html = f"<span class='pill badge-good' style='margin-left:12px;'>Suggested Risk: {risk_pct}%</span>" if risk_pct > 0 else ""
     cols = []
     for tf in TARGET_TFS:
         a = latest.get(tf)
@@ -153,15 +184,33 @@ def render_execution_matrix(alerts):
         direction = get_direction(a)
         tier = get_tier(a)
         conf = get_confidence(a)
+        # Phase 19 FIX 10: override tier if confidence doesn't match thresholds
+        # Prevents stale alerts from showing A+ on low scores
+        if tier == "A+" and conf < 45:
+            tier = "B" if conf >= 25 else "NO-TRADE"
+        elif tier == "B" and conf < 20:
+            tier = "NO-TRADE"
         blockers = ", ".join(get_blockers(a)[:2]) or "None"
-        entry = float(a.get("entry_price") or 0)
+        entry = float(a.get("entry_price") or a.get("entry") or 0)
         stop = float(a.get("invalidation") or 0)
         tp1_val = float(a.get("tp1") or 0)
         rr = float(a.get("rr_ratio") or 0)
+        
+        qty_str = ""
+        if risk_pct > 0 and entry > 0 and stop > 0 and abs(entry - stop) > 0.1:
+            portfolio = get_portfolio()
+            balance = portfolio.get("balance", 10000) if portfolio else 10000
+            risk_amt = balance * (risk_pct / 100.0)
+            qty = risk_amt / abs(entry - stop)
+            qty_str = f" ({qty:.3f} BTC)"
+            
         entry_str = f"${entry:,.0f}" if entry else "--"
         stop_str = f"${stop:,.0f}" if stop else "--"
         tp1_str = f"${tp1_val:,.0f}" if tp1_val else "--"
         rr_str = f"{rr:.2f}" if rr else "--"
+        
+        risk_label = f"<div class='mini' style='color:var(--accent);font-weight:700;'>Suggested Risk: {risk_pct}%{qty_str}</div>" if (risk_pct > 0 and tf == "5m") else ""
+        
         cols.append(f"""
         <td>
             <div class="pill-wrap">
@@ -169,6 +218,7 @@ def render_execution_matrix(alerts):
                 <span class="pill {badge_class_for_tier(tier)}">{tier}</span>
                 <span class="pill badge-neutral">{conf}/100</span>
             </div>
+            {risk_label}
             <div class="mini">Regime: {regime} · Session: {session}</div>
             <div class="mini">Entry: {entry_str} · Stop: {stop_str} · TP1: {tp1_str} · R:R {rr_str}</div>
             <div class="mini">Blockers: {blockers}</div>
@@ -189,6 +239,7 @@ def render_execution_matrix(alerts):
                     <td><strong>Execution Decision</strong></td>
                     <td colspan="3">
                         <span class="pill {tone_class}">{decision}</span>
+                        {risk_html}
                         <span class="mini" style="margin-left:8px;">{reason_text}</span>
                     </td>
                 </tr>
@@ -273,6 +324,16 @@ def render_lifecycle_panel(alerts):
             continue
         if a.get("resolved") is True:
             continue
+        # Phase 19 CRITICAL-3: skip NEUTRAL trades older than their max window
+        # These are phantom positions that should have auto-closed
+        alert_dir = str(a.get("direction", "")).upper()
+        if alert_dir == "NEUTRAL":
+            ts = parse_dt(a.get("timestamp"))
+            if ts:
+                age_s = max(0, (now - ts.astimezone(timezone.utc)).total_seconds())
+                max_age = MAX_DURATION_SECONDS.get(tf, 4 * 3600)
+                if age_s > max_age * 0.5:  # expired past 50% of window = dead trade
+                    continue  # skip this, don't show in lifecycle panel
         unresolved.append(a)
     if not unresolved:
         return """
@@ -386,7 +447,7 @@ def build_verdict_context(alerts, portfolio):
     active_codes = set(((alert.get("decision_trace") or {}).get("codes") or []))
     checks = [
         ("TF Alignment", "HTF_COUNTER" not in active_codes),
-        ("ML Conviction", confidence >= 70),
+        ("ML Conviction", confidence >= 40),
         ("R:R >= 1.2", abs(tp1 - entry) / max(abs(entry - stop), 1e-9) >= 1.2 if entry and tp1 and stop else False),
         ("Max DD <= 12%", float((portfolio or {}).get("max_drawdown", 0)) <= 0.12),
         ("No HTF conflict", not any(c in active_codes for c in ["HTF_CONFLICT_15M", "HTF_CONFLICT_1H"])),
@@ -513,6 +574,9 @@ def generate_html():
           <div>Structure: <span id='key-struct-event'>—</span></div>
           <div>Pivot H: <span id='key-pivot-high'>—</span></div>
           <div>Pivot L: <span id='key-pivot-low'>—</span></div>
+          <div>Bid Walls: <span id='key-bid-walls' style='color:#00ff88;'>—</span></div>
+          <div>Ask Walls: <span id='key-ask-walls' style='color:#ff4444;'>—</span></div>
+          <div>Liquidity: <span id='key-liq-targets' style='color:#ffa500;'>—</span></div>
         </div>
       </div>
       <div id='radarCard' style='background:rgba(255,255,255,.03);border:1px solid {radar_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'>
@@ -588,7 +652,27 @@ def generate_html():
             <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: {now}</p>
         </div>
     </header>
-    <section class="panel"><h2>Live Tape</h2><div class="live-grid"><div class="stat-card"><div class="stat-label">BTC Mid</div><div id="live-mid" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">RVol</div><div id="tape-rvol" class="live-value">—</div></div><div class="stat-card"><div class="stat-label">Vol Regime</div><div id="tape-vol-regime" class="live-value">—</div></div></div><div class="live-grid"><div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div><div class="stat-card"><div class="stat-label">Win Rate</div><div id="live-winrate" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Profit Factor</div><div id="live-pf" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div></div></section>
+    <section class="panel">
+        <h2>Live Tape & Context</h2>
+        <div class="live-grid">
+            <div class="stat-card"><div class="stat-label">BTC Mid</div><div id="live-mid" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">RVol</div><div id="tape-rvol" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">Vol Regime</div><div id="tape-vol-regime" class="live-value">—</div></div>
+        </div>
+        <div class="live-grid">
+            <div class="stat-card"><div class="stat-label">OI Regime</div><div id="tape-oi-regime" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">Taker Ratio</div><div id="tape-taker" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">DXY Macro</div><div id="tape-dxy" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">Sentiment</div><div id="tape-sentiment" class="live-value">—</div></div>
+        </div>
+        <div class="live-grid">
+            <div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div>
+            <div class="stat-card"><div class="stat-label">Win Rate (7d)</div><div id="live-winrate" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">Avg R (7d)</div><div id="live-pf" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div>
+        </div>
+    </section>
     {verdict_html}
     {execution_html}
     <section>
@@ -648,7 +732,17 @@ const wsVP = wsCtx.volume_profile||{{}};
 const wsAV = wsCtx.avwap||{{}};
 const wsST = wsCtx.structure||{{}};
 const wsVI = wsCtx.volume_impulse||{{}};
+const wsMC = wsCtx.macro_correlation||{{}};
+const wsSN = wsCtx.sentiment||{{}};
+const wsLQ = wsCtx.liquidity||{{}};
+const wsOR = wsCtx.oi_regime||'—';
+
 const _el = (id,v) => {{ const e=document.getElementById(id); if(e) e.textContent=v; }};
+_el('tape-oi-regime', wsOR.toUpperCase());
+_el('tape-dxy', (wsMC.dxy || '—').toUpperCase());
+_el('tape-sentiment', wsSN.score ? wsSN.score.toFixed(2) : '—');
+const taker = (data.flows||{{}}).taker_ratio;
+_el('tape-taker', taker ? taker.toFixed(2) : '—');
 
 _el('key-pdh', wsSL.pdh ? '$'+Number(wsSL.pdh).toLocaleString() : '—');
 _el('key-pdl', wsSL.pdl ? '$'+Number(wsSL.pdl).toLocaleString() : '—');
@@ -664,6 +758,10 @@ const seE = document.getElementById('key-struct-event');
 if(seE && (wsST.event||wsST.trend)) {{ const t = (wsST.event||wsST.trend).toUpperCase(); seE.style.color = t.includes('BULL') ? '#00ff88' : t.includes('BEAR') ? '#ff4444' : '#ffffff'; }}
 _el('key-pivot-high', wsST.last_pivot_high ? '$'+Number(wsST.last_pivot_high).toLocaleString() : '—');
 _el('key-pivot-low', wsST.last_pivot_low ? '$'+Number(wsST.last_pivot_low).toLocaleString() : '—');
+_el('key-bid-walls', wsLQ.bid_walls !== undefined ? wsLQ.bid_walls : '—');
+_el('key-ask-walls', wsLQ.ask_walls !== undefined ? wsLQ.ask_walls : '—');
+const eql = wsCtx.equal_levels||{{}};
+_el('key-liq-targets', eql.eq_highs > 0 ? 'EQH' : eql.eq_lows > 0 ? 'EQL' : 'None');
 
 const rvE = document.getElementById('tape-rvol');
 if(rvE) {{ rvE.textContent = wsVI.rvol ? wsVI.rvol+'x' : '—'; rvE.style.color = wsVI.rvol>=2.0 ? '#00ff88' : wsVI.rvol>=1.2 ? '#ffa500' : '#ffffff'; }}

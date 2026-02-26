@@ -133,7 +133,7 @@ def get_dashboard_data():
                 ctx = dt.get("context")
                 if isinstance(ctx, dict):
                     # Keep only the small context keys needed by the dashboard JS
-                    keep_keys = {"session_levels", "volume_profile", "avwap", "structure", "volume_impulse", "auto_rr"}
+                    keep_keys = {"session_levels", "volume_profile", "avwap", "structure", "volume_impulse", "auto_rr", "sentiment", "macro_correlation", "liquidity"}
                     dt["context"] = {k: v for k, v in ctx.items() if k in keep_keys}
 
         return {

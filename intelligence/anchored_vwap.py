@@ -88,8 +88,16 @@ def compute_anchored_vwap(candles: List[Candle], lookback_for_anchor: int = 50) 
     # Band extremes
     if last_price > upper_1:
         codes.append("AVWAP_ABOVE_1SD")
+        # Phase 19: price above upper band = reclaimed convincingly = bullish
+        if "AVWAP_RECLAIM_BULL" not in codes:
+            codes.append("AVWAP_RECLAIM_BULL")
+            pts += 2.0
     elif last_price < lower_1:
         codes.append("AVWAP_BELOW_1SD")
+        # Phase 19: price below lower band = rejected convincingly = bearish
+        if "AVWAP_REJECT_BEAR" not in codes:
+            codes.append("AVWAP_REJECT_BEAR")
+            pts -= 2.0
 
     return {
         "avwap": round(avwap, 2), "upper_1": round(upper_1, 2), "lower_1": round(lower_1, 2),

@@ -50,6 +50,9 @@ class PersistentLogger:
             "resolved": False,
             "decision_trace": score.decision_trace
         }
+        # Phase 19: NEUTRAL direction means no conviction — don't persist as open trade
+        if score.direction == "NEUTRAL":
+            record["resolved"] = True
         try:
             with open(self.path, "a") as f:
                 f.write(json.dumps(record) + "\n")

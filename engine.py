@@ -109,6 +109,8 @@ def compute_score(
         if vp.get("near_poc"):
             breakdown["momentum"] += vp["pts"]
             codes.append("NEAR_POC")
+        # Phase 19 FIX 4: pipe VP position codes (ABOVE_VALUE / BELOW_VALUE) into radar
+        codes.extend(vp.get("codes", []))
         trace["context"]["volume_profile"] = {
             "poc": vp["poc"], "vah": vp.get("vah"), "val": vp.get("val"),
             "near_poc": vp["near_poc"], "lvn_zones": vp.get("lvn_zones", []),
@@ -175,14 +177,17 @@ def compute_score(
         elif code_fr < -0.00005: codes.append("FUNDING_LOW")
         elif code_fr >= 0.0003: codes.append("FUNDING_EXTREME_HIGH")
         elif code_fr > 0.00005: codes.append("FUNDING_HIGH")
+        else:
+            # Phase 19: normal funding = mild bullish (no extreme crowding)
+            codes.append("FUNDING_LOW")
         
         oi_pct = derivatives.oi_change_pct
         if oi_pct >= 1.5: codes.append("OI_SURGE_MAJOR")
-        elif oi_pct >= 0.5: codes.append("OI_SURGE_MINOR")
+        elif oi_pct >= 0.3: codes.append("OI_SURGE_MINOR")  # Phase 19: was 0.5
         
         basis = derivatives.basis_pct
-        if basis >= 0.05: codes.append("BASIS_BULLISH")
-        elif basis <= -0.05: codes.append("BASIS_BEARISH")
+        if basis >= 0.02: codes.append("BASIS_BULLISH")      # Phase 19: was 0.05
+        elif basis <= -0.02: codes.append("BASIS_BEARISH")   # Phase 19: was -0.05
 
     # Map Flows to Radar Codes
     if flows and flows.healthy:
@@ -279,13 +284,33 @@ def compute_score(
 
     # Final score
     total_score = sum(breakdown.values())
+    # -- Phase 19 CRITICAL-1: normalize score to fill 0-100 range --
+    # Raw scores typically land in -30 to +30 range.
+    # Scale by 3x so a raw 15 becomes 45 (the A+ threshold for 5m).
+    # This means: 5 active signals ≈ raw 15 → normalized 45 → A+ tier.
+    SCORE_MULTIPLIER = 3.0
+    total_score = total_score * SCORE_MULTIPLIER
 
     # Map ML Mock / Fallback
     # If the score is extreme, we assume high algorithmic conviction.
-    if total_score >= 20:
+    # Phase 19: align ML thresholds with normalized score range
+    # After 3x multiplier: 25 = raw ~8.3 = genuine multi-signal confluence
+    if total_score >= 25:
         codes.append("ML_CONFIDENCE_BOOST")
-    elif total_score <= -20:
+    elif total_score <= -25:
         codes.append("ML_SKEPTICISM")
+
+    # -- Phase 19 FIX 5: compute direction + auto_rr early so codes reach confluence --
+    direction = "LONG" if total_score > 0 else "SHORT" if total_score < 0 else "NEUTRAL"
+    try:
+        auto_rr = compute_auto_rr(candles, direction)
+        codes.extend(auto_rr["codes"])
+        trace["context"]["auto_rr"] = {
+            "rr": auto_rr["rr"], "target": auto_rr["target"],
+            "stop": auto_rr["stop"], "entry": auto_rr.get("entry"),
+        }
+    except Exception:
+        pass
 
     # --- Confluence Heatmap ---
     if INTELLIGENCE_FLAGS.get("confluence_enabled", True):
@@ -299,19 +324,8 @@ def compute_score(
     # Exit levels
     last_price = price.price if symbol == "BTC" else candles[-1].close
     local_atr = atr(candles, 14) or (last_price * 0.02)
-    direction = "LONG" if pts > 0 else "SHORT" if pts < 0 else "NEUTRAL"
 
-    # Auto R:R to nearest liquidity
-    try:
-        auto_rr = compute_auto_rr(candles, direction)
-        codes.extend(auto_rr["codes"])
-        trace["context"]["auto_rr"] = {
-            "rr": auto_rr["rr"], "target": auto_rr["target"],
-            "stop": auto_rr["stop"], "entry": auto_rr.get("entry"),
-        }
-    except Exception:
-        pass
-    
+
     tp_cfg = TP_MULTIPLIERS.get(regime_name, TP_MULTIPLIERS["default"])
     tp1_mult = tp_cfg["tp1"]
     inv_mult = tp_cfg["inv"]
