@@ -1,4 +1,4 @@
-# Phase 17 — Confluence Indicator Minimum Stack
+# Phase 17 — Confluence Indicator Minimum Stack ✅ COMPLETED 2026-02-26
 
 > **AGENT INSTRUCTIONS:** This phase adds new intelligence modules and radar codes to the existing engine. You are NOT changing the dashboard layout. You are adding new detection functions in `intelligence/`, wiring new reason codes into `engine.py`, and adding them to the radar probe arrays in `generate_dashboard.py`. Follow each step exactly. Do NOT break existing functionality.
 
