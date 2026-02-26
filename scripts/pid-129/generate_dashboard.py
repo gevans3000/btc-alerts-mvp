@@ -325,7 +325,7 @@ def render_lifecycle_panel(alerts):
         )
         sortable.append((urgency, tf_sort_key(tf), row_html))
     sortable.sort(key=lambda x: (-x[0], x[1]))
-    rows = [r[2] for r in sortable]
+    rows = [r[2] for r in sortable][:10]
     return f"""
     <section class="panel">
         <h2>Active Trade Lifecycle</h2>
@@ -395,7 +395,7 @@ def build_verdict_context(alerts, portfolio):
     gate = "GREEN" if passed >= 4 else ("AMBER" if passed >= 3 else "RED")
     probes = [
         ("Squeeze", ["SQUEEZE_FIRE", "SQUEEZE_ON"], []), ("Trend (HTF)", ["HTF_ALIGNED"], ["HTF_COUNTER"]),
-        ("Momentum", ["SENTIMENT_BULL", "FLOW_TAKER_BULLISH", "VOLUME_IMPULSE"], ["SENTIMENT_BEAR", "FLOW_TAKER_BEARISH"]), ("ML Model", ["ML_CONFIDENCE_BOOST"], ["ML_SKEPTICISM"]),
+        ("Momentum", ["SENTIMENT_BULL", "FLOW_TAKER_BULLISH", "VOLUME_IMPULSE_BULL"], ["SENTIMENT_BEAR", "FLOW_TAKER_BEARISH", "VOLUME_IMPULSE_BEAR"]), ("ML Model", ["ML_CONFIDENCE_BOOST"], ["ML_SKEPTICISM"]),
         ("Funding", ["FUNDING_EXTREME_LOW", "FUNDING_LOW"], ["FUNDING_EXTREME_HIGH", "FUNDING_HIGH"]),
         ("DXY Macro", ["DXY_FALLING_BULLISH"], ["DXY_RISING_BEARISH"]), ("Gold Macro", ["GOLD_RISING_BULLISH"], ["GOLD_FALLING_BEARISH"]),
         ("Fear & Greed", ["FG_EXTREME_FEAR", "FG_FEAR"], ["FG_EXTREME_GREED", "FG_GREED"]),
@@ -403,6 +403,8 @@ def build_verdict_context(alerts, portfolio):
         ("Structure", ["STRUCTURE_BOS_BULL", "STRUCTURE_CHOCH_BULL"], ["STRUCTURE_BOS_BEAR", "STRUCTURE_CHOCH_BEAR"]),
         ("Levels", ["PDL_SWEEP_BULL", "EQL_SWEEP_BULL", "SESSION_LOW_SWEEP", "PDH_RECLAIM_BULL"], ["PDH_SWEEP_BEAR", "EQH_SWEEP_BEAR", "SESSION_HIGH_SWEEP", "PDL_BREAK_BEAR"]),
         ("AVWAP", ["AVWAP_RECLAIM_BULL"], ["AVWAP_REJECT_BEAR"]),
+        ("VP Status", ["ABOVE_VALUE"], ["BELOW_VALUE"]),
+        ("Auto R:R", ["AUTO_RR_EXCELLENT"], ["AUTO_RR_POOR"]),
     ]
     rows = []
     for label, bulls, bears in probes:
@@ -499,6 +501,20 @@ def generate_html():
         <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
       </div>
       <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div>{signals_html}</div>
+      <div id='keyLevelsCard' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
+        <div class='mini' style='margin-bottom:6px;'>Key Levels</div>
+        <div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;font-family:JetBrains Mono,monospace;font-size:.78rem;'>
+          <div>PDH: <span id='key-pdh' style='color:#ffd700;'>—</span></div>
+          <div>PDL: <span id='key-pdl' style='color:#ffd700;'>—</span></div>
+          <div>POC: <span id='key-poc' style='color:#00ffcc;'>—</span></div>
+          <div>VAH: <span id='key-vah' style='color:#4488ff;'>—</span></div>
+          <div>VAL: <span id='key-val' style='color:#4488ff;'>—</span></div>
+          <div>AVWAP: <span id='key-avwap'>—</span> <span id='key-avwap-side' style='font-size:.68rem;'>—</span></div>
+          <div>Structure: <span id='key-struct-event'>—</span></div>
+          <div>Pivot H: <span id='key-pivot-high'>—</span></div>
+          <div>Pivot L: <span id='key-pivot-low'>—</span></div>
+        </div>
+      </div>
       <div id='radarCard' style='background:rgba(255,255,255,.03);border:1px solid {radar_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;'><span class='mini'>Confluence Radar</span><span id='radarScore' class='pill' style='border:1px solid {radar_color};color:{radar_color};'>{a_count}/{t_probes} {radar_label}</span></div>
         <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;overflow:hidden;'><div id='radarBar' style='height:100%;width:{int((a_count/t_probes)*100) if t_probes else 0}%;background:{radar_color};transition:width 0.4s ease;'></div></div>
@@ -572,7 +588,7 @@ def generate_html():
             <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: {now}</p>
         </div>
     </header>
-    <section class="panel"><h2>Live Tape</h2><div class="live-grid"><div class="stat-card"><div class="stat-label">BTC Mid</div><div id="live-mid" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Confluence</div><div id="live-confluence" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Radar</div><div id="live-radar" class="live-value">--</div></div></div><div class="live-grid"><div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div><div class="stat-card"><div class="stat-label">Win Rate</div><div id="live-winrate" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Profit Factor</div><div id="live-pf" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div></div></section>
+    <section class="panel"><h2>Live Tape</h2><div class="live-grid"><div class="stat-card"><div class="stat-label">BTC Mid</div><div id="live-mid" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">RVol</div><div id="tape-rvol" class="live-value">—</div></div><div class="stat-card"><div class="stat-label">Vol Regime</div><div id="tape-vol-regime" class="live-value">—</div></div></div><div class="live-grid"><div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div><div class="stat-card"><div class="stat-label">Win Rate</div><div id="live-winrate" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Profit Factor</div><div id="live-pf" class="live-value">--</div></div><div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div></div></section>
     {verdict_html}
     {execution_html}
     <section>
@@ -622,8 +638,43 @@ def generate_html():
       }}
       function closeExecuteModal() {{ const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }}
       function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
-      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); els.confluence.textContent=deriveConfluence(data.alerts||[]); const wsLatest=(data.alerts||[]).slice(-1)[0]||{{}};const wsDir=String(wsLatest.direction||state.direction).toUpperCase();const wsCS=new Set(((wsLatest.decision_trace||{{}}).codes)||[]);const wsPD=[[['SQUEEZE_FIRE','SQUEEZE_ON'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL','FLOW_TAKER_BULLISH','VOLUME_IMPULSE'],['SENTIMENT_BEAR','FLOW_TAKER_BEARISH'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH','OI_NEW_LONGS'],['BASIS_BEARISH','OI_NEW_SHORTS'],'OI / Basis'],[['STRUCTURE_BOS_BULL','STRUCTURE_CHOCH_BULL'],['STRUCTURE_BOS_BEAR','STRUCTURE_CHOCH_BEAR'],'Structure'],[['PDL_SWEEP_BULL','EQL_SWEEP_BULL','SESSION_LOW_SWEEP','PDH_RECLAIM_BULL'],['PDH_SWEEP_BEAR','EQH_SWEEP_BEAR','SESSION_HIGH_SWEEP','PDL_BREAK_BEAR'],'Levels'],[['AVWAP_RECLAIM_BULL'],['AVWAP_REJECT_BEAR'],'AVWAP']];
-let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}};els.radar.textContent=wsAl+'/'+wsT+' '+wsLbl; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
+      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2);
+const wsLatest=(data.alerts||[]).slice(-1)[0]||{{}};
+const wsDir=String(wsLatest.direction||state.direction).toUpperCase();
+const wsCS=new Set(((wsLatest.decision_trace||{{}}).codes)||[]);
+const wsCtx = ((wsLatest.decision_trace||{{}}).context)||{{}};
+const wsSL = wsCtx.session_levels||{{}};
+const wsVP = wsCtx.volume_profile||{{}};
+const wsAV = wsCtx.avwap||{{}};
+const wsST = wsCtx.structure||{{}};
+const wsVI = wsCtx.volume_impulse||{{}};
+const _el = (id,v) => {{ const e=document.getElementById(id); if(e) e.textContent=v; }};
+
+_el('key-pdh', wsSL.pdh ? '$'+Number(wsSL.pdh).toLocaleString() : '—');
+_el('key-pdl', wsSL.pdl ? '$'+Number(wsSL.pdl).toLocaleString() : '—');
+_el('key-poc', wsVP.poc ? '$'+Number(wsVP.poc).toLocaleString() : '—');
+_el('key-vah', wsVP.vah ? '$'+Number(wsVP.vah).toLocaleString() : '—');
+_el('key-val', wsVP.val ? '$'+Number(wsVP.val).toLocaleString() : '—');
+_el('key-avwap', wsAV.value ? '$'+Number(wsAV.value).toLocaleString() : '—');
+_el('key-avwap-side', wsAV.position || '—');
+const asE = document.getElementById('key-avwap-side');
+if(asE && wsAV.position) {{ asE.style.color = wsAV.position==='ABOVE' ? '#00ff88' : wsAV.position==='BELOW' ? '#ff4444' : '#ffffff'; }}
+_el('key-struct-event', wsST.event || wsST.trend || '—');
+const seE = document.getElementById('key-struct-event');
+if(seE && (wsST.event||wsST.trend)) {{ const t = (wsST.event||wsST.trend).toUpperCase(); seE.style.color = t.includes('BULL') ? '#00ff88' : t.includes('BEAR') ? '#ff4444' : '#ffffff'; }}
+_el('key-pivot-high', wsST.last_pivot_high ? '$'+Number(wsST.last_pivot_high).toLocaleString() : '—');
+_el('key-pivot-low', wsST.last_pivot_low ? '$'+Number(wsST.last_pivot_low).toLocaleString() : '—');
+
+const rvE = document.getElementById('tape-rvol');
+if(rvE) {{ rvE.textContent = wsVI.rvol ? wsVI.rvol+'x' : '—'; rvE.style.color = wsVI.rvol>=2.0 ? '#00ff88' : wsVI.rvol>=1.2 ? '#ffa500' : '#ffffff'; }}
+const vrE = document.getElementById('tape-vol-regime');
+if(vrE) {{ vrE.textContent = (wsVI.regime||'—').toUpperCase(); vrE.style.color = wsVI.regime==='expansion' ? '#ff6b00' : wsVI.regime==='low' ? '#4488ff' : '#ffffff'; 
+  if(wsCS.has('ATR_EXPANSION_ONSET')) {{ vrE.textContent += ' ⚡'; vrE.style.color = '#ff6b00'; }}
+}}
+
+const wsPD=[[['SQUEEZE_FIRE','SQUEEZE_ON'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL','FLOW_TAKER_BULLISH','VOLUME_IMPULSE_BULL'],['SENTIMENT_BEAR','FLOW_TAKER_BEARISH','VOLUME_IMPULSE_BEAR'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH','OI_NEW_LONGS'],['BASIS_BEARISH','OI_NEW_SHORTS'],'OI / Basis'],[['STRUCTURE_BOS_BULL','STRUCTURE_CHOCH_BULL'],['STRUCTURE_BOS_BEAR','STRUCTURE_CHOCH_BEAR'],'Structure'],[['PDL_SWEEP_BULL','EQL_SWEEP_BULL','SESSION_LOW_SWEEP','PDH_RECLAIM_BULL'],['PDH_SWEEP_BEAR','EQH_SWEEP_BEAR','SESSION_HIGH_SWEEP','PDL_BREAK_BEAR'],'Levels'],[['AVWAP_RECLAIM_BULL'],['AVWAP_REJECT_BEAR'],'AVWAP'],[['ABOVE_VALUE'],['BELOW_VALUE'],'VP Status'],[['AUTO_RR_EXCELLENT'],['AUTO_RR_POOR'],'Auto R:R']];
+let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}}; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{console.error(_err);}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
+
       connectWS();
       updateLivePrice();
     </script>

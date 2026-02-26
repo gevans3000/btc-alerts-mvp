@@ -50,8 +50,23 @@ def detect_volume_impulse(candles: List[Candle], vol_lookback: int = 20, spike_m
     pts = 0.0
 
     if is_spike:
-        codes.append("VOLUME_IMPULSE")
-        pts += 2.0  # Neutral — direction determined by price action context
+        # Determine direction from latest candle close vs open
+        last_candle = candles[-1]
+        if last_candle.close >= last_candle.open:
+            codes.append("VOLUME_IMPULSE_BULL")
+            pts += 2.5
+        else:
+            codes.append("VOLUME_IMPULSE_BEAR")
+            pts -= 2.5
+
+    # ATR expansion onset: transitioning from calm to volatile
+    if len(atr_series) >= 2:
+        from utils import percentile_rank as _pr
+        prev_pct = _pr(atr_series[:-1], atr_series[-2]) if len(atr_series) > 2 else atr_pct
+        if prev_pct < 50 and atr_pct >= 70:
+            codes.append("ATR_EXPANSION_ONSET")
+            pts += 1.5
+
     if vol_regime == "expansion":
         codes.append("VOL_REGIME_EXPANSION")
     elif vol_regime == "low":
