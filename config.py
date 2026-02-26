@@ -23,9 +23,9 @@ DETECTORS = {
 }
 
 TIMEFRAME_RULES = {
-    "5m":  {"min_rr": 1.35, "trade_long": 45, "trade_short": 18, "watch_long": 25, "watch_short": 34},
-    "15m": {"min_rr": 1.25, "trade_long": 40, "trade_short": 24, "watch_long": 22, "watch_short": 40},
-    "1h":  {"min_rr": 1.15, "trade_long": 35, "trade_short": 28, "watch_long": 20, "watch_short": 42},
+    "5m":  {"min_rr": 1.35, "trade_long": 35, "trade_short": 18, "watch_long": 15, "watch_short": 34},
+    "15m": {"min_rr": 1.25, "trade_long": 30, "trade_short": 24, "watch_long": 12, "watch_short": 40},
+    "1h":  {"min_rr": 1.15, "trade_long": 25, "trade_short": 28, "watch_long": 10, "watch_short": 42},
 }
 
 STALE_SECONDS = {"5m": 12 * 60, "15m": 35 * 60, "1h": 130 * 60}

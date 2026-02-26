@@ -468,14 +468,155 @@ def build_verdict_context(alerts, portfolio):
         ("Auto R:R", ["AUTO_RR_EXCELLENT"], ["AUTO_RR_POOR"]),
     ]
     rows = []
+    # Build diagnostic info from decision_trace context
+    dt_context = (alert.get("decision_trace") or {}).get("context", {})
     for label, bulls, bears in probes:
         has_bull, has_bear = any(c in active_codes for c in bulls), any(c in active_codes for c in bears)
         aligned = (direction == "LONG" and has_bull) or (direction == "SHORT" and has_bear)
         against = (direction == "LONG" and has_bear) or (direction == "SHORT" and has_bull)
-        rows.append((label, "🟢" if aligned else "🔴" if against else "⚫", "var(--accent)" if aligned else "#ff4d4d" if against else "var(--text-muted)"))
-    aligned_count = sum(1 for _, icon, _ in rows if icon == "🟢")
-    against_count = sum(1 for _, icon, _ in rows if icon == "🔴")
-    return {"direction": direction, "entry": entry, "tp1": tp1, "stop": stop, "checks": checks, "gate": gate, "rows": rows, "aligned": aligned_count, "against": against_count, "total": len(rows)}
+        icon = "🟢" if aligned else "🔴" if against else "⚫"
+        color = "var(--accent)" if aligned else "#ff4d4d" if against else "var(--text-muted)"
+        
+        # Generate diagnostic tooltip showing WHY the probe is in its current state
+        diag = ""
+        if icon == "⚫":
+            # Show what codes WOULD activate this probe
+            all_codes = bulls + bears
+            diag = f"Needs: {' or '.join(all_codes[:3])}"
+        elif icon == "🟢":
+            matched = [c for c in (bulls + bears) if c in active_codes]
+            diag = f"Active: {', '.join(matched[:2])}"
+        elif icon == "🔴":
+            matched = [c for c in (bulls + bears) if c in active_codes]
+            diag = f"Against: {', '.join(matched[:2])}"
+        
+        # Add context-specific diagnostics for key probes
+        if label == "Squeeze" and icon == "⚫":
+            sq = dt_context.get("squeeze", {})
+            if isinstance(sq, dict):
+                diag = f"Squeeze={sq.get('state', 'off')}"
+            elif isinstance(sq, str):
+                diag = f"Squeeze={sq}"
+            else:
+                diag = "No squeeze data"
+        elif label == "VP Status" and icon == "⚫":
+            vp = dt_context.get("volume_profile", {})
+            if isinstance(vp, dict) and vp.get("poc"):
+                diag = f"POC=${vp['poc']:,.0f}, price near value area"
+            else:
+                diag = "No VP data in trace"
+        elif label == "Structure" and icon == "⚫":
+            st = dt_context.get("structure", {})
+            if isinstance(st, dict):
+                diag = f"Trend={st.get('trend', 'neutral')}, no BOS/CHoCH"
+            else:
+                diag = "No structure data"
+        elif label == "Levels" and icon == "⚫":
+            sl = dt_context.get("session_levels", {})
+            if isinstance(sl, dict) and sl.get("pdh"):
+                diag = f"PDH=${sl.get('pdh',0):,.0f} PDL=${sl.get('pdl',0):,.0f} — not near"
+            else:
+                diag = "No level data"
+        elif label == "AVWAP" and icon == "⚫":
+            av = dt_context.get("avwap", {})
+            if isinstance(av, dict) and av.get("avwap"):
+                diag = f"AVWAP=${av['avwap']:,.0f}, pos={av.get('price_vs_avwap','?')}"
+            else:
+                diag = "No AVWAP data"
+        elif label == "Auto R:R" and icon == "⚫":
+            rr = dt_context.get("auto_rr", {})
+            if isinstance(rr, dict) and rr.get("rr"):
+                diag = f"R:R={rr['rr']:.2f} (needs EXCELLENT=2.0+ or POOR<1.2)"
+            else:
+                diag = "No auto R:R computed"
+        
+        rows.append((label, icon, color, diag))
+    aligned_count = sum(1 for _, icon, _, _ in rows if icon == "🟢")
+    against_count = sum(1 for _, icon, _, _ in rows if icon == "🔴")
+    # Phase 20 FIX 4: Calculate system accuracy from resolved trades
+    resolved_btc = [a for a in alerts if a.get("symbol") == "BTC" and a.get("resolved")]
+    recent_resolved = resolved_btc[-20:]
+    if recent_resolved:
+        wins = sum(1 for a in recent_resolved if str(a.get("outcome", "")).upper().startswith("WIN"))
+        total_resolved = len(recent_resolved)
+        accuracy_pct = (wins / total_resolved) * 100 if total_resolved > 0 else 0.0
+        win_streak = 0
+        for a in reversed(recent_resolved):
+            if str(a.get("outcome", "")).upper().startswith("WIN"):
+                win_streak += 1
+            else:
+                break
+    else:
+        wins, total_resolved, accuracy_pct, win_streak = 0, 0, 0.0, 0
+    return {"direction": direction, "entry": entry, "tp1": tp1, "stop": stop, "checks": checks, "gate": gate, "rows": rows, "aligned": aligned_count, "against": against_count, "total": len(rows), "accuracy_pct": accuracy_pct, "accuracy_wins": wins, "accuracy_total": total_resolved, "win_streak": win_streak}
+def render_recent_alerts(alerts):
+    """Show the last 10 BTC alerts with direction, confidence, and age."""
+    now = datetime.now(timezone.utc)
+    btc_alerts = [a for a in alerts if a.get("symbol") == "BTC"][-10:]
+    if not btc_alerts:
+        return """
+        <section class="panel">
+            <h2>📡 Recent Signals</h2>
+            <p class="mini" style="padding:16px;">No BTC alerts logged yet. Waiting for first engine cycle to complete.</p>
+        </section>
+        """
+    rows_html = []
+    for a in reversed(btc_alerts):
+        tf = a.get("timeframe", "-")
+        direction = str(a.get("direction", "NEUTRAL")).upper()
+        conf = int(a.get("confidence_score") or a.get("confidence") or 0)
+        tier = str(a.get("tier", "-"))
+        ts = parse_dt(a.get("timestamp"))
+        age_str = "-"
+        if ts:
+            age_s = max(0, (now - ts.astimezone(timezone.utc)).total_seconds())
+            if age_s < 60:
+                age_str = f"{age_s:.0f}s"
+            elif age_s < 3600:
+                age_str = f"{age_s/60:.0f}m"
+            else:
+                age_str = f"{age_s/3600:.1f}h"
+        outcome = a.get("outcome") or ("RESOLVED" if a.get("resolved") else "OPEN")
+        
+        dir_cls = "badge-good" if direction == "LONG" else ("badge-bad" if direction == "SHORT" else "badge-neutral")
+        tier_cls = "badge-good" if tier == "A+" else ("badge-warn" if tier == "B" else "badge-neutral")
+        
+        # Color outcome
+        if "WIN" in str(outcome).upper():
+            out_cls = "badge-good"
+        elif "LOSS" in str(outcome).upper():
+            out_cls = "badge-bad"
+        elif outcome == "OPEN":
+            out_cls = "badge-warn"
+        else:
+            out_cls = "badge-neutral"
+        
+        # Count active codes
+        dt_codes = (a.get("decision_trace") or {}).get("codes", [])
+        code_count = len([c for c in dt_codes if not c.startswith("REGIME_") and not c.startswith("SESSION_")])
+        
+        rows_html.append(f"""
+        <tr>
+            <td>{tf}</td>
+            <td><span class="pill {dir_cls}">{direction}</span></td>
+            <td>{conf}</td>
+            <td><span class="pill {tier_cls}">{tier}</span></td>
+            <td>{code_count}</td>
+            <td>{age_str}</td>
+            <td><span class="pill {out_cls}">{outcome}</span></td>
+        </tr>""")
+    return f"""
+    <section class="panel">
+        <h2>📡 Recent Signals (Last 10)</h2>
+        <table class="matrix-table">
+            <thead>
+                <tr><th>TF</th><th>Dir</th><th>Conf</th><th>Tier</th><th>Codes</th><th>Age</th><th>Status</th></tr>
+            </thead>
+            <tbody>{''.join(rows_html)}</tbody>
+        </table>
+    </section>
+    """
+
 def generate_html():
     state = get_state()
     portfolio = get_portfolio()
@@ -545,8 +686,8 @@ def generate_html():
     net_color = "var(--accent)" if net_score >= 0 else "#ff4d4d"
     inactive_count = t_probes - a_count - ag_count
     radar_rows = "".join(
-        f"<div class='mini'>{icon} <span style='color:{color}'>{label}</span></div>"
-        for label, icon, color in vctx["rows"]
+        f"<div class='mini' title='{diag}'>{icon} <span style='color:{color}'>{label}</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>({diag})</span></div>"
+        for label, icon, color, diag in vctx["rows"]
     )
     execute_html = ""
     if vctx["direction"] in {"LONG", "SHORT"}:
@@ -557,6 +698,7 @@ def generate_html():
     <section class='panel'>
       <h2>Verdict Center</h2>
       <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill {badge_class_for_direction(vctx['direction'])}'>{vctx['direction']}</span></div>
+      <div class='mini' style='margin-bottom:8px;'>Edge (last {vctx.get('accuracy_total', 0)}): <span class='pill {"badge-good" if vctx.get("accuracy_pct", 0) >= 55 else "badge-warn" if vctx.get("accuracy_pct", 0) >= 40 else "badge-bad"}'>{vctx.get("accuracy_pct", 0):.0f}% ({vctx.get("accuracy_wins", 0)}W)</span>{" 🔥" + str(vctx.get("win_streak", 0)) if vctx.get("win_streak", 0) >= 3 else ""}</div>
       <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-size:1.6rem;font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
         <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
@@ -595,6 +737,7 @@ def generate_html():
     execution_html = render_execution_matrix(alerts)
     edge_html = render_edge_scoreboard(portfolio)
     lifecycle_html = render_lifecycle_panel(alerts)
+    recent_alerts_html = render_recent_alerts(alerts)
     balance = (portfolio or {}).get("balance", 10000)
     html = f"""
 <!DOCTYPE html>
@@ -681,6 +824,7 @@ def generate_html():
     </section>
     {edge_html}
     {lifecycle_html}
+    {recent_alerts_html}
     <section>
         <h2>Active Signals</h2>
         <div class="grid">{alerts_html if alerts_html else '<p class="mini">No active signals detected.</p>'}</div>

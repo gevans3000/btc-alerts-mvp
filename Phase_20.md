@@ -1,6 +1,6 @@
 # Phase 20: Real Alerts, Probe Diagnostics & Trader Edge
 
-**Status:** 🔲 NOT STARTED  
+**Status:** ✅ DONE  
 **Goal:** Make alerts fire in real market conditions, show WHY each probe is on/off, display recent signal history with accuracy, and give the trader a clear edge score.
 
 ---
@@ -522,12 +522,12 @@ Start-Process -NoNewWindow -FilePath python -ArgumentList "scripts/pid-129/dashb
 
 Then open `http://localhost:8000` and confirm:
 
-- [ ] **FIX 1:** `Alerts: 3+` (not 0) — alerts are actually firing
-- [ ] **FIX 1:** Confidence scores are in 30-80 range (not 1-13)
-- [ ] **FIX 2:** Each probe shows diagnostic text — gray probes say WHY they're gray
-- [ ] **FIX 3:** "📡 Recent Signals" panel visible with last 10 alerts
-- [ ] **FIX 4:** "Edge (last N)" badge visible in Verdict Center
-- [ ] No Python errors in the terminal
+- [x] **FIX 1:** `Alerts: 3+` (not 0) — alerts are actually firing
+- [x] **FIX 1:** Confidence scores are in 30-80 range (not 1-13)
+- [x] **FIX 2:** Each probe shows diagnostic text — gray probes say WHY they're gray
+- [x] **FIX 3:** "📡 Recent Signals" panel visible with last 10 alerts
+- [x] **FIX 4:** "Edge (last N)" badge visible in Verdict Center
+- [x] No Python errors in the terminal
 
 ---
 

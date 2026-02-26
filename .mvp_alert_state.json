@@ -1,1 +1,18 @@
-{}
+{
+    "BTC": {
+        "15m": {
+            "lifecycle_key": "BTC:15m:none:LONG:67530",
+            "tier": "A+",
+            "last_sent": 1772145662,
+            "last_candle_ts": 1772145000,
+            "tp1_hit": false
+        },
+        "1h": {
+            "lifecycle_key": "BTC:1h:none:SHORT:67530",
+            "tier": "A+",
+            "last_sent": 1772145662,
+            "last_candle_ts": 1772143200,
+            "tp1_hit": false
+        }
+    }
+}

@@ -288,7 +288,7 @@ def compute_score(
     # Raw scores typically land in -30 to +30 range.
     # Scale by 3x so a raw 15 becomes 45 (the A+ threshold for 5m).
     # This means: 5 active signals ≈ raw 15 → normalized 45 → A+ tier.
-    SCORE_MULTIPLIER = 3.0
+    SCORE_MULTIPLIER = 7.0  # Phase 20: calibrated for live market (was 3.0)
     total_score = total_score * SCORE_MULTIPLIER
 
     # Map ML Mock / Fallback
