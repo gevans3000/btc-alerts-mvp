@@ -38,6 +38,24 @@ def fetch_btc_price(budget: BudgetManager, timeout: float = 10.0) -> PriceSnapsh
         except Exception as exc:
             logging.error(f"CoinGecko price fetch failed: {exc}")
 
+    if budget.can_call("freecryptoapi"):
+        try:
+            budget.record_call("freecryptoapi")
+            import httpx
+            resp = httpx.get(
+                "https://api.freecryptoapi.com/v1/getData",
+                params={"symbol": "BTC"},
+                headers={"Authorization": "Bearer j5hfwbcodmldf3ec5mvw"},
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            if payload.get("status") == "success" and payload.get("symbols"):
+                price = float(payload["symbols"][0]["last"])
+                return PriceSnapshot(price, time.time(), source="freecryptoapi", meta={"provider": "freecryptoapi"})
+        except Exception as exc:
+            logging.error(f"FreeCryptoAPI price fetch failed: {exc}")
+
     return PriceSnapshot(0.0, time.time(), source="none", healthy=False, meta={"provider": "none"})
 
 
@@ -88,7 +106,11 @@ def fetch_btc_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -
     for label, (kraken_i, bybit_i) in frames.items():
         if out: time.sleep(1.0) # Throttle between timeframes
         candles = _fetch_kraken_ohlc(budget, interval=kraken_i, limit=limit)
-        out[label] = candles or _fetch_bybit_ohlc(budget, interval=bybit_i, limit=limit)
+        if not candles:
+            candles = _fetch_bybit_ohlc(budget, interval=bybit_i, limit=limit)
+        
+        # FreeCryptoAPI OHLC is Pro only, but we could add more providers here later.
+        out[label] = candles
     return out
 
 
@@ -144,23 +166,29 @@ def fetch_spx_multi_timeframe_bundle(budget: BudgetManager, limit: int = 120) ->
 
 
 def fetch_macro_context(budget: BudgetManager, limit: int = 120, prefetched_spx: List[Candle] = None) -> Dict[str, List[Candle]]:
-    # Minimal mode: Reuse SPX if available, skip VIX/NQ to stop 429s
+    """Fetch macro context with inter-call delays to prevent Yahoo 429 bursts."""
     spx = []
     if prefetched_spx:
         spx = prefetched_spx
     elif budget.can_call("yahoo"):
         spx = _fetch_yahoo_symbol_candles(budget, "%5EGSPC", "5m", "5d", limit) or \
               _fetch_yahoo_symbol_candles(budget, "SPY", "5m", "5d", limit)
-    
-    # Fetch DXY and Gold candles
-    dxy = _fetch_yahoo_symbol_candles(budget, "DX-Y.NYB", "1d", "1y", limit) # Daily DXY for 1 year
-    gold = _fetch_yahoo_symbol_candles(budget, "GC=F", "1d", "1y", limit) # Daily Gold for 1 year
 
-    # Disabled VIX/NQ to ensure we get at least one answer without crashing
+    # Stagger Yahoo requests with 2s delays to avoid 429 bursts
+    time.sleep(2.0)
+    dxy = _fetch_yahoo_symbol_candles(budget, "DX-Y.NYB", "1d", "1y", limit)
+
+    time.sleep(2.0)
+    gold = _fetch_yahoo_symbol_candles(budget, "GC=F", "1d", "1y", limit)
+
+    time.sleep(2.0)
+    vix = _fetch_yahoo_symbol_candles(budget, "%5EVIX", "5m", "5d", limit)
+
     return {
         "spx": spx,
         "dxy": dxy,
         "gold": gold,
-        "vix": [],
+        "vix": vix,
         "nq": [],
     }
+

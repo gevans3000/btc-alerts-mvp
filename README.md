@@ -1,10 +1,11 @@
 # BTC Alerts MVP 🚀
+**PURPOSE:** to hae my dashboard give me the best info for me to trade profitably with bitcoin futures
 
 High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy** (secondary), optimized for **5m / 15m / 1h** timeframes.
 
 **Project:** PID-129 — EMBER Autonomous Trading Intelligence
-**Status:** v5.0 Autonomous (Morning Briefing + Self-Tuning)
-**Last Updated:** 2026-02-18
+**Status:** v15.0 Resilient (Multi-Provider Fallback + Hardened Dashboard)
+**Last Updated:** 2026-02-26
 
 ---
 
@@ -15,9 +16,9 @@ This system generates **LONG/SHORT/NO-TRADE** alerts with **0-100 confidence sco
 ### Key Features
 
 - **Autonomous Operations:** 6 AM Morning Briefing, Nightly Self-Tuning, and Automated Pipeline.
+- **Universal Provider Resilience:** Automatic fallback between 5+ API providers (Kraken, Bybit, OKX, Bitunix, FreeCryptoAPI) with zero data loss.
 - **6-Layer Intelligence:** Volume Profile (POC), Liquidity Walls, Macro (DXY/Gold), Squeeze, Sentiment, and Confluence Heatmaps.
-- **Multi-timeframe analysis:** 5m / 15m / 1h (candles, indicators, regimes).
-- **Session-aware scoring:** Different strategy weights for Asia, Europe, US, Weekend.
+- **Hardened Monitoring:** Real-time Dashboard with WebSocket V2, optimized for low Latency and high availability.
 - **Operations:** [OPERATOR.md](OPERATOR.md) (ON/OFF switch, Morning Briefing, Auto-Tuning).
 - **OpenClaw governance:** Multi-platform support, health checks, watchdogs, scorecards.
 
@@ -38,10 +39,10 @@ python scripts/toggle.py off
 python scripts/toggle.py on
 ```
 
-# 4. Dashboard (optional local view)
-python scripts/pid-129/generate_dashboard.py
+# 4. View Dashboard (Hardened WS V2)
+# Start the server (runs on http://localhost:8000)
 python scripts/pid-129/dashboard_server.py
-# Open http://localhost:8000
+# (The dashboard.html connects automatically even if opened as a local file)
 
 ---
 
@@ -125,24 +126,24 @@ This project follows the **PID-129 Governance Contract** for AI-human pair progr
 
 ## Phased Improvements
 
-This project is in **Phase 5 (v5.0)**:
-- ✅ Phase 1: Core Signal Quality (Indicators, Regimes)
-- ✅ Phase 2: Operational Excellence (Logging, Alerts JSONL)
-- ✅ Phase 3: Advanced Features (Backtesting, Paper Trading)
-- ✅ Phase 4: Production Hardening (Infrastructure, Dashboard)
-- ✅ Phase 5: Autonomy (Morning Briefing, Auto-Tuning)
+This project is in **Phase 15 (v15.0)**:
+- ✅ Phase 1-5: Autonomy (Morning Briefing, Auto-Tuning)
+- ✅ Phase 6-11: Dashboard & Confluence Radar
+- ✅ Phase 12: Real-time Data Integration
+- ✅ Phase 13-14: Dashboard Perfection & Data Density
+- ✅ Phase 15: Universal Provider Fallback (Resilience)
 
 ---
 
 ## References
 
 - **Operations:** `OPERATOR.md`
-- **Governance:** `GOVERNANCE.md`
-- **Phase Roadmap:** `PHASE_ROADMAP.md`
+- **Roadmap:** `PHASE_ROADMAP.md`
+- **Current Blueprint:** `Phase_15.md`
 - **Current Stats:** `reports/morning_briefing.md`
 
 ---
 
-**Last Updated:** 2026-02-18
-**Version:** 5.0
-**Status:** Autonomous
+**Last Updated:** 2026-02-26
+**Version:** 15.0
+**Status:** Resilient & Autonomous

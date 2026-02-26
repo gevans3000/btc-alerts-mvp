@@ -1,7 +1,11 @@
+import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Dict
 
 from collectors.base import BudgetManager, request_json
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -14,7 +18,8 @@ class FlowSnapshot:
     meta: Dict[str, str] = field(default_factory=dict)
 
 
-def _fetch_bybit_flow(timeout: float) -> FlowSnapshot:
+def _fetch_bybit_flow(budget: BudgetManager, timeout: float) -> FlowSnapshot:
+    budget.record_call("bybit")
     payload = request_json(
         "https://api.bybit.com/v5/market/account-ratio",
         params={"category": "linear", "symbol": "BTCUSDT", "period": "5min", "limit": 2},
@@ -35,12 +40,47 @@ def _fetch_bybit_flow(timeout: float) -> FlowSnapshot:
     return FlowSnapshot(taker_ratio, ls_ratio, crowding, healthy=True, source="bybit", meta={"provider": "bybit"})
 
 
-def fetch_flow_context(budget: BudgetManager, timeout: float = 10.0) -> FlowSnapshot:
-    if not budget.can_call("bybit"):
-        return FlowSnapshot(1.0, 1.0, 0.0, healthy=False, source="none", meta={"provider": "none"})
+def _fetch_okx_flow(budget: BudgetManager, timeout: float) -> FlowSnapshot:
+    budget.record_call("okx")
+    payload = request_json(
+        "https://www.okx.com/api/v5/rubik/stat/contracts/long-short-account-ratio",
+        params={"ccy": "BTC", "period": "5m"},
+        timeout=timeout,
+    )
+    rows = payload.get("data", [])
+    if not rows:
+        return FlowSnapshot(1.0, 1.0, 0.0, healthy=False, source="okx", meta={"provider": "okx"})
 
-    try:
-        budget.record_call("bybit")
-        return _fetch_bybit_flow(timeout)
-    except Exception:
-        return FlowSnapshot(1.0, 1.0, 0.0, healthy=False, source="bybit", meta={"provider": "bybit"})
+    row = rows[0]
+    if isinstance(row, list) and len(row) >= 2:
+        ls_ratio = float(row[1])
+    elif isinstance(row, dict):
+        ls_ratio = float(row.get("longShortRatio", 1.0))
+    else:
+        ls_ratio = 1.0
+
+    taker_ratio = ls_ratio  # L/S ratio as directional pressure proxy
+    crowding = (taker_ratio - 1.0) * 12 + (ls_ratio - 1.0) * 10
+    return FlowSnapshot(taker_ratio, ls_ratio, crowding, healthy=True, source="okx", meta={"provider": "okx"})
+
+
+def fetch_flow_context(budget: BudgetManager, timeout: float = 10.0) -> FlowSnapshot:
+    """Provider chain: Bybit → OKX → unhealthy fallback."""
+    providers = [
+        ("bybit", lambda: _fetch_bybit_flow(budget, timeout)),
+        ("okx", lambda: _fetch_okx_flow(budget, timeout)),
+    ]
+    for name, fetcher in providers:
+        if not budget.can_call(name):
+            continue
+        try:
+            result = fetcher()
+            if result.healthy:
+                return result
+        except Exception as e:
+            logger.warning(f"Flow provider {name} failed: {e}")
+            if "403" in str(e):
+                budget.mark_source_broken(name)
+            continue
+
+    return FlowSnapshot(1.0, 1.0, 0.0, healthy=False, source="none", meta={"provider": "none"})

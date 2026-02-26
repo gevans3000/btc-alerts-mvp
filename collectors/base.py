@@ -38,9 +38,11 @@ class BudgetManager:
         "alternative_me": (5, 300.0),
         "rss": (20, 300.0),
         "llm": (5, 300.0),
-        "yahoo": (10, 300.0),
+        "yahoo": (20, 300.0),
         "bybit": (24, 60.0),
-        "okx": (24, 60.0),
+        "okx": (30, 60.0),
+        "freecryptoapi": (100, 60.0), # 100k/month ~= 2.3 calls/min. 100/60 is safe burst.
+        "bitunix": (100, 60.0),    # 10 req/sec is high, but we stay conservative.
     }
 
     def __init__(self, path: str = ".budget.json"):
@@ -73,6 +75,20 @@ class BudgetManager:
         with self._lock:
             if source in self._buckets:
                 self._buckets[source].record()
+                self._save()
+
+    def mark_source_broken(self, source: str, duration_seconds: float = 300.0):
+        """Temporarily exhaust a source's budget to skip it for duration_seconds.
+        Useful when hitting 403 Forbidden which is often session-based."""
+        with self._lock:
+            bucket = self._buckets.get(source)
+            if bucket:
+                now = time.time()
+                # We fill with dummy timestamps in the window to block 'can_call'
+                # but we want it to expire in duration_seconds.
+                # Actually _prune uses window_seconds. 
+                # To block for a specific time, we can just put a bunch of timestamps 'now'.
+                bucket.timestamps = [now] * bucket.max_calls
                 self._save()
 
 
