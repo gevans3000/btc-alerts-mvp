@@ -88,10 +88,13 @@
 
 ## 🚀 Future Roadmap
 
-### Phase 17: Machine Learning Refinement 🎯 NEXT
-- **What:** Replace Pseudo-ML with real inference models.
-- **Why:** Adaptive predictive performance.
-- **Plan:** Integrate trained models from `models/` directory for high-conviction signals.
+### Phase 17: Confluence Indicator Minimum Stack ✅ DONE
+- ✅ **Market Structure**: BOS/CHoCH detection
+- ✅ **Liquidity Sweeps**: Equal Highs/Lows + Session Sweep detection
+- ✅ **Anchored VWAP**: Dynamic S/R from swing points
+- ✅ **OI Classifier**: Price-OI relationship logic (New Longs/Shorts)
+- ✅ **Auto R:R**: Intelligence-based risk assessment targets
+- ✅ **Expanded Radar**: 3 new dashboard probes (Structure, Levels, AVWAP)
 
 ---
 _v15.0 | EMBER Collective_

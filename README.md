@@ -4,7 +4,7 @@
 High-signal long/short opportunity alerts for **BTC** (primary) and **SPX proxy** (secondary), optimized for **5m / 15m / 1h** timeframes.
 
 **Project:** PID-129 — EMBER Autonomous Trading Intelligence
-**Status:** v15.0 Resilient (Multi-Provider Fallback + Hardened Dashboard)
+**Status:** v17.0 High-Density Confluence
 **Last Updated:** 2026-02-26
 
 ---
@@ -16,11 +16,10 @@ This system generates **LONG/SHORT/NO-TRADE** alerts with **0-100 confidence sco
 ### Key Features
 
 - **Autonomous Operations:** 6 AM Morning Briefing, Nightly Self-Tuning, and Automated Pipeline.
+- **Minimum Confluence Stack:** 13+ live probes including Market Structure (BOS/CHoCH), Liquidity Sweeps, Anchored VWAP, and Price-OI Classification.
 - **Universal Provider Resilience:** Automatic fallback between 5+ API providers (Kraken, Bybit, OKX, Bitunix, FreeCryptoAPI) with zero data loss.
-- **6-Layer Intelligence:** Volume Profile (POC), Liquidity Walls, Macro (DXY/Gold), Squeeze, Sentiment, and Confluence Heatmaps.
 - **Hardened Monitoring:** Real-time Dashboard with WebSocket V2, optimized for low Latency and high availability.
-- **Operations:** [OPERATOR.md](OPERATOR.md) (ON/OFF switch, Morning Briefing, Auto-Tuning).
-- **OpenClaw governance:** Multi-platform support, health checks, watchdogs, scorecards.
+- **Operations:** [OPERATOR.md](OPERATOR.md).
 
 ---
 
@@ -63,8 +62,14 @@ BTC Alerts MVP (PID-129)
 │   ├── auto_tune.py          # Threshold Self-Improvement Engine
 │   └── backtest.py           # Historical Verification Tool
 ├── intelligence/             # Modular Intelligence Layers
-│   ├── volume_profile.py     # POC & Binning logic
-│   ├── liquidity.py          # Orderbook wall detection
+│   ├── structure.py          # BOS/CHoCH Market Structure
+│   ├── session_levels.py     # PDH/PDL & Session High/Low
+│   ├── sweeps.py             # Equal Highs/Lows & Takeouts
+│   ├── anchored_vwap.py      # Dynamic VWAP S/R
+│   ├── volume_impulse.py     # R-Vol & ATR percentile
+│   ├── oi_classifier.py      # Price-OI relationship logic
+│   ├── volume_profile.py     # POC, VAH/VAL & LVN logic
+│   ├── auto_rr.py            # Auto Risk/Reward Targeter
 │   └── confluence.py         # Signal Heatmap & Aggregation
 ├── logs/                     # JSONL Source of Truth
 └── reports/                  # Markdown & JSON Briefings
@@ -132,6 +137,8 @@ This project is in **Phase 15 (v15.0)**:
 - ✅ Phase 12: Real-time Data Integration
 - ✅ Phase 13-14: Dashboard Perfection & Data Density
 - ✅ Phase 15: Universal Provider Fallback (Resilience)
+- ✅ Phase 16: Stabilization & Bug Sweep
+- ✅ Phase 17: Confluence Indicator Minimum Stack
 
 ---
 
@@ -139,11 +146,11 @@ This project is in **Phase 15 (v15.0)**:
 
 - **Operations:** `OPERATOR.md`
 - **Roadmap:** `PHASE_ROADMAP.md`
-- **Current Blueprint:** `Phase_15.md`
+- **Current Blueprint:** `Phase_17.md`
 - **Current Stats:** `reports/morning_briefing.md`
 
 ---
 
 **Last Updated:** 2026-02-26
-**Version:** 15.0
-**Status:** Resilient & Autonomous
+**Version:** 17.0
+**Status:** High-Density Confluence

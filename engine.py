@@ -1,6 +1,13 @@
 from typing import Dict, Any, List, Optional, Tuple
 from config import INTELLIGENCE_FLAGS
 from intelligence import IntelligenceBundle, AlertScore
+from intelligence.structure import detect_structure
+from intelligence.session_levels import compute_session_levels
+from intelligence.sweeps import detect_equal_levels
+from intelligence.anchored_vwap import compute_anchored_vwap
+from intelligence.volume_impulse import detect_volume_impulse
+from intelligence.oi_classifier import classify_price_oi
+from intelligence.auto_rr import compute_auto_rr
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
@@ -185,6 +192,63 @@ def compute_score(
         elif flows.long_short_ratio <= 0.67:
             codes.append("FLOW_LS_CROWDED_SHORT")
 
+    # --- Phase 17: New Intelligence Layers ---
+    # Market Structure (BOS/CHoCH)
+    try:
+        struct = detect_structure(candles)
+        codes.extend(struct["codes"])
+        breakdown["momentum"] += struct["pts"]
+        trace["context"]["structure"] = {"trend": struct["trend"], "event": struct["last_event"]}
+    except Exception:
+        pass
+
+    # Session Levels (PDH/PDL + sweep)
+    try:
+        sess_lvl = compute_session_levels(candles)
+        codes.extend(sess_lvl["codes"])
+        breakdown["htf"] += sess_lvl["pts"]
+        trace["context"]["session_levels"] = {"pdh": sess_lvl["pdh"], "pdl": sess_lvl["pdl"]}
+    except Exception:
+        pass
+
+    # Equal Highs/Lows + Sweep
+    try:
+        eql = detect_equal_levels(candles)
+        codes.extend(eql["codes"])
+        breakdown["momentum"] += eql["pts"]
+        trace["context"]["equal_levels"] = {"eq_highs": len(eql["equal_highs"]), "eq_lows": len(eql["equal_lows"])}
+    except Exception:
+        pass
+
+    # Anchored VWAP
+    try:
+        avwap = compute_anchored_vwap(candles)
+        codes.extend(avwap["codes"])
+        breakdown["momentum"] += avwap["pts"]
+        trace["context"]["avwap"] = {"value": avwap["avwap"], "position": avwap["price_vs_avwap"]}
+    except Exception:
+        pass
+
+    # Volume Impulse + Micro Volatility
+    try:
+        vimp = detect_volume_impulse(candles)
+        codes.extend(vimp["codes"])
+        breakdown["volume"] += vimp["pts"]
+        trace["context"]["volume_impulse"] = {"rvol": vimp["rvol"], "regime": vimp["vol_regime"]}
+    except Exception:
+        pass
+
+    # Price–OI Classifier (needs price change from candles + derivatives)
+    if derivatives and derivatives.healthy and len(candles) >= 2:
+        try:
+            price_chg = ((candles[-1].close - candles[-2].close) / candles[-2].close) * 100
+            oi_class = classify_price_oi(price_chg, derivatives)
+            codes.extend(oi_class["codes"])
+            breakdown["momentum"] += oi_class["pts"]
+            trace["context"]["oi_regime"] = oi_class["regime"]
+        except Exception:
+            pass
+
     # Candidates
     candidates, c_reasons, c_codes = _detector_candidates(candles)
     reasons.extend(c_reasons)
@@ -220,6 +284,14 @@ def compute_score(
     last_price = price.price if symbol == "BTC" else candles[-1].close
     local_atr = atr(candles, 14) or (last_price * 0.02)
     direction = "LONG" if pts > 0 else "SHORT" if pts < 0 else "NEUTRAL"
+
+    # Auto R:R to nearest liquidity
+    try:
+        auto_rr = compute_auto_rr(candles, direction)
+        codes.extend(auto_rr["codes"])
+        trace["context"]["auto_rr"] = {"rr": auto_rr["rr"], "target": auto_rr["target"], "stop": auto_rr["stop"]}
+    except Exception:
+        pass
     
     tp_cfg = TP_MULTIPLIERS.get(regime_name, TP_MULTIPLIERS["default"])
     tp1_mult = tp_cfg["tp1"]
