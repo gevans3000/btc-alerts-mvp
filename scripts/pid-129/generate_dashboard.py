@@ -749,7 +749,7 @@ def generate_html():
     <title>BTC Alerts | Strategic Command</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
-        :root {{{{ --bg:#050507; --surface:#0f0f13; --card-bg:#16161c; --accent:#00ffcc; --secondary:#7000ff; --text:#fff; --text-muted:#80808a; --border:#23232e; }}}}
+        :root {{ --bg:#050507; --surface:#111116; --card-bg:#1a1a24; --accent:#00ffcc; --secondary:#7000ff; --text:#f1f1f1; --text-muted:#a1a1aa; --border:#2a2a36; }}
         @keyframes pulseGreen {{ 0% {{ background-color: rgba(0, 255, 204, 0.4); }} 100% {{ background-color: transparent; }} }}
         @keyframes pulseRed {{ 0% {{ background-color: rgba(255, 77, 77, 0.4); }} 100% {{ background-color: transparent; }} }}
         .pulse-up {{ animation: pulseGreen 0.8s ease-out; }}
@@ -763,13 +763,13 @@ def generate_html():
         h1 {{ font-weight: 800; font-size: 2.5rem; letter-spacing: -1px; background: linear-gradient(135deg, var(--accent), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
         h2 {{ margin-bottom: 1rem; font-weight: 800; font-size: 1.25rem; color: var(--accent); }}
         section {{ margin-bottom: 1.5rem; }}
-        .panel, .card, .stat-card, .scorecard-section {{ background: rgba(22, 22, 28, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }}
+        .panel, .card, .stat-card, .scorecard-section {{ background: rgba(30, 30, 40, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); color: var(--text); }}
         .panel {{ border-radius: 18px; padding: 1.2rem; }}
         .status {{ text-align: right; }}
         .badge-live {{ background: rgba(0,255,204,0.1); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; border: 1px solid rgba(0,255,204,0.4); }}
         .badge-stale {{ background: rgba(255,77,77,0.12); color: #ff4d4d; border-color: rgba(255,77,77,0.4); }}
         .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }}
-        .card {{ border-radius: 20px; padding: 1.2rem; }}
+        .card {{ border-radius: 20px; padding: 1.2rem; background: var(--card-bg); }}
         .stats-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 1rem; }}
         .stat-card {{ padding: 1rem; border-radius: 16px; }}
         .stat-label {{ color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem; }}
