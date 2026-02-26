@@ -42,23 +42,12 @@ def _tier_and_action(score: int, blockers: List[str], timeframe: str, confluence
     tier = "NO-TRADE"
     action = "SKIP"
 
-    # Precise direction-based gating
-    is_a_plus = False
-    is_b_tier = False
-
+    # score is abs(total_score), always >= 0
+    # Only gate on the LONG thresholds since score is already absolute
     if score >= cfg["trade_long"]:
-        is_a_plus = True
-    elif score <= (cfg["trade_short"] if cfg["trade_short"] < 0 else -cfg["trade_short"]):
-        is_a_plus = True
-    elif score >= cfg["watch_long"]:
-        is_b_tier = True
-    elif score <= (cfg["watch_short"] if cfg["watch_short"] < 0 else -cfg["watch_short"]):
-        is_b_tier = True
-
-    if is_a_plus:
         tier = "A+"
         action = "TRADE"
-    elif is_b_tier:
+    elif score >= cfg["watch_long"]:
         tier = "B"
         action = "WATCH"
 
@@ -305,7 +294,7 @@ def compute_score(
         trace["context"]["confluence"] = confluence_data
 
     confluence_count = len([c for c in codes if "REGIME" not in c and "SESSION" not in c])
-    tier, action = _tier_and_action(int(total_score), blockers, timeframe, confluence_count)
+    tier, action = _tier_and_action(int(abs(total_score)), blockers, timeframe, confluence_count)
 
     # Exit levels
     last_price = price.price if symbol == "BTC" else candles[-1].close
