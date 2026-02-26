@@ -77,7 +77,23 @@ def get_blockers(alert):
     return blockers if isinstance(blockers, list) else []
 def get_context(alert):
     ctx = alert.get("context")
-    return ctx if isinstance(ctx, dict) else {}
+    if isinstance(ctx, dict) and ctx.get("regime"):
+        return ctx
+    # Pre-Phase 13 alerts: try to reconstruct from other fields
+    regime = "-"
+    session = "-"
+    # Regime can come from decision_trace.codes
+    dt_codes = set((alert.get("decision_trace") or {}).get("codes", []))
+    for code in dt_codes:
+        if code.startswith("REGIME_"):
+            regime = code.replace("REGIME_", "").lower()
+            break
+    # Session from codes
+    for code in dt_codes:
+        if code.startswith("SESSION_"):
+            session = code.replace("SESSION_", "").replace("BOOST", "").replace("PENALTY", "").strip("_").lower() or "-"
+            break
+    return {"regime": regime, "session": session}
 def badge_class_for_tier(tier: str):
     if tier == "A+":
         return "badge-good"
@@ -138,6 +154,14 @@ def render_execution_matrix(alerts):
         tier = get_tier(a)
         conf = get_confidence(a)
         blockers = ", ".join(get_blockers(a)[:2]) or "None"
+        entry = float(a.get("entry_price") or 0)
+        stop = float(a.get("invalidation") or 0)
+        tp1_val = float(a.get("tp1") or 0)
+        rr = float(a.get("rr_ratio") or 0)
+        entry_str = f"${entry:,.0f}" if entry else "--"
+        stop_str = f"${stop:,.0f}" if stop else "--"
+        tp1_str = f"${tp1_val:,.0f}" if tp1_val else "--"
+        rr_str = f"{rr:.2f}" if rr else "--"
         cols.append(f"""
         <td>
             <div class="pill-wrap">
@@ -146,6 +170,7 @@ def render_execution_matrix(alerts):
                 <span class="pill badge-neutral">{conf}/100</span>
             </div>
             <div class="mini">Regime: {regime} · Session: {session}</div>
+            <div class="mini">Entry: {entry_str} · Stop: {stop_str} · TP1: {tp1_str} · R:R {rr_str}</div>
             <div class="mini">Blockers: {blockers}</div>
         </td>
         """)
@@ -369,8 +394,8 @@ def build_verdict_context(alerts, portfolio):
     passed = sum(1 for _, ok in checks if ok)
     gate = "GREEN" if passed >= 4 else ("AMBER" if passed >= 3 else "RED")
     probes = [
-        ("Squeeze", ["SQUEEZE_FIRE"], []), ("Trend (HTF)", ["HTF_ALIGNED"], ["HTF_COUNTER"]),
-        ("Momentum", ["SENTIMENT_BULL"], ["SENTIMENT_BEAR"]), ("ML Model", ["ML_CONFIDENCE_BOOST"], ["ML_SKEPTICISM"]),
+        ("Squeeze", ["SQUEEZE_FIRE", "SQUEEZE_ON"], []), ("Trend (HTF)", ["HTF_ALIGNED"], ["HTF_COUNTER"]),
+        ("Momentum", ["SENTIMENT_BULL", "FLOW_TAKER_BULLISH"], ["SENTIMENT_BEAR", "FLOW_TAKER_BEARISH"]), ("ML Model", ["ML_CONFIDENCE_BOOST"], ["ML_SKEPTICISM"]),
         ("Funding", ["FUNDING_EXTREME_LOW", "FUNDING_LOW"], ["FUNDING_EXTREME_HIGH", "FUNDING_HIGH"]),
         ("DXY Macro", ["DXY_FALLING_BULLISH"], ["DXY_RISING_BEARISH"]), ("Gold Macro", ["GOLD_RISING_BULLISH"], ["GOLD_FALLING_BEARISH"]),
         ("Fear & Greed", ["FG_EXTREME_FEAR", "FG_FEAR"], ["FG_EXTREME_GREED", "FG_GREED"]),
@@ -487,7 +512,6 @@ def generate_html():
     execution_html = render_execution_matrix(alerts)
     edge_html = render_edge_scoreboard(portfolio)
     lifecycle_html = render_lifecycle_panel(alerts)
-    vctx = build_verdict_context(alerts, portfolio)
     balance = (portfolio or {}).get("balance", 10000)
     html = f"""
 <!DOCTYPE html>
@@ -595,7 +619,7 @@ def generate_html():
       }}
       function closeExecuteModal() {{ const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }}
       function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
-      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); els.gate.textContent=(Number(st.profit_factor||0)>=1.4&&Number(st.avg_r||0)>0)?'OPEN':'WATCH'; els.confluence.textContent=deriveConfluence(data.alerts||[]); const wsLatest=(data.alerts||[]).slice(-1)[0]||{{}};const wsDir=String(wsLatest.direction||state.direction).toUpperCase();const wsCS=new Set(((wsLatest.decision_trace||{{}}).codes)||[]);const wsPD=[[['SQUEEZE_FIRE'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL'],['SENTIMENT_BEAR'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH'],['BASIS_BEARISH'],'OI / Basis']];let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}};els.radar.textContent=wsAl+'/'+wsT+' '+wsLbl; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
+      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); els.confluence.textContent=deriveConfluence(data.alerts||[]); const wsLatest=(data.alerts||[]).slice(-1)[0]||{{}};const wsDir=String(wsLatest.direction||state.direction).toUpperCase();const wsCS=new Set(((wsLatest.decision_trace||{{}}).codes)||[]);const wsPD=[[['SQUEEZE_FIRE','SQUEEZE_ON'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL','FLOW_TAKER_BULLISH'],['SENTIMENT_BEAR','FLOW_TAKER_BEARISH'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH'],['BASIS_BEARISH'],'OI / Basis']];let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}};els.radar.textContent=wsAl+'/'+wsT+' '+wsLbl; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
       connectWS();
       updateLivePrice();
     </script>

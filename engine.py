@@ -87,10 +87,10 @@ def compute_score(
     if intel and intel.sentiment and INTELLIGENCE_FLAGS.get("sentiment_enabled", True):
         sent = intel.sentiment
         if not sent.get("fallback", True):
-            if sent["composite"] > 0.3:
+            if sent["composite"] > 0.15:
                 breakdown["momentum"] += 4.0
                 codes.append("SENTIMENT_BULL")
-            elif sent["composite"] < -0.3:
+            elif sent["composite"] < -0.15:
                 breakdown["momentum"] -= 4.0
                 codes.append("SENTIMENT_BEAR")
             trace["context"]["sentiment"] = {"score": sent["composite"]}
@@ -159,18 +159,31 @@ def compute_score(
     # Map Derivatives to Radar Codes
     if derivatives and derivatives.healthy:
         code_fr = derivatives.funding_rate
-        if code_fr <= -0.01: codes.append("FUNDING_EXTREME_LOW")
-        elif code_fr < 0: codes.append("FUNDING_LOW")
-        elif code_fr >= 0.01: codes.append("FUNDING_EXTREME_HIGH")
-        elif code_fr > 0: codes.append("FUNDING_HIGH")
+        if code_fr <= -0.0003: codes.append("FUNDING_EXTREME_LOW")
+        elif code_fr < -0.00005: codes.append("FUNDING_LOW")
+        elif code_fr >= 0.0003: codes.append("FUNDING_EXTREME_HIGH")
+        elif code_fr > 0.00005: codes.append("FUNDING_HIGH")
         
         oi_pct = derivatives.oi_change_pct
-        if oi_pct >= 5.0: codes.append("OI_SURGE_MAJOR")
-        elif oi_pct >= 2.0: codes.append("OI_SURGE_MINOR")
+        if oi_pct >= 1.5: codes.append("OI_SURGE_MAJOR")
+        elif oi_pct >= 0.5: codes.append("OI_SURGE_MINOR")
         
         basis = derivatives.basis_pct
-        if basis >= 0.5: codes.append("BASIS_BULLISH")
-        elif basis <= -0.5: codes.append("BASIS_BEARISH")
+        if basis >= 0.05: codes.append("BASIS_BULLISH")
+        elif basis <= -0.05: codes.append("BASIS_BEARISH")
+
+    # Map Flows to Radar Codes
+    if flows and flows.healthy:
+        if flows.taker_ratio >= 1.3:
+            codes.append("FLOW_TAKER_BULLISH")
+            breakdown["momentum"] += 3.0
+        elif flows.taker_ratio <= 0.7:
+            codes.append("FLOW_TAKER_BEARISH")
+            breakdown["momentum"] -= 3.0
+        if flows.long_short_ratio >= 1.5:
+            codes.append("FLOW_LS_CROWDED_LONG")
+        elif flows.long_short_ratio <= 0.67:
+            codes.append("FLOW_LS_CROWDED_SHORT")
 
     # Candidates
     candidates, c_reasons, c_codes = _detector_candidates(candles)
@@ -189,9 +202,9 @@ def compute_score(
 
     # Map ML Mock / Fallback
     # If the score is extreme, we assume high algorithmic conviction.
-    if total_score >= 35:
+    if total_score >= 20:
         codes.append("ML_CONFIDENCE_BOOST")
-    elif total_score <= -35:
+    elif total_score <= -20:
         codes.append("ML_SKEPTICISM")
 
     # --- Confluence Heatmap ---
@@ -233,7 +246,7 @@ def compute_score(
         symbol=symbol,
         timeframe=timeframe,
         regime=regime_name,
-        confidence=min(100, max(0, int(total_score))),
+        confidence=min(100, max(0, int(abs(total_score)))),
         tier=tier,
         action=action,
         reasons=reasons,

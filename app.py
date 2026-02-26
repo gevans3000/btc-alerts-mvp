@@ -52,7 +52,7 @@ def _latest_spx_price(spx_tf: dict, timeframe: str) -> float:
     return candles[-1].close
 
 
-def _collect_intelligence(candles, news, btc_price, macro=None):
+def _collect_intelligence(candles, news, btc_price, macro=None, budget_manager=None):
     """Call all intelligence layers. Never crashes. Returns whatever succeeded."""
     intel = IntelligenceBundle()
     degraded = []
@@ -84,7 +84,7 @@ def _collect_intelligence(candles, news, btc_price, macro=None):
     # Liquidity
     if INTELLIGENCE_FLAGS.get("liquidity_enabled", True):
         try:
-            orderbook = fetch_orderbook(None)
+            orderbook = fetch_orderbook(budget_manager)
             intel.liquidity = analyze_liquidity(orderbook)
         except Exception as e:
             logger.warning(f"Liquidity degraded: {e}")
@@ -200,7 +200,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         logger.info(f"Derivatives context fetched.", extra={'source': derivatives.source, 'healthy': derivatives.healthy})
     except Exception as e:
         logger.error("Exception occurred during derivatives context fetch: %s", e, exc_info=True)
-        derivatives = DerivativesSnapshot(bid_price=0.0, ask_price=0.0, last_price=0.0, healthy=False, source="error", meta={"provider": "error"})
+        derivatives = DerivativesSnapshot(funding_rate=0.0, oi_change_pct=0.0, basis_pct=0.0, source="error", healthy=False, meta={"provider": "error"})
     
     time.sleep(sleep_duration)
     
@@ -211,7 +211,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         logger.info(f"Flows context fetched.", extra={'source': flows.source, 'healthy': flows.healthy})
     except Exception as e:
         logger.error("Exception occurred during flows context fetch: %s", e, exc_info=True)
-        flows = FlowSnapshot(volume=0.0, open_interest=0.0, funding_rate=0.0, healthy=False, source="error", meta={"provider": "error"})
+        flows = FlowSnapshot(taker_ratio=1.0, long_short_ratio=1.0, crowding_score=0.0, healthy=False, source="error", meta={"provider": "error"})
     
     time.sleep(sleep_duration)
 
@@ -257,7 +257,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
 
 
                 # All intelligence layers are now prepared in 'intel' bundle
-                intel = _collect_intelligence(candles, news, btc_price, macro=macro)
+                intel = _collect_intelligence(candles, news, btc_price, macro=macro, budget_manager=bm)
                 computed_alert = compute_score(
                     symbol="BTC",
                     timeframe=tf,

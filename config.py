@@ -23,7 +23,7 @@ DETECTORS = {
 }
 
 TIMEFRAME_RULES = {
-    "5m":  {"min_rr": 1.35, "trade_long": 78, "trade_short": 22, "watch_long": 62, "watch_short": 38},
+    "5m":  {"min_rr": 1.35, "trade_long": 82, "trade_short": 18, "watch_long": 66, "watch_short": 34},
     "15m": {"min_rr": 1.25, "trade_long": 76, "trade_short": 24, "watch_long": 60, "watch_short": 40},
     "1h":  {"min_rr": 1.15, "trade_long": 72, "trade_short": 28, "watch_long": 58, "watch_short": 42},
 }
@@ -109,13 +109,13 @@ SQUEEZE = {
 VOLUME_PROFILE = {
     "lookback_candles": 100,
     "num_bins": 50,
-    "poc_proximity_pct": 0.005,
+    "poc_proximity_pct": 0.015,
     "poc_pts": 5,
 }
 
 LIQUIDITY = {
     "depth_pct": 0.02,
-    "wall_threshold_btc": 5.0,
+    "wall_threshold_btc": 2.0,
     "support_wall_pts": 3,
     "resistance_wall_pts": -3,
 }

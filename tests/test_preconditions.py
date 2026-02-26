@@ -113,10 +113,11 @@ def test_budget_manager_allows_yahoo_calls():
         budget_file.unlink()
     
     bm = BudgetManager()
-    # Ensure the limit for yahoo is now 10 (changed from 0)
+    # Ensure the limit for yahoo is now 20 (it was 10 in earlier versions)
     assert bm.can_call("yahoo") is True
-    # Make 10 calls, it should still be True
-    for _ in range(10):
+    # Make 20 calls, it should still be True before the last one? 
+    # Actually can_call checks if len(timestamps) < max_calls.
+    for _ in range(20):
         bm.record_call("yahoo")
     assert bm.can_call("yahoo") is False
 
