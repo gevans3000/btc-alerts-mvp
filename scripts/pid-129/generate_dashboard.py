@@ -749,21 +749,29 @@ def generate_html():
     <title>BTC Alerts | Strategic Command</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
-        :root {{ --bg:#050507; --surface:#0f0f13; --card-bg:#16161c; --accent:#00ffcc; --secondary:#7000ff; --text:#fff; --text-muted:#80808a; --border:#23232e; }}
+        :root {{{{ --bg:#050507; --surface:#0f0f13; --card-bg:#16161c; --accent:#00ffcc; --secondary:#7000ff; --text:#fff; --text-muted:#80808a; --border:#23232e; }}}}
+        @keyframes pulseGreen {{ 0% {{ background-color: rgba(0, 255, 204, 0.4); }} 100% {{ background-color: transparent; }} }}
+        @keyframes pulseRed {{ 0% {{ background-color: rgba(255, 77, 77, 0.4); }} 100% {{ background-color: transparent; }} }}
+        .pulse-up {{ animation: pulseGreen 0.8s ease-out; }}
+        .pulse-down {{ animation: pulseRed 0.8s ease-out; }}
+        .layout-grid {{ display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }}
+        @media (min-width: 1100px) {{ .layout-grid {{ grid-template-columns: 350px 1fr; }} }}
+        @media (min-width: 1400px) {{ .layout-grid {{ grid-template-columns: 420px 1fr; }} }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        body {{ background-color: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; padding: 2rem; max-width: 1400px; margin: 0 auto; }}
+        body {{ background-image: radial-gradient(circle at top right, rgba(0, 255, 204, 0.05), transparent 40%), radial-gradient(circle at bottom left, rgba(112, 0, 255, 0.05), transparent 40%); background-color: #050507; background-attachment: fixed; color: var(--text); font-family: 'Outfit', sans-serif; padding: 2rem; max-width: 1400px; margin: 0 auto; }}
         header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }}
         h1 {{ font-weight: 800; font-size: 2.5rem; letter-spacing: -1px; background: linear-gradient(135deg, var(--accent), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
         h2 {{ margin-bottom: 1rem; font-weight: 800; font-size: 1.25rem; color: var(--accent); }}
         section {{ margin-bottom: 1.5rem; }}
-        .panel {{ background: var(--surface); border-radius: 18px; border: 1px solid var(--border); padding: 1.2rem; }}
+        .panel, .card, .stat-card, .scorecard-section {{ background: rgba(22, 22, 28, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }}
+        .panel {{ border-radius: 18px; padding: 1.2rem; }}
         .status {{ text-align: right; }}
         .badge-live {{ background: rgba(0,255,204,0.1); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; border: 1px solid rgba(0,255,204,0.4); }}
         .badge-stale {{ background: rgba(255,77,77,0.12); color: #ff4d4d; border-color: rgba(255,77,77,0.4); }}
-        .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }}
-        .card {{ background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 1.2rem; }}
-        .stats-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }}
-        .stat-card {{ background: var(--surface); padding: 1rem; border-radius: 16px; border: 1px solid var(--border); }}
+        .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }}
+        .card {{ border-radius: 20px; padding: 1.2rem; }}
+        .stats-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 1rem; }}
+        .stat-card {{ padding: 1rem; border-radius: 16px; }}
         .stat-label {{ color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem; }}
         .stat-value {{ font-size: 1.8rem; font-weight: 800; }}
         .stat-sub {{ font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; }}
@@ -785,6 +793,7 @@ def generate_html():
     </style>
 </head>
     <body>
+    <audio id="alert-chime" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
     <header>
         <div>
             <h1>EMBER COMMAND</h1>
@@ -814,9 +823,38 @@ def generate_html():
             <div class="stat-card"><div class="stat-label">Win Rate (7d)</div><div id="live-winrate" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">Avg R (7d)</div><div id="live-pf" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div>
-        </div>
     </section>
-    {verdict_html}
+    <div class="layout-grid">
+        {verdict_html}
+        <section class="panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; min-height: 500px;">
+            <div style="padding: 1.2rem; padding-bottom: 0;">
+                <h2 style="margin: 0;">Live Charting</h2>
+            </div>
+            <!-- TradingView Widget BEGIN -->
+            <div class="tradingview-widget-container" style="flex-grow: 1; height: 100%; width: 100%; padding: 1.2rem;">
+              <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget({{
+                "autosize": true,
+                "symbol": "BINANCE:BTCUSDT.P",
+                "interval": "5",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "enable_publishing": false,
+                "backgroundColor": "rgba(22, 22, 28, 0)",
+                "gridColor": "#23232e",
+                "hide_top_toolbar": false,
+                "save_image": false,
+                "container_id": "tradingview_chart"
+              }});
+              </script>
+            </div>
+            <!-- TradingView Widget END -->
+        </section>
+    </div>
     {execution_html}
     <section>
         <h2>Performance Metrics</h2>
@@ -848,7 +886,21 @@ def generate_html():
       function updateLivePrice() {{
         if(!state.livePrice) return;
         const priceEl=document.getElementById('livePrice');
-        if(priceEl) priceEl.textContent=fmtMoney(state.livePrice,0);
+        if(priceEl) {{
+          const oldPrice = parseFloat(priceEl.textContent.replace(/[$,]/g, ''));
+          priceEl.textContent=fmtMoney(state.livePrice,0);
+          if (!isNaN(oldPrice)) {{
+              if (state.livePrice > oldPrice) {{
+                  priceEl.classList.remove('pulse-down');
+                  void priceEl.offsetWidth;
+                  priceEl.classList.add('pulse-up');
+              }} else if (state.livePrice < oldPrice) {{
+                  priceEl.classList.remove('pulse-up');
+                  void priceEl.offsetWidth;
+                  priceEl.classList.add('pulse-down');
+              }}
+          }}
+        }}
         const spreadEl=document.getElementById('liveSpread');
         if(spreadEl) spreadEl.textContent='$'+state.spread.toFixed(1);
         if(state.entryPrice>0&&state.tp1Price>0&&state.stopPrice>0){{
@@ -867,8 +919,20 @@ def generate_html():
       function closeExecuteModal() {{ const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }}
       function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
       function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2);
-const wsLatest=(data.alerts||[]).slice(-1)[0]||{{}};
+const btcAlerts = (data.alerts||[]).filter(a=>a.symbol==='BTC');
+const wsLatest=btcAlerts.slice(-1)[0]||{{}};
 const wsDir=String(wsLatest.direction||state.direction).toUpperCase();
+const wsTier=String(wsLatest.tier||"").toUpperCase();
+if (wsTier === "A+" && wsLatest.timestamp && wsLatest.timestamp !== window._lastPlayedAlertTs) {{
+    window._lastPlayedAlertTs = wsLatest.timestamp;
+    const audio = document.getElementById('alert-chime');
+    if (audio) audio.play().catch(e => console.log('Audio blocked:', e));
+    if (Notification.permission === "granted") {{
+        new Notification("A+ Trade Alert", {{ body: `${{wsDir}} on ${{wsLatest.timeframe}}` }});
+    }} else if (Notification.permission !== "denied") {{
+        Notification.requestPermission();
+    }}
+}}
 const wsCS=new Set(((wsLatest.decision_trace||{{}}).codes)||[]);
 const wsCtx = ((wsLatest.decision_trace||{{}}).context)||{{}};
 const wsSL = wsCtx.session_levels||{{}};
