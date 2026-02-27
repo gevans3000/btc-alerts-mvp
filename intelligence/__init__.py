@@ -11,6 +11,7 @@ class IntelligenceBundle:
     volume_profile: Optional[Dict[str, Any]] = None
     liquidity: Optional[Dict[str, Any]] = None
     macro_correlation: Optional[Dict[str, Any]] = None
+    recipes: List[Any] = field(default_factory=list)  # Added for Phase 22
 
 @dataclass
 class AlertScore:

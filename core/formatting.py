@@ -114,3 +114,51 @@ def print_timeframe_guide():
     print("  • 15m: Day Trading (Balanced, 1-4 hour hold)")
     print("  • 1h:  Swing Trading (Trend following, 4-24 hour hold)")
     print("\n")
+
+
+def bot_schema_json(score: AlertScore) -> str:
+    """
+    Standardizes the alert into a machine-consumable JSON object for trading bots.
+    Matches standard bot schema: (type, setup_conditions, risk_rules, execution_details).
+    """
+    # Extract recipe data if available
+    recipe_name = "NONE"
+    if score.intel and score.intel.recipes:
+        recipe_name = score.intel.recipes[0].recipe
+
+    schema = {
+        "metadata": {
+            "symbol": score.symbol,
+            "timeframe": score.timeframe,
+            "timestamp_utc": score.last_candle_ts,
+            "version": "2.2.0"
+        },
+        "type": {
+            "action": score.action,
+            "tier": score.tier,
+            "recipe": recipe_name,
+            "strategy": score.strategy_type
+        },
+        "setup_conditions": {
+            "direction": score.direction,
+            "confidence": score.confidence,
+            "reason_codes": score.reason_codes,
+            "rubric_score": score.decision_trace.get("rubric", {}).get("score", 0),
+            "rubric_details": score.decision_trace.get("rubric", {}).get("details", {})
+        },
+        "risk_rules": {
+            "risk_size_units": score.intel.recipes[0].risk_size if (score.intel and score.intel.recipes) else 0.0,
+            "invalidation_level": round(score.invalidation, 2),
+            "targets": {
+                "tp1": round(score.tp1, 2),
+                "tp2": round(score.tp2, 2)
+            },
+            "rr_ratio": round(score.rr_ratio, 2)
+        },
+        "execution_details": {
+            "entry_zone": score.entry_zone,
+            "execution_type": score.intel.recipes[0].entry_zone if (score.intel and score.intel.recipes) else "MARKET",
+            "session": score.session
+        }
+    }
+    return json.dumps(schema, indent=2)

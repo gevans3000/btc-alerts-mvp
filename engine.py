@@ -8,6 +8,7 @@ from intelligence.anchored_vwap import compute_anchored_vwap
 from intelligence.volume_impulse import detect_volume_impulse
 from intelligence.oi_classifier import classify_price_oi
 from intelligence.auto_rr import compute_auto_rr
+from intelligence.recipes import detect_recipes, RecipeSignal
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
@@ -34,7 +35,13 @@ from intelligence.detectors import (
     _arbitrate_candidates,
 )
 
-def _tier_and_action(score: int, blockers: List[str], timeframe: str, confluence: int) -> tuple[str, str]:
+def _tier_and_action(score: int, blockers: List[str], timeframe: str, rubric_score: int) -> tuple[str, str]:
+    """
+    Tiering logic updated for Phase 22:
+    - Enforces 6-point Confluence Rubric.
+    - TRADE (A+) requires rubric_score >= 4.
+    - WATCH (B) requires rubric_score >= 2.
+    """
     cfg = TIMEFRAME_RULES.get(timeframe, TIMEFRAME_RULES["5m"])
     if blockers:
         return "NO-TRADE", "SKIP"
@@ -42,8 +49,7 @@ def _tier_and_action(score: int, blockers: List[str], timeframe: str, confluence
     tier = "NO-TRADE"
     action = "SKIP"
 
-    # score is abs(total_score), always >= 0
-    # Only gate on the LONG thresholds since score is already absolute
+    # Preliminary tiering based on confidence score (normalized)
     if score >= cfg["trade_long"]:
         tier = "A+"
         action = "TRADE"
@@ -51,16 +57,16 @@ def _tier_and_action(score: int, blockers: List[str], timeframe: str, confluence
         tier = "B"
         action = "WATCH"
 
-    required = CONFLUENCE_RULES.get(tier, 0)
-    if confluence < required:
-        if tier == "A+":
-            tier = "B"
-            if confluence < CONFLUENCE_RULES.get("B", 0):
-                tier = "NO-TRADE"
-                action = "SKIP"
-        else:
+    # Hard Gate: Confluence Rubric (must be >= 4/6 for A+, >= 2/6 for B)
+    if tier == "A+" and rubric_score < 4:
+        tier = "B"
+        if rubric_score < 2:
             tier = "NO-TRADE"
             action = "SKIP"
+    elif tier == "B" and rubric_score < 2:
+        tier = "NO-TRADE"
+        action = "SKIP"
+
     return tier, action
 
 def compute_score(
@@ -270,7 +276,28 @@ def compute_score(
         except Exception:
             pass
 
-    # Candidates
+    # --- Recipe Detection (Phase 22) ---
+    try:
+        # Detect patterns and answer the "5-Question" validation schema
+        recipe_signals = detect_recipes(
+            candles=candles,
+            struct=trace["context"].get("structure", {}),
+            sweeps={"codes": codes, "sweep_low": "EQL_SWEEP_BULL" in codes, "sweep_high": "EQH_SWEEP_BEAR" in codes, 
+                    "equal_lows": trace["context"].get("equal_levels", {}).get("eq_lows", []),
+                    "equal_highs": trace["context"].get("equal_levels", {}).get("eq_highs", [])},
+            avwap=trace["context"].get("avwap", {}),
+            squeeze={"state": trace["context"].get("squeeze", "NONE")},
+            atr_val=local_atr if 'local_atr' in locals() else None
+        )
+        for sig in recipe_signals:
+            intel.recipes.append(sig)
+            codes.append(f"{sig.recipe}_RECIPE")
+            breakdown["momentum"] += sig.raw_score / SCORE_MULTIPLIER if 'SCORE_MULTIPLIER' in locals() else sig.raw_score / 7.0
+            reasons.append(f"Recipe: {sig.recipe} ({sig.direction})")
+    except Exception as e:
+        logger.warning(f"Recipe detection failed: {e}")
+
+    # --- Candidates ---
     candidates, c_reasons, c_codes = _detector_candidates(candles)
     reasons.extend(c_reasons)
     codes.extend(c_codes)
@@ -312,14 +339,59 @@ def compute_score(
     except Exception:
         pass
 
-    # --- Confluence Heatmap ---
-    if INTELLIGENCE_FLAGS.get("confluence_enabled", True):
-        from intelligence.confluence import compute_confluence
-        confluence_data = compute_confluence(codes, breakdown)
-        trace["context"]["confluence"] = confluence_data
+    # --- Confluence Rubric (Phase 22) ---
+    # Sum signals from (Structure, Location, Anchors, Derivatives, Momentum, Volatility)
+    rubric_score = 0
+    rubric_details = {}
 
-    confluence_count = len([c for c in codes if "REGIME" not in c and "SESSION" not in c])
-    tier, action = _tier_and_action(int(abs(total_score)), blockers, timeframe, confluence_count)
+    def has_any(targets: List[str]) -> bool:
+        return any(t in codes for t in targets)
+
+    # 1. Structure
+    struct_signals = ["STRUCTURE_BOS_BULL", "STRUCTURE_CHOCH_BULL", "BOS_CONTINUATION_RECIPE"] if direction == "LONG" else \
+                     ["STRUCTURE_BOS_BEAR", "STRUCTURE_CHOCH_BEAR", "BOS_CONTINUATION_RECIPE"]
+    if has_any(struct_signals):
+        rubric_score += 1
+        rubric_details["structure"] = True
+
+    # 2. Location
+    loc_signals = ["NEAR_POC", "BID_WALL_SUPPORT", "EQL_SWEEP_BULL", "PDL_SWEEP_BULL"] if direction == "LONG" else \
+                  ["NEAR_POC", "ASK_WALL_RESISTANCE", "EQH_SWEEP_BEAR", "PDH_SWEEP_BEAR"]
+    if has_any(loc_signals):
+        rubric_score += 1
+        rubric_details["location"] = True
+
+    # 3. Anchors
+    anchor_signals = ["AVWAP_RECLAIM_BULL", "AVWAP_ABOVE_1SD"] if direction == "LONG" else \
+                     ["AVWAP_REJECT_BEAR", "AVWAP_BELOW_1SD"]
+    if has_any(anchor_signals) or "HTF_REVERSAL_RECIPE" in codes:
+        rubric_score += 1
+        rubric_details["anchors"] = True
+
+    # 4. Derivatives
+    deriv_signals = ["FUNDING_LOW", "OI_SURGE_MINOR", "OI_SURGE_MAJOR", "BASIS_BULLISH"] if direction == "LONG" else \
+                    ["FUNDING_HIGH", "OI_SURGE_MINOR", "OI_SURGE_MAJOR", "BASIS_BEARISH"]
+    if has_any(deriv_signals):
+        rubric_score += 1
+        rubric_details["derivatives"] = True
+
+    # 5. Momentum
+    mom_signals = ["HTF_ALIGNED", "FLOW_TAKER_BULLISH", "SENTIMENT_BULL"] if direction == "LONG" else \
+                  ["HTF_COUNTER", "FLOW_TAKER_BEARISH", "SENTIMENT_BEAR"]
+    if has_any(mom_signals):
+        rubric_score += 1
+        rubric_details["momentum"] = True
+
+    # 6. Volatility
+    vol_signals = ["SQUEEZE_FIRE", "VOL_EXPANSION_RECIPE"]
+    if has_any(vol_signals):
+        rubric_score += 1
+        rubric_details["volatility"] = True
+
+    trace["rubric"] = {"score": rubric_score, "details": rubric_details}
+    
+    # Final Action/Tier Decision
+    tier, action = _tier_and_action(int(abs(total_score)), blockers, timeframe, rubric_score)
 
     # Exit levels
     last_price = price.price if symbol == "BTC" else candles[-1].close
