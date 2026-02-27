@@ -474,7 +474,8 @@ def build_verdict_context(alerts, portfolio):
         has_bull, has_bear = any(c in active_codes for c in bulls), any(c in active_codes for c in bears)
         aligned = (direction == "LONG" and has_bull) or (direction == "SHORT" and has_bear)
         against = (direction == "LONG" and has_bear) or (direction == "SHORT" and has_bull)
-        icon = "🟢" if aligned else "🔴" if against else "⚫"
+        icon_raw = "🟢" if aligned else "🔴" if against else "⚫"
+        icon = f"<span class='pulse-dot'>{icon_raw}</span>" if icon_raw in ["🟢", "🔴"] else icon_raw
         color = "var(--accent)" if aligned else "#ff4d4d" if against else "var(--text-muted)"
         
         # Generate diagnostic tooltip showing WHY the probe is in its current state
@@ -700,7 +701,7 @@ def generate_html():
       <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill {badge_class_for_direction(vctx['direction'])}'>{vctx['direction']}</span></div>
       <div class='mini' style='margin-bottom:8px;'>Edge (last {vctx.get('accuracy_total', 0)}): <span class='pill {"badge-good" if vctx.get("accuracy_pct", 0) >= 55 else "badge-warn" if vctx.get("accuracy_pct", 0) >= 40 else "badge-bad"}'>{vctx.get("accuracy_pct", 0):.0f}% ({vctx.get("accuracy_wins", 0)}W)</span>{" 🔥" + str(vctx.get("win_streak", 0)) if vctx.get("win_streak", 0) >= 3 else ""}</div>
       <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-        <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-size:1.6rem;font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
+        <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
         <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
       </div>
       <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div>{signals_html}</div>
@@ -758,12 +759,34 @@ def generate_html():
         @media (min-width: 1100px) {{ .layout-grid {{ grid-template-columns: 350px 1fr; }} }}
         @media (min-width: 1400px) {{ .layout-grid {{ grid-template-columns: 420px 1fr; }} }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        body {{ background-image: radial-gradient(circle at top right, rgba(0, 255, 204, 0.05), transparent 40%), radial-gradient(circle at bottom left, rgba(112, 0, 255, 0.05), transparent 40%); background-color: #050507; background-attachment: fixed; color: var(--text); font-family: 'Outfit', sans-serif; padding: 2rem; max-width: 1400px; margin: 0 auto; }}
+        body {{
+            background-color: #050507;
+            background-image: 
+                radial-gradient(circle at top right, rgba(0, 255, 204, 0.05), transparent 40%), 
+                radial-gradient(circle at bottom left, rgba(112, 0, 255, 0.05), transparent 40%),
+                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+            background-position: 0 0, 0 0, -1px -1px, -1px -1px;
+            background-attachment: fixed;
+            color: var(--text); 
+            font-family: 'Outfit', sans-serif; 
+            padding: 2rem; 
+            max-width: 1400px; 
+            margin: 0 auto;
+        }}
         header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }}
         h1 {{ font-weight: 800; font-size: 2.5rem; letter-spacing: -1px; background: linear-gradient(135deg, var(--accent), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
         h2 {{ margin-bottom: 1rem; font-weight: 800; font-size: 1.25rem; color: var(--accent); }}
         section {{ margin-bottom: 1.5rem; }}
-        .panel, .card, .stat-card, .scorecard-section {{ background: rgba(30, 30, 40, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); color: var(--text); }}
+        .panel, .card, .stat-card, .scorecard-section {{
+            background: rgba(15, 15, 20, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            color: var(--text);
+        }}
         .panel {{ border-radius: 18px; padding: 1.2rem; }}
         .status {{ text-align: right; }}
         .badge-live {{ background: rgba(0,255,204,0.1); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; border: 1px solid rgba(0,255,204,0.4); }}
@@ -788,8 +811,32 @@ def generate_html():
         .playbook {{ margin-top: 0.8rem; color: var(--text-muted); font-size: 0.92rem; }}
         .scorecard-section {{ background: var(--surface); border-radius: 18px; padding: 1.2rem; border: 1px solid var(--border); }}
         pre {{ font-family: 'JetBrains Mono', monospace; white-space: pre-wrap; font-size: 0.85rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 12px; }}
-        .live-grid {{ display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 0.8rem; margin-top: 0.8rem; }}
-        .live-value {{ font-size: 1.15rem; font-weight: 700; }}
+        .live-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-top: 0.8rem; }}
+        @media (min-width: 768px) {{ .live-grid {{ grid-template-columns: repeat(4, 1fr); }} }}
+        @media (min-width: 1100px) {{ .live-grid {{ grid-template-columns: repeat(6, 1fr); }} }}
+        .bottom-panels {{ display: grid; grid-template-columns: 1fr; gap: 1.5rem; }}
+        @media (min-width: 1100px) {{ .bottom-panels {{ grid-template-columns: 1fr 1fr; }} }}
+        .live-value {{ 
+            font-size: 1.15rem; 
+            font-weight: 700; 
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }}
+        #livePrice, #livePnL, #distTP1, #distStop, #liveSpread {{
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.5px;
+        }}
+        #livePrice {{ font-size: 1.8rem !important; font-weight: 800; }}
+        @keyframes breathePulse {{ 
+            0% {{ opacity: 0.6; transform: scale(0.95); }} 
+            50% {{ opacity: 1; transform: scale(1.05); }} 
+            100% {{ opacity: 0.6; transform: scale(0.95); }} 
+        }}
+        .pulse-dot {{ 
+            display: inline-block;
+            animation: breathePulse 2.5s infinite ease-in-out; 
+        }}
     </style>
 </head>
     <body>
@@ -811,18 +858,15 @@ def generate_html():
             <div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">RVol</div><div id="tape-rvol" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">Vol Regime</div><div id="tape-vol-regime" class="live-value">—</div></div>
-        </div>
-        <div class="live-grid">
             <div class="stat-card"><div class="stat-label">OI Regime</div><div id="tape-oi-regime" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">Taker Ratio</div><div id="tape-taker" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">DXY Macro</div><div id="tape-dxy" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">Sentiment</div><div id="tape-sentiment" class="live-value">—</div></div>
-        </div>
-        <div class="live-grid">
             <div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div>
             <div class="stat-card"><div class="stat-label">Win Rate (7d)</div><div id="live-winrate" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">Avg R (7d)</div><div id="live-pf" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div>
+        </div>
     </section>
     <div class="layout-grid">
         {verdict_html}
@@ -848,7 +892,11 @@ def generate_html():
                 "gridColor": "#23232e",
                 "hide_top_toolbar": false,
                 "save_image": false,
-                "container_id": "tradingview_chart"
+                "container_id": "tradingview_chart",
+                "studies": [
+                  "Volume@tv-basicstudies",
+                  "VWAP@tv-basicstudies"
+                ]
               }});
               </script>
             </div>
@@ -856,13 +904,19 @@ def generate_html():
         </section>
     </div>
     {execution_html}
-    <section>
-        <h2>Performance Metrics</h2>
-        {p_html}
-    </section>
-    {edge_html}
-    {lifecycle_html}
-    {recent_alerts_html}
+    <div class="bottom-panels">
+        <div>
+            <section style="margin-bottom: 1.5rem;">
+                <h2>Performance Metrics</h2>
+                {p_html}
+            </section>
+            {edge_html}
+        </div>
+        <div>
+            {lifecycle_html}
+            {recent_alerts_html}
+        </div>
+    </div>
     <section>
         <h2>Active Signals</h2>
         <div class="grid">{alerts_html if alerts_html else '<p class="mini">No active signals detected.</p>'}</div>
