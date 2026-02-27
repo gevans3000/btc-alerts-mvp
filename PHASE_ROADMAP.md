@@ -159,4 +159,23 @@
 - ✅ **FIX 11**: Trade Safety gate — ML Conviction threshold lowered to 40
 
 ---
-_v19.0 | EMBER Collective_
+
+## Phase 20: Real Alerts & Probe Diagnostics ✅ DONE
+- ✅ **Score Calibration**: Multiplier set to 7.0 for live market firing.
+- ✅ **Probe Diagnostics**: Added tooltips and inline WHY-text to all 15 radar probes.
+- ✅ **Signal History**: Implemented "Recent Signals" panel (last 10 alerts).
+- ✅ **Accuracy Badge**: "Edge (last 20)" badge in Verdict Center with win-streak tracking.
+
+## Phase 21: Cyber-Terminal Upgrade ✅ DONE
+- ✅ **Advanced aesthetics**: Deep glassmorphism and background hardware grid.
+- ✅ **Numeric Precision**: Tabular monospaced typography for all live data.
+- ✅ **Living Elements**: Micro-animations (pulsing radar dots) for active signals.
+
+## Phase 22: Alert Recipe Layer ✅ DONE
+- ✅ **High-Conviction Patterns**: HTF_REVERSAL, BOS_CONTINUATION, VOL_EXPANSION.
+- ✅ **5-Question Validation**: Direction, Entry Zone, SL/TP, and Risk Sizing.
+- ✅ **Weighted Rubric**: 6-point quantitative confluence rubric (4/6 required for TRADE).
+- ✅ **Bot Schema**: Standardized JSON output for machine execution.
+
+---
+_v22.0 | EMBER Collective_

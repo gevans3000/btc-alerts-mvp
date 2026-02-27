@@ -1,188 +1,129 @@
-# Phase 21: Premium UX/UI & Live Feedback Terminal
+# Phase 21: Premium UX/UI Polish & Cyber-Terminal Upgrade
 
 **Status:** ✅ DONE  
-**Goal:** Upgrade the dashboard from a static-looking page into a reactive, professional trading terminal. We will add interactive charting, visual data pulses, audio notifications for high-conviction trades, and premium styling.
+**Goal:** We have a structurally excellent, high-density masonry layout. Now we need to elevate the aesthetic from a flat "prototype" to a premium, top-tier "Cyber-Terminal" (like a modern Bloomberg terminal). We will accomplish this with deep glassmorphism filters, grid overlays, precision typography alignment, and subtle "living" motion states—*all without adding any new data endpoints*.
 
 ---
 
-## ⚡ IMPLEMENTATION ORDER (4 FIXES)
+## ⚡ IMPLEMENTATION ORDER (3 FIXES)
 
 | Priority | Fix | What it does | Files touched |
 |----------|-----|-------------|---------------|
-| 🔴 P0 | **FIX 1** | Embedded Chart | Add a real-time TradingView widget to see the asset | `generate_dashboard.py` |
-| 🟡 P1 | **FIX 2** | WebSocket Pulses | Make data flash (pulse green/red) when updated live | `generate_dashboard.py` |
-| 🟡 P1 | **FIX 3** | Audio Alerts | Play a chime when a new **A+** tier trade fires | `generate_dashboard.py`, `dashboard_server.py`|
-| 🟢 P2 | **FIX 4** | Premium Styling | Apply glassmorphism and modern responsive layout | `generate_dashboard.py` |
+| 🔴 P0 | **FIX 1** | Advanced Cyber-Grid & Glassmorphism | Deepens the panel transparency to `rgba(15, 15, 20, 0.6)`, increases backdrop blur, and adds a faint hardware-style background grid. | `generate_dashboard.py` |
+| 🟡 P1 | **FIX 2** | Tabular Numeric Precision Typography | Enforces strict monospaced tabular numerals (`font-variant-numeric: tabular-nums`) on all rapidly updating financial data (`#livePrice`, `.live-value`) to prevent horizontal layout jitter. | `generate_dashboard.py` |
+| 🟡 P1 | **FIX 3** | "Living Element" Micro-Animations | Adds a slow, infinite 2-second breathing pulse to active 🟢 and 🔴 confluence radar dots so the terminal feels like a tracking radar engine. | `generate_dashboard.py` |
 
-**Rule:** After EACH fix, verify the dashboard visually in the browser. 
-
----
-
-## 🔴 FIX 1 — Embedded TradingView Chart
-
-### Why
-A seamless trader experience demands that signals and price action live side-by-side. Currently, the dashboard shows data but forces the trader to open a separate TradingView tab to verify the setup.
-
-### What to change
-
-**File:** `scripts/pid-129/generate_dashboard.py`
-
-**Step 1:** In the HTML generating function (around the `<style>` block and main layout grid), introduce a new container for the chart layout.
-Change the main layout to a CSS CSS Grid or Flexbox that splits the `Verdict Center` and the `Charting Panel`.
-
-**Step 2:** Add the TradingView Advanced Chart Widget HTML/JS snippet.
-```javascript
-<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container" style="height: 400px; width: 100%;">
-  <div id="tradingview_chart"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-  <script type="text/javascript">
-  new TradingView.widget({
-    "autosize": true,
-    "symbol": "BINANCE:BTCUSDT.P",
-    "interval": "5",
-    "timezone": "Etc/UTC",
-    "theme": "dark",
-    "style": "1",
-    "locale": "en",
-    "enable_publishing": false,
-    "backgroundColor": "#0f0f13",
-    "gridColor": "#23232e",
-    "hide_top_toolbar": false,
-    "save_image": false,
-    "container_id": "tradingview_chart"
-  });
-  </script>
-</div>
-<!-- TradingView Widget END -->
-```
-
-**Step 3:** Place this panel right next to the `Verdict Center` or `Execution Matrix` so the user can easily map the 5m setup to the candles.
+**Rule:** As an AI, you must meticulously make these exact text replacements cleanly. After completing all 3 hooks, instruct the user to verify visually in `http://localhost:8000/`.
 
 ---
 
-## 🟡 FIX 2 — Live Pulse Animations (WebSocket Visual Feedback)
+### 🔴 FIX 1 — Advanced Glassmorphism
 
-### Why
-When prices update via the WebSocket, the numbers jump abruptly. A premium terminal uses CSS animations to flash the background briefly (green for up, red for down) so the user's peripheral vision registers the update.
-
-### What to change
+**Why:** The current panels feel slightly too opaque/gray (`rgba(30, 30, 40, 0.75)`). Elevating it to an ultra-premium layout demands extreme contrast, sheer dark panels, and elevated blur radii to create a "floating hardware pane" aesthetic over a glowing background grid.
 
 **File:** `scripts/pid-129/generate_dashboard.py`
 
-**Step 1:** Add animation keyframes to the `<style>` block:
+**Step 1:** Locate the `.panel, .card` styling block in the `<style>` tag around line ~760. Run a regex search or carefully read the CSS to find:
 ```css
-@keyframes pulseGreen {
-    0% { background-color: rgba(0, 255, 204, 0.4); }
-    100% { background-color: transparent; }
-}
-@keyframes pulseRed {
-    0% { background-color: rgba(255, 77, 77, 0.4); }
-    100% { background-color: transparent; }
-}
-.pulse-up { animation: pulseGreen 0.8s ease-out; }
-.pulse-down { animation: pulseRed 0.8s ease-out; }
+        .panel, .card, .stat-card, .scorecard-section {{ background: rgba(30, 30, 40, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); color: var(--text); }}
 ```
-
-**Step 2:** Modify the WebSocket message handler block in the JS (inside the `<script>` tag at the bottom of the HTML page). When updating `#livePrice` or `#livePnL`, check if the new value is higher or lower than the old.
-```javascript
-// Inside the socketonmessage function:
-const oldPrice = parseFloat(document.getElementById('livePrice').innerText.replace(/[$,]/g, ''));
-const newPrice = parseFloat(msg.price);
-const el = document.getElementById('livePrice');
-
-el.innerText = '$' + newPrice.toLocaleString('en-US', {minimumFractionDigits: 2});
-
-if (newPrice > oldPrice) {
-    el.classList.remove('pulse-down');
-    void el.offsetWidth; // trigger reflow
-    el.classList.add('pulse-up');
-} else if (newPrice < oldPrice) {
-    el.classList.remove('pulse-up');
-    void el.offsetWidth;
-    el.classList.add('pulse-down');
-}
-```
-
----
-
-## 🟡 FIX 3 — Audio Alerts for 'A+' Setups
-
-### Why
-Traders can't stare at the screen all day. A subtle notification chime immediately brings their attention back only when a high-conviction (A+ Tier) trade fires.
-
-### What to change
-
-**File:** `scripts/pid-129/generate_dashboard.py`
-
-**Step 1:** Add an HTML5 Audio element to the body:
-```html
-<audio id="alert-chime" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
-```
-
-**Step 2:** In the WebSocket handler, check if a new `A+` alert comes in (you will need to ensure `dashboard_server.py` pushes an event for new alerts).
-```javascript
-// Inside the JS socket on message loop:
-if (msg.type === "new_alert" && msg.tier === "A+") {
-    document.getElementById('alert-chime').play().catch(e => console.log('Audio blocked:', e));
-    
-    // Optional browser notification
-    if (Notification.permission === "granted") {
-        new Notification("A+ Trade Alert", { body: `${msg.direction} on ${msg.timeframe}` });
-    }
-}
-```
-
-*Note:* You may need to add a "Enable Audio" button on the dashboard due to modern browser autoplay policies.
-
----
-
-## 🟢 FIX 4 — Premium Styling & Glassmorphism
-
-### Why
-Using absolute basics makes the terminal look like a prototype. Softening the borders, applying backdrop blurs (glassmorphism), and perfecting padding dramatically increases the perceived value of the system.
-
-### What to change
-
-**File:** `scripts/pid-129/generate_dashboard.py`
-
-**Step 1:** Update styling in the CSS block:
+**Replace it exactly with:**
 ```css
-/* Update surface and cards for Glassmorphism */
-.panel, .card, .stat-card {
-    background: rgba(22, 22, 28, 0.6); /* Translucent dark */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-}
-
-/* Improve Typography Constraints */
-body {
-    background-image: radial-gradient(circle at top right, rgba(0, 255, 204, 0.05), transparent 40%),
-                      radial-gradient(circle at bottom left, rgba(112, 0, 255, 0.05), transparent 40%);
-    background-color: #050507;
-    background-attachment: fixed;
-}
+        .panel, .card, .stat-card, .scorecard-section {{
+            background: rgba(15, 15, 20, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            color: var(--text);
+        }}
 ```
 
-**Step 2:** Standardize gap spacing in the grids (e.g., `gap: 1.5rem;`) so elements aren't too cramped.
+**Step 2:** To complete the "Cyber-Grid", add a faint background grid pattern to the `body` tag. Locate `body {{` inside `<style>` and update it to:
+```css
+        body {{
+            background-color: #050507;
+            background-image: 
+                radial-gradient(circle at top right, rgba(0, 255, 204, 0.05), transparent 40%), 
+                radial-gradient(circle at bottom left, rgba(112, 0, 255, 0.05), transparent 40%),
+                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+            background-position: 0 0, 0 0, -1px -1px, -1px -1px;
+            background-attachment: fixed;
+            color: var(--text); 
+            font-family: 'Outfit', sans-serif; 
+            padding: 2rem; 
+            max-width: 1400px; 
+            margin: 0 auto;
+        }}
+```
+
+---
+
+### 🟡 FIX 2 — Tabular Numeric Precision Typography
+
+**Why:** Professional terminals lock numerical data to tabular spacing so digits don't cause layout width shifts (jitter) every time a new quote ticks. We must enforce monospaced styling (`JetBrains Mono`) specifically on all ticker prices and stats. 
+
+**File:** `scripts/pid-129/generate_dashboard.py`
+
+**Step 1:** Locate the `.live-value` CSS class inside `<style>` and add tabular font formatting:
+```css
+        .live-value {{ 
+            font-size: 1.15rem; 
+            font-weight: 700; 
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }}
+```
+
+**Step 2:** Add this brand new block definition anywhere within the `<style>` tag to lock the `#livePrice` and `#livePnL`/Spread layouts inside the main grid. We don't have CSS selectors for them directly right now:
+```css
+        #livePrice, #livePnL, #distTP1, #distStop, #liveSpread {{
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.5px;
+        }}
+        #livePrice {{ font-size: 1.8rem !important; font-weight: 800; }}
+```
+**Step 3:** (CRITICAL) In the Python code block around `line 702` that generates `verdict_html` and the `#livePrice` div, remove `font-size:1.6rem;` inline from `<div id='livePrice' style='font-size:1.6rem;font-weight:800;'>` so that the CSS class above takes priority.
+
+---
+
+### � FIX 3 — "Living Element" Micro-Animations
+
+**Why:** A static webpage is boring. By making the active confluence signals pulse gently, the dashboard feels like an active, tracking sonar/radar system.
+
+**File:** `scripts/pid-129/generate_dashboard.py`
+
+**Step 1:** Define the breathing animation in the `<style>` block (add it near the existing `@keyframes pulseGreen`):
+```css
+        @keyframes breathePulse {{ 
+            0% {{ opacity: 0.6; transform: scale(0.95); }} 
+            50% {{ opacity: 1; transform: scale(1.05); }} 
+            100% {{ opacity: 0.6; transform: scale(0.95); }} 
+        }}
+        .pulse-dot {{ 
+            display: inline-block;
+            animation: breathePulse 2.5s infinite ease-in-out; 
+        }}
+```
+
+**Step 2:** Modify the python code inside the `build_verdict_context` function (around line `475`). Find the line where `icon` is assigned:
+```python
+        icon = "🟢" if aligned else "🔴" if against else "⚫"
+```
+And replace it with:
+```python
+        icon_raw = "🟢" if aligned else "🔴" if against else "⚫"
+        icon = f"<span class='pulse-dot'>{icon_raw}</span>" if icon_raw in ["🟢", "🔴"] else icon_raw
+```
 
 ---
 
 ## Final Verification Checklist
 
-After applying the changes:
-```powershell
-# 1. Regenerate dashboard
-python scripts/pid-129/generate_dashboard.py
-
-# 2. Start dashboard server
-Start-Process -NoNewWindow -FilePath python -ArgumentList "scripts/pid-129/dashboard_server.py"
-```
-
-Confirm in `http://localhost:8000`:
-- [ ] **Chart:** TradingView widget loads properly for BTC.
-- [ ] **Pulses:** `Live BTC Price` flashes briefly when it updates from WebSocket.
-- [ ] **Audio:** Playing the sound works (may need to click a button on the UI if autoplay blocked).
-- [ ] **Styling:** Panels have a premium gradient/blur effect.
+After applying the changes, ask the user to double check the browser at `http://localhost:8000/`. The AI and User should confirm:
+1. [ ] **Background Grid**: There is now a faint dark cyber-grid behind the darker, blurrier structural panels.
+2. [ ] **Typography**: The Live Tape numbers (Mid, Spread, DXY) and the main Live BTC price are all strict Monospace and don't jitter around rapidly tick-to-tick.
+3. [ ] **Pulsing Radars**: The green and red dots in the Confluence Radar are slowly breathing/pulsating.
