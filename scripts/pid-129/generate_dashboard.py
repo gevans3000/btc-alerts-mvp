@@ -697,7 +697,13 @@ def generate_html():
         execute_html = f"<button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;{bg}' onclick=\"requestExecute('latest-btc')\">{label}</button>"
     verdict_html = f"""
     <section class='panel'>
-      <h2>Verdict Center</h2>
+      <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;'>
+        <h2 style='margin:0;'>Verdict Center</h2>
+        <div style='display:flex;gap:4px;'>
+          <button id='muteBtn' class='pill badge-neutral' onclick='toggleMute()' style='margin:0;cursor:pointer;min-width:40px;'>🔊</button>
+          <button id='filterBtn' class='pill badge-neutral' onclick='toggleFilter()' style='margin:0;cursor:pointer;'>ALL</button>
+        </div>
+      </div>
       <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill {badge_class_for_direction(vctx['direction'])}'>{vctx['direction']}</span></div>
       <div class='mini' style='margin-bottom:8px;'>Edge (last {vctx.get('accuracy_total', 0)}): <span class='pill {"badge-good" if vctx.get("accuracy_pct", 0) >= 55 else "badge-warn" if vctx.get("accuracy_pct", 0) >= 40 else "badge-bad"}'>{vctx.get("accuracy_pct", 0):.0f}% ({vctx.get("accuracy_wins", 0)}W)</span>{" 🔥" + str(vctx.get("win_streak", 0)) if vctx.get("win_streak", 0) >= 3 else ""}</div>
       <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
@@ -979,10 +985,12 @@ const wsDir=String(wsLatest.direction||state.direction).toUpperCase();
 const wsTier=String(wsLatest.tier||"").toUpperCase();
 if (wsTier === "A+" && wsLatest.timestamp && wsLatest.timestamp !== window._lastPlayedAlertTs) {{
     window._lastPlayedAlertTs = wsLatest.timestamp;
-    const audio = document.getElementById('alert-chime');
-    if (audio) audio.play().catch(e => console.log('Audio blocked:', e));
+    if (!window._isMuted) {{
+        const audio = document.getElementById('alert-chime');
+        if (audio) audio.play().catch(e => console.log('Audio blocked:', e));
+    }}
     if (Notification.permission === "granted") {{
-        new Notification("A+ Trade Alert", {{ body: `${{wsDir}} on ${{wsLatest.timeframe}}` }});
+        new Notification("A+ Trade Alert", {{ body: wsDir + ' on ' + wsLatest.timeframe }});
     }} else if (Notification.permission !== "denied") {{
         Notification.requestPermission();
     }}
@@ -1034,6 +1042,28 @@ if(vrE) {{ vrE.textContent = (wsVI.regime||'—').toUpperCase(); vrE.style.color
 
 const wsPD=[[['SQUEEZE_FIRE','SQUEEZE_ON'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL','FLOW_TAKER_BULLISH','VOLUME_IMPULSE_BULL'],['SENTIMENT_BEAR','FLOW_TAKER_BEARISH','VOLUME_IMPULSE_BEAR'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH','OI_NEW_LONGS'],['BASIS_BEARISH','OI_NEW_SHORTS'],'OI / Basis'],[['STRUCTURE_BOS_BULL','STRUCTURE_CHOCH_BULL'],['STRUCTURE_BOS_BEAR','STRUCTURE_CHOCH_BEAR'],'Structure'],[['PDL_SWEEP_BULL','EQL_SWEEP_BULL','SESSION_LOW_SWEEP','PDH_RECLAIM_BULL'],['PDH_SWEEP_BEAR','EQH_SWEEP_BEAR','SESSION_HIGH_SWEEP','PDL_BREAK_BEAR'],'Levels'],[['AVWAP_RECLAIM_BULL'],['AVWAP_REJECT_BEAR'],'AVWAP'],[['ABOVE_VALUE'],['BELOW_VALUE'],'VP Status'],[['AUTO_RR_EXCELLENT'],['AUTO_RR_POOR'],'Auto R:R']];
 let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}}; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{console.error(_err);}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
+
+      function toggleMute() {{
+          window._isMuted = !window._isMuted;
+          document.getElementById('muteBtn').textContent = window._isMuted ? '🔇' : '🔊';
+          document.getElementById('muteBtn').classList.toggle('badge-bad', window._isMuted);
+      }}
+      function toggleFilter() {{
+          window._isAOnly = !window._isAOnly;
+          const btn = document.getElementById('filterBtn');
+          btn.textContent = window._isAOnly ? 'A+ ONLY' : 'ALL';
+          btn.classList.toggle('badge-good', window._isAOnly);
+          // Simple visual filter for the recent signals table
+          const rows = document.querySelectorAll('.matrix-table tbody tr');
+          rows.forEach(r => {{
+              if (window._isAOnly) {{
+                  const tier = r.cells[3]?.textContent || "";
+                  r.style.display = tier.includes('A+') ? '' : 'none';
+              }} else {{
+                  r.style.display = '';
+              }}
+          }});
+      }}
 
       connectWS();
       updateLivePrice();

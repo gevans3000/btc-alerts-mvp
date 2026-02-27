@@ -57,13 +57,13 @@ def _tier_and_action(score: int, blockers: List[str], timeframe: str, rubric_sco
         tier = "B"
         action = "WATCH"
 
-    # Hard Gate: Confluence Rubric (must be >= 4/6 for A+, >= 2/6 for B)
-    if tier == "A+" and rubric_score < 4:
+    # Hard Gate: Confluence Rubric (Phase 23: Tightened to 5/6 for A+, 3/6 for B)
+    if tier == "A+" and rubric_score < 5:
         tier = "B"
-        if rubric_score < 2:
+        if rubric_score < 3:
             tier = "NO-TRADE"
             action = "SKIP"
-    elif tier == "B" and rubric_score < 2:
+    elif tier == "B" and rubric_score < 3:
         tier = "NO-TRADE"
         action = "SKIP"
 
