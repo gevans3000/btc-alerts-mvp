@@ -427,6 +427,31 @@ def _recipe_vol_expansion(
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
 
+def resolve_conflicts(signals: List[RecipeSignal]) -> List[RecipeSignal]:
+    """
+    When multiple recipes fire, resolve contradictions.
+    
+    Rules:
+    1. If LONG and SHORT recipes fire simultaneously → keep NEITHER (cancel).
+       Contradictory signals = no edge, sit out.
+    2. If multiple same-direction recipes fire → keep highest raw_score only.
+       Stacking inflates confidence artificially.
+    3. Return at most 1 RecipeSignal.
+    """
+    if not signals:
+        return []
+
+    directions = set(s.direction for s in signals)
+    
+    # Rule 1: Contradictory directions
+    if "LONG" in directions and "SHORT" in directions:
+        return []
+    
+    # Rule 2: Multiple signals in same direction -> take best
+    # Sort by raw_score descending
+    sorted_signals = sorted(signals, key=lambda x: x.raw_score, reverse=True)
+    return [sorted_signals[0]]
+
 def detect_recipes(
     candles: List[Candle],
     struct: Dict[str, Any],

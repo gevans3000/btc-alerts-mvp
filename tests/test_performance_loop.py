@@ -6,10 +6,18 @@ from datetime import datetime, timezone
 from tools.paper_trader import Portfolio, Position
 from tools.outcome_tracker import resolve_outcomes
 
+import tempfile
+import os
+
 @pytest.fixture
-def temp_portfolio(tmp_path):
-    path = tmp_path / "test_portfolio.json"
-    return Portfolio(str(path))
+def temp_portfolio():
+    fd, path = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+    yield Portfolio(path)
+    try:
+        os.remove(path)
+    except Exception:
+        pass
 
 def test_portfolio_on_alert(temp_portfolio):
     # Risk 100 on 10000 balance

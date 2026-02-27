@@ -8,7 +8,7 @@ from intelligence.anchored_vwap import compute_anchored_vwap
 from intelligence.volume_impulse import detect_volume_impulse
 from intelligence.oi_classifier import classify_price_oi
 from intelligence.auto_rr import compute_auto_rr
-from intelligence.recipes import detect_recipes, RecipeSignal
+from intelligence.recipes import detect_recipes, RecipeSignal, resolve_conflicts
 
 from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
@@ -34,6 +34,11 @@ from intelligence.detectors import (
     _detector_candidates,
     _arbitrate_candidates,
 )
+from core.logger import logger
+
+# Phase 20-23: calibrated for live market. Scales raw signal points (~-30 to +30)
+# up to the 0-100 confidence range expected by TIMEFRAME_RULES thresholds.
+SCORE_MULTIPLIER = 7.0
 
 def _tier_and_action(score: int, blockers: List[str], timeframe: str, rubric_score: int) -> tuple[str, str]:
     """
@@ -68,6 +73,34 @@ def _tier_and_action(score: int, blockers: List[str], timeframe: str, rubric_sco
         action = "SKIP"
 
     return tier, action
+
+def _htf_confirms(recipe_direction: str, candles_htf: List[Candle]) -> bool:
+    """
+    Check if Higher-Timeframe structure doesn't contradict the recipe.
+    
+    Not requiring full alignment — just checking for NO active counter-signal.
+    - LONG recipe: HTF must NOT have recent bearish structural shift.
+    - SHORT recipe: HTF must NOT have recent bullish structural shift.
+    """
+    if not candles_htf or len(candles_htf) < 20:
+        return True # Neutral
+        
+    try:
+        struct_htf = detect_structure(candles_htf)
+        codes = struct_htf.get("codes", [])
+        
+        if recipe_direction == "LONG":
+            # Reject if HTF has active bearish structure shift
+            if any(c in codes for c in ["STRUCTURE_BOS_BEAR", "STRUCTURE_CHOCH_BEAR"]):
+                return False
+        elif recipe_direction == "SHORT":
+            # Reject if HTF has active bullish structure shift
+            if any(c in codes for c in ["STRUCTURE_BOS_BULL", "STRUCTURE_CHOCH_BULL"]):
+                return False
+    except Exception:
+        pass
+        
+    return True
 
 def compute_score(
     symbol: str,
@@ -276,10 +309,10 @@ def compute_score(
         except Exception:
             pass
 
-    # --- Recipe Detection (Phase 22) ---
+    # --- Recipe Detection (Phase 22/23) ---
     try:
         # Detect patterns and answer the "5-Question" validation schema
-        recipe_signals = detect_recipes(
+        raw_signals = detect_recipes(
             candles=candles,
             struct=trace["context"].get("structure", {}),
             sweeps={"codes": codes, "sweep_low": "EQL_SWEEP_BULL" in codes, "sweep_high": "EQH_SWEEP_BEAR" in codes, 
@@ -289,10 +322,25 @@ def compute_score(
             squeeze={"state": trace["context"].get("squeeze", "NONE")},
             atr_val=local_atr if 'local_atr' in locals() else None
         )
+        
+        # Phase 23: Resolve contradictions (max 1 recipe)
+        recipe_signals = resolve_conflicts(raw_signals)
+        
         for sig in recipe_signals:
+            # Phase 23: Multi-Timeframe Confirmation
+            # Check 1h if current is 5/15m, check 15m if current is 1h
+            htf_candles = candles_1h if timeframe != "1h" else candles_15m
+            confirmed = _htf_confirms(sig.direction, htf_candles)
+            
+            sig_score = sig.raw_score
+            if not confirmed:
+                sig_score *= 0.5
+                codes.append("HTF_CONFLICT")
+                reasons.append(f"Recipe {sig.recipe} downgraded (HTF Conflict)")
+            
             intel.recipes.append(sig)
             codes.append(f"{sig.recipe}_RECIPE")
-            breakdown["momentum"] += sig.raw_score / SCORE_MULTIPLIER if 'SCORE_MULTIPLIER' in locals() else sig.raw_score / 7.0
+            breakdown["momentum"] += sig_score / SCORE_MULTIPLIER
             reasons.append(f"Recipe: {sig.recipe} ({sig.direction})")
     except Exception as e:
         logger.warning(f"Recipe detection failed: {e}")
@@ -315,7 +363,6 @@ def compute_score(
     # Raw scores typically land in -30 to +30 range.
     # Scale by 3x so a raw 15 becomes 45 (the A+ threshold for 5m).
     # This means: 5 active signals ≈ raw 15 → normalized 45 → A+ tier.
-    SCORE_MULTIPLIER = 7.0  # Phase 20: calibrated for live market (was 3.0)
     total_score = total_score * SCORE_MULTIPLIER
 
     # Map ML Mock / Fallback
@@ -402,18 +449,35 @@ def compute_score(
     tp1_mult = tp_cfg["tp1"]
     inv_mult = tp_cfg["inv"]
     
-    if direction == "LONG":
-        invalidation = last_price - (local_atr * inv_mult * 2.0)
-        tp1 = last_price + (local_atr * tp1_mult)
-        tp2 = last_price + (local_atr * tp_cfg["tp2"])
+    # Phase 23: Recipe-Aware Execution Levels
+    if intel.recipes:
+        # Use levels from the primary recipe
+        best_sig = intel.recipes[0]
+        entry_zone = best_sig.entry_zone
+        invalidation = best_sig.invalidation
+        tp1 = best_sig.targets.get("tp1", last_price)
+        tp2 = best_sig.targets.get("tp2", last_price)
+        risk_size = best_sig.risk_size
+        
+        # Recalculate RR from recipe levels
+        risk = abs(last_price - invalidation)
+        reward = abs(tp1 - last_price)
+        rr = reward / risk if risk > 0 else 0.0
     else:
-        invalidation = last_price + (local_atr * inv_mult * 2.0)
-        tp1 = last_price - (local_atr * tp1_mult)
-        tp2 = last_price - (local_atr * tp_cfg["tp2"])
+        # Generic ATR-based fallback
+        entry_zone = f"{last_price:,.0f}"
+        if direction == "LONG":
+            invalidation = last_price - (local_atr * inv_mult * 2.0)
+            tp1 = last_price + (local_atr * tp1_mult)
+            tp2 = last_price + (local_atr * tp_cfg["tp2"])
+        else:
+            invalidation = last_price + (local_atr * inv_mult * 2.0)
+            tp1 = last_price - (local_atr * tp1_mult)
+            tp2 = last_price - (local_atr * tp_cfg["tp2"])
 
-    risk = abs(last_price - invalidation)
-    reward = abs(tp1 - last_price)
-    rr = reward / risk if risk > 0 else 0.0
+        risk = abs(last_price - invalidation)
+        reward = abs(tp1 - last_price)
+        rr = reward / risk if risk > 0 else 0.0
 
     trace["codes"] = list(set(codes))
     trace["degraded"] = degraded
@@ -432,7 +496,7 @@ def compute_score(
         quality="HIGH" if tier == "A+" else "MED",
         direction=direction,
         strategy_type=strategy,
-        entry_zone=f"{last_price:,.0f}",
+        entry_zone=entry_zone,
         invalidation=invalidation,
         tp1=tp1,
         tp2=tp2,

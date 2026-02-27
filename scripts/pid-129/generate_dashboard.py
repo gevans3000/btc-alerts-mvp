@@ -196,6 +196,16 @@ def render_execution_matrix(alerts):
         tp1_val = float(a.get("tp1") or 0)
         rr = float(a.get("rr_ratio") or 0)
         
+        # Phase 23: Extract Recipe
+        intel_obj = a.get("intel", {})
+        recipe_list = intel_obj.get("recipes", [])
+        recipe_name = recipe_list[0].get("recipe") if recipe_list else None
+        recipe_label = f"<span class='pill badge-secondary' style='background:var(--secondary);'>🔮 {recipe_name}</span>" if recipe_name else ""
+        
+        # Risk size from recipe
+        recipe_risk_size = recipe_list[0].get("risk_size") if recipe_list else None
+        recipe_risk_str = f" · Risk: {recipe_risk_size:.2f} units" if recipe_risk_size else ""
+
         qty_str = ""
         if risk_pct > 0 and entry > 0 and stop > 0 and abs(entry - stop) > 0.1:
             portfolio = get_portfolio()
@@ -209,7 +219,7 @@ def render_execution_matrix(alerts):
         tp1_str = f"${tp1_val:,.0f}" if tp1_val else "--"
         rr_str = f"{rr:.2f}" if rr else "--"
         
-        risk_label = f"<div class='mini' style='color:var(--accent);font-weight:700;'>Suggested Risk: {risk_pct}%{qty_str}</div>" if (risk_pct > 0 and tf == "5m") else ""
+        risk_label = f"<div class='mini' style='color:var(--accent);font-weight:700;'>Suggested Risk: {risk_pct}%{qty_str}{recipe_risk_str}</div>" if (risk_pct > 0 and tf == "5m") else ""
         
         cols.append(f"""
         <td>
@@ -217,6 +227,7 @@ def render_execution_matrix(alerts):
                 <span class="pill {badge_class_for_direction(direction)}">{direction}</span>
                 <span class="pill {badge_class_for_tier(tier)}">{tier}</span>
                 <span class="pill badge-neutral">{conf}/100</span>
+                {recipe_label}
             </div>
             {risk_label}
             <div class="mini">Regime: {regime} · Session: {session}</div>
@@ -596,10 +607,16 @@ def render_recent_alerts(alerts):
         dt_codes = (a.get("decision_trace") or {}).get("codes", [])
         code_count = len([c for c in dt_codes if not c.startswith("REGIME_") and not c.startswith("SESSION_")])
         
+        # Phase 23: Recipe in list
+        intel_obj = a.get("intel", {})
+        recipe_list = intel_obj.get("recipes", [])
+        recipe_name = recipe_list[0].get("recipe") if recipe_list else None
+        recipe_part = f"<span class='mini' style='display:block;opacity:0.6;font-size:0.7em;'>{recipe_name}</span>" if recipe_name else ""
+        
         rows_html.append(f"""
         <tr>
             <td>{tf}</td>
-            <td><span class="pill {dir_cls}">{direction}</span></td>
+            <td><span class="pill {dir_cls}">{direction}</span>{recipe_part}</td>
             <td>{conf}</td>
             <td><span class="pill {tier_cls}">{tier}</span></td>
             <td>{code_count}</td>
