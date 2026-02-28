@@ -291,7 +291,41 @@ def get_dashboard_data():
     try:
         # Load all recent alerts for calculations, but only send limited summaries to WS
         all_recent_alerts = _load_alerts(limit=50)
-        overrides = _load_overrides()
+
+        # ── Phase 25: Extract vol regime from the latest alert's decision trace ──
+        vol_regime = "normal"
+        for a in reversed(all_recent_alerts):
+            dt_ctx = (a.get("decision_trace") or {}).get("context", {})
+            vi = dt_ctx.get("volume_impulse", {})
+            if isinstance(vi, dict) and vi.get("regime"):
+                vol_regime = vi["regime"].lower()
+                break
+
+        # ── Phase 25: Auto-pilot dynamic muting ──
+        auto_muted_recipes = {}
+        now = time.time()
+        auto_expiry = now + 120  # Auto-mutes last 2 minutes (re-evaluated every watcher cycle)
+
+        if vol_regime == "expansion":
+            # During expansion: suppress counter-trend / mean-reversion recipes
+            for name in ("HTF_REVERSAL",):
+                auto_muted_recipes[name] = auto_expiry
+        elif vol_regime == "low":
+            # During low-vol range: suppress trend-continuation recipes
+            for name in ("BOS_CONTINUATION", "VOL_EXPANSION"):
+                auto_muted_recipes[name] = auto_expiry
+
+        overrides = _load_overrides().copy()
+        
+        # Merge auto-pilot mutes with manual mutes (auto does NOT overwrite longer manual mutes)
+        if auto_muted_recipes:
+            # We don't want to mutate the global _OVERRIDES dictionary
+            merged_muted = overrides.get("muted_recipes", {}).copy()
+            for recipe_name, auto_exp in auto_muted_recipes.items():
+                existing_exp = merged_muted.get(recipe_name, 0)
+                if auto_exp > existing_exp:
+                    merged_muted[recipe_name] = auto_exp
+            overrides["muted_recipes"] = merged_muted
         
         # Apply filters from overrides
         alerts = all_recent_alerts
@@ -307,12 +341,59 @@ def get_dashboard_data():
                 expiry = overrides["muted_recipes"].get(recipe, 0)
                 if expiry < now:
                     valid_alerts.append(a)
+                else:
+                    # In Phase 25, we continue to filter alerts if they are muted
+                    pass
             alerts = valid_alerts
         
         portfolio = _safe_json(PORTFOLIO_PATH, {"balance": 10000, "positions": [], "closed_trades": [], "max_drawdown": 0})
         mid = _latest_price(all_recent_alerts)
         spread = _estimate_spread(all_recent_alerts) if mid else 0.0
+
+        # ── Phase 25: Order Flow BS-Filter ──
+        # Extract taker_ratio from latest alert's flow data or decision_trace
+        taker_ratio = 1.0
+        for a in reversed(all_recent_alerts):
+            dt_ctx = (a.get("decision_trace") or {}).get("context", {})
+            # Check for flow codes that indicate taker direction
+            codes = (a.get("decision_trace") or {}).get("codes", [])
+            if "FLOW_TAKER_BULLISH" in codes:
+                taker_ratio = 1.4
+                break
+            elif "FLOW_TAKER_BEARISH" in codes:
+                taker_ratio = 0.6
+                break
+
+        bs_filter = "CLEAR"
+        bs_severity = 0  # 0=clear, 1=caution, 2=danger
+        if spread > 10.0:
+            bs_filter = "⚠️ THIN LIQUIDITY (Spread > $10)"
+            bs_severity = 2
+        elif spread > 5.0:
+            bs_filter = "⚠️ WIDE SPREAD ($" + f"{spread:.1f}" + ") — Slippage risk"
+            bs_severity = 1
+        elif taker_ratio < 0.75:
+            bs_filter = "⚠️ HEAVY SELLS — Bearish pressure"
+            bs_severity = 1
+        elif taker_ratio > 1.35:
+            bs_filter = "⚡ HEAVY BUYS — Bullish pressure"
+            bs_severity = 0
+
         stats = _portfolio_stats(portfolio, current_price=mid, alerts=all_recent_alerts)
+
+        # ── Phase 25: Drawdown Circuit Breaker ──
+        dd_pct = stats.get("drawdown_pct", 0.0)
+        streak = stats.get("streak", 0)
+        circuit_breaker = {
+            "active": dd_pct > 8.0 or streak <= -4,
+            "reason": "",
+            "dd_pct": dd_pct,
+            "streak": streak,
+        }
+        if dd_pct > 8.0:
+            circuit_breaker["reason"] = f"Drawdown {dd_pct:.1f}% exceeds 8% threshold"
+        elif streak <= -4:
+            circuit_breaker["reason"] = f"Losing streak of {abs(streak)} — stop and reassess"
 
         # WS-friendly lightweight alerts
         light_alerts = _light_alerts(alerts[-15:])
@@ -329,6 +410,14 @@ def get_dashboard_data():
             "alerts": light_alerts,
             "stats": stats,
             "overrides": overrides,
+            "auto_pilot": {
+                "active": len(auto_muted_recipes) > 0,
+                "regime": vol_regime,
+                "auto_muted": list(auto_muted_recipes.keys()),
+            },
+            "bs_filter": bs_filter,
+            "bs_severity": bs_severity,
+            "circuit_breaker": circuit_breaker,
             "logs": f"Heartbeat {datetime.now().strftime('%H:%M:%S')}",
         }
     except Exception as e:
