@@ -116,6 +116,35 @@ Acceptance criteria:
 
 ---
 
+## What you do now (minimum actions)
+If you want the absolute least effort, here is the practical path:
+
+1. **Do not change dashboard UI.**
+2. **Implement one track at a time behind flags (default `False`).**
+3. **Use parallel branches + one integration branch** so merges stay clean.
+
+### One-command setup (PowerShell)
+Run from repo root to create all parallel branches from `main`:
+
+```powershell
+git checkout main; git pull; foreach ($b in @('feat/pid129-track-a-news','feat/pid129-track-b-sentiment','feat/pid129-track-c-mtf','feat/pid129-track-d-risk','feat/pid129-track-e-portfolio')) { git branch $b main }
+```
+
+### Lowest-action merge flow
+After each track PR is green, merge in this order:
+A → B → C → D → E
+
+Then only do this final validation set:
+
+```powershell
+python -m pytest tests/test_sentiment.py tests/test_confluence.py tests/test_preconditions.py
+python app.py --once
+```
+
+If those pass with all new flags still `False`, behavior is unchanged (safe baseline).
+
+---
+
 ## Minimal merge strategy (least actions)
 Use a single integration branch and merge parallel tracks via small PRs:
 1. Branches from `main`:
