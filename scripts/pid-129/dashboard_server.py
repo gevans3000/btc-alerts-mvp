@@ -69,12 +69,8 @@ def _light_alerts(alerts):
     light = []
     for i, a in enumerate(alerts):
         dt = a.get("decision_trace", {}).copy()
-        # Strip heavy context keys to keep WS frames reasonable while giving the UI what it needs
-        if isinstance(dt, dict) and "context" in dt:
-            ctx = dt.get("context")
-            if isinstance(ctx, dict):
-                keep_keys = {"session_levels", "volume_profile", "avwap", "structure", "volume_impulse", "auto_rr", "sentiment", "macro_correlation", "liquidity"}
-                dt["context"] = {k: v for k, v in ctx.items() if k in keep_keys}
+        # Phase 24: keep the full decision_trace.context for radar/key-levels.
+        # Intel and raw candle data are already excluded by the specific dict keys below.
         
         light.append({
             "idx": i,
@@ -303,6 +299,15 @@ def get_dashboard_data():
             alerts = [a for a in alerts if (a.get("confidence", 0) >= overrides["min_score"])]
         if overrides.get("direction_filter"):
             alerts = [a for a in alerts if a.get("direction") == overrides["direction_filter"]]
+        if overrides.get("muted_recipes"):
+            now = time.time()
+            valid_alerts = []
+            for a in alerts:
+                recipe = a.get("recipe_name") or _match_recipe(a.get("alert_id") or a.get("id"), all_recent_alerts)
+                expiry = overrides["muted_recipes"].get(recipe, 0)
+                if expiry < now:
+                    valid_alerts.append(a)
+            alerts = valid_alerts
         
         portfolio = _safe_json(PORTFOLIO_PATH, {"balance": 10000, "positions": [], "closed_trades": [], "max_drawdown": 0})
         mid = _latest_price(all_recent_alerts)
