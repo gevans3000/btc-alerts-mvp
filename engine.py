@@ -85,17 +85,21 @@ def _htf_confirms(recipe_direction: str, candles_htf: List[Candle]) -> bool:
     if not candles_htf or len(candles_htf) < 20:
         return True # Neutral
         
-    try:
-        struct_htf = detect_structure(candles_htf)
-        codes = struct_htf.get("codes", [])
+    counter_events = []
+    if recipe_direction == "LONG":
+        counter_events = ["BOS_BEAR", "CHOCH_BEAR"]
+    elif recipe_direction == "SHORT":
+        counter_events = ["BOS_BULL", "CHOCH_BULL"]
         
-        if recipe_direction == "LONG":
-            # Reject if HTF has active bearish structure shift
-            if any(c in codes for c in ["STRUCTURE_BOS_BEAR", "STRUCTURE_CHOCH_BEAR"]):
-                return False
-        elif recipe_direction == "SHORT":
-            # Reject if HTF has active bullish structure shift
-            if any(c in codes for c in ["STRUCTURE_BOS_BULL", "STRUCTURE_CHOCH_BULL"]):
+    try:
+        # Phase 23 fix: Make HTF conflict check recency-aware (last 3 HTF candles)
+        for i in range(3):
+            sub_candles = candles_htf if i == 0 else candles_htf[:-i]
+            if len(sub_candles) < 20:
+                continue
+                
+            struct_htf = detect_structure(sub_candles)
+            if struct_htf.get("last_event") in counter_events:
                 return False
     except Exception:
         pass
@@ -459,9 +463,10 @@ def compute_score(
         tp2 = best_sig.targets.get("tp2", last_price)
         risk_size = best_sig.risk_size
         
-        # Recalculate RR from recipe levels
-        risk = abs(last_price - invalidation)
-        reward = abs(tp1 - last_price)
+        # Recalculate RR using recipe execution price
+        exec_px = best_sig.exec_px
+        risk = abs(exec_px - invalidation)
+        reward = abs(tp1 - exec_px)
         rr = reward / risk if risk > 0 else 0.0
     else:
         # Generic ATR-based fallback

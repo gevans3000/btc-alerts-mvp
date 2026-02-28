@@ -58,6 +58,7 @@ class RecipeSignal:
     recipe: str                    # 'HTF_REVERSAL' | 'BOS_CONTINUATION' | 'VOL_EXPANSION'
     direction: str                 # 'LONG' | 'SHORT'
     entry_zone: str                # 'MARKET' | 'LIMIT@<price>'
+    exec_px: float                 # Intended execution price
     invalidation: float            # Hard stop level
     risk_size: float               # Position size in base units for 1.0R
     targets: Dict[str, float]      # {'tp1': float, 'tp2': float}
@@ -228,6 +229,7 @@ def _recipe_htf_reversal(
         recipe="HTF_REVERSAL",
         direction=plan["direction"],
         entry_zone=plan["entry_zone"],
+        exec_px=plan["exec_px"],
         invalidation=plan["invalidation"],
         risk_size=plan["risk_size"],
         targets=plan["targets"],
@@ -308,6 +310,7 @@ def _recipe_bos_continuation(
         recipe="BOS_CONTINUATION",
         direction=plan["direction"],
         entry_zone=plan["entry_zone"],
+        exec_px=plan["exec_px"],
         invalidation=plan["invalidation"],
         risk_size=plan["risk_size"],
         targets=plan["targets"],
@@ -408,6 +411,7 @@ def _recipe_vol_expansion(
         recipe="VOL_EXPANSION",
         direction=plan["direction"],
         entry_zone=plan["entry_zone"],
+        exec_px=plan["exec_px"],
         invalidation=plan["invalidation"],
         risk_size=plan["risk_size"],
         targets=plan["targets"],
