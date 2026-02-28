@@ -1,53 +1,68 @@
-# 🤖 EMBER OPERATOR GUIDE
+# 📟 Operator Manual: BTC Trading Terminal
 
-> **System Purpose:** Autonomous BTC intelligence, alerting, and self-tuning.
-> **Current Engine:** v18.0 (Precision Dashboard + Confluence + Auto-Tuning)
-
----
-
-## 🕹️ Quick Commands (On-Liners)
-
-| Task | Command |
-|:---|:---|
-| **Toggle ON** | `python scripts/toggle.py on` |
-| **Toggle OFF** | `python scripts/toggle.py off` |
-| **Check Status** | `python scripts/toggle.py status` |
-| **Run Once** | `python app.py --once` |
-| **Get Briefing** | `python scripts/morning_briefing.py` |
-| **Self-Tune** | `python tools/auto_tune.py` |
-| **Full Pipeline** | `powershell -File scripts/pipeline.ps1` |
-| **Generate Dashboard** | `python scripts/pid-129/generate_dashboard.py` |
-| **Serve Dashboard (localhost:8000)** | `python scripts/pid-129/dashboard_server.py` |
+This document provides the standard operating procedure (SOP) for interpreting the Phase 24 "Trading Terminal" dashboard. It is designed for both human traders and AI agents.
 
 ---
 
-## 📂 Key Files & State
+## 🏗️ 1. Data Hierarchy & Sources
 
-- **`config.py`**: Central tunables. `TIMEFRAME_RULES` are auto-adjusted by the tuner.
-- **`reports/morning_briefing.md`**: Human-readable 6 AM briefing.
-- **`reports/morning_briefing.json`**: **Machine-readable** state for other agents.
-- **`logs/pid-129-alerts.jsonl`**: The source of truth for all signals and outcomes.
-- **`dashboard.html`**: Visual representation of current market intelligence.
-
----
-
-## 🤖 Instructions for AI Agents
-
-If you are an AI agent helping with this project, follow these rules:
-
-1. **State Discovery**: Always check `reports/morning_briefing.json` first to understand the current market regime and system bias.
-2. **Context Limits**: Do not read `app.py` or `engine.py` unless you are fixing a bug. All business logic is summarized in `config.py`.
-3. **Execution**: Use `python app.py --once` for testing. Never change `config.py` manually unless asked; let `tools/auto_tune.py` handle it.
-4. **Verification**: If you change intelligence logic, run `PYTHONPATH=. python -m pytest tests/` immediately.
-5. **Briefing Integration**: After making changes, run the full pipeline to see how your changes impact the morning briefing numbers.
+| Layer | Source | Update Freq | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Live Tape** | Collectors (Bybit/OKX/Bitunix) | 2s (WS) | Immediate market state (Mid, Spread, RVol) |
+| **Edge Analytics** | `paper_portfolio.json` | On Change | Statistical advantage (LONG vs SHORT edge) |
+| **Signal Core** | `engine.py` / `intelligence/` | Multi-TF | Raw signal conviction (Radar Dots, Tier) |
+| **Overrides** | `dashboard_overrides.json` | Immediate | Dynamic filters (Min Score, Muted Recipes) |
 
 ---
 
-## 🛠️ Troubleshooting
+## � 2. Decision Workflow: The "Triple Green" Process
 
-- **System won't run?** Check if `DISABLED` file exists in root. Use `python scripts/toggle.py on`.
-- **Too many alerts?** The auto-tuner will tighten thresholds nightly. Or manually increase `trade_long` in `config.py`.
-- **Missing dashboard data?** Ensure `app.py` is running or has run recently to populate `decision_trace` in the logs.
+Before clicking **EXECUTE**, you must satisfy three distinct layers of confirmation:
+
+### Layer A: The Statistical Edge (Long/Short Stats)
+*   **Rule**: Never trade against your 7-day trailing edge.
+*   **Action**: Check the `Verdict Center` for LONG Edge vs SHORT Edge WR%.
+*   **Threshold**: If your LONG Edge is < 40%, SKIP all long alerts regardless of "A" tier.
+
+### Layer B: The Signal Quality (Confluence Radar)
+*   **Rule**: Signal must be mechanically sound.
+*   **Threshold**: 
+    *   **7/15+ Dots**: High Conviction (Execute with Full Kelly).
+    *   **4-6 Dots**: Moderate Conviction (Execute with 0.25x Size or WATCH).
+    *   **< 4 Dots**: Noise / Weak Conviction (SKIP).
+*   **Critical Probes**: Ensure `AVWAP`, `Structure (BOS)`, and `OI Regime` are aligned.
+
+### Layer C: Risk Management (Kelly Sizing)
+*   **Rule**: Position sizing is mathematical, not emotional.
+*   **Action**: Read the `Kelly Sizing %` on the Live Tape. 
+*   **Execution**: Risk exactly that % of your current balance per trade.
 
 ---
-_Build v18.0 | Last Updated: 2026-02-26_
+
+## 🛠️ 3. Dashboard Controls (POST /api/command)
+
+The operator can interact with the backend live without restarting:
+1.  **Mute Recipe**: If `HTF_REVERSAL` is getting chopped up in a trending market, mute it for 60 mins.
+2.  **Score Floor**: Raise the filter to `70+` during high-noise/news events to see only the cleanest setups.
+3.  **Direction Filter**: If the macro trend is BEARISH, set the dashboard to "SHORT ONLY" to eliminate counter-trend distraction.
+
+---
+
+## 🤖 4. AI-Operator Quick Specs
+
+*   **REST Endpoint**: `GET http://localhost:8000/api/alerts`
+    *   Returns the full `decision_trace` with all 17 intelligence probes for deep analysis.
+*   **WebSocket Feed**: `ws://localhost:8000/ws`
+    *   Provides a lightweight 15-alert buffer + global performance stats.
+*   **State Persistence**: All user overrides are saved to `data/dashboard_overrides.json`.
+
+---
+
+## 📉 5. Exit Priorities
+
+Monitor the **Unrealized PnL** and **Drawdown** fields:
+- **Automatic Halt**: If `Drawdown %` hits 12%, the system is in a state of "Unforced Error." Halt all trading until the edge recalibrates.
+- **Profit Scaling**: Look at `TP1` distance. If the distance to TP1 is < 1x Spread, the R:R is no longer valid; skip the entry.
+
+---
+_OPERATOR | v1.0 | Dashboard Phase 24_
