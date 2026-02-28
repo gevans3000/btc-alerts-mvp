@@ -149,6 +149,7 @@ This project is in **Phase 15 (v15.0)**:
 - **Roadmap:** `PHASE_ROADMAP.md`
 - **Current Blueprint:** `Phase_17.md`
 - **Current Stats:** `reports/morning_briefing.md`
+- **External Context Upgrade Plan (parallel):** `proposals/pid129_external_context_parallel_plan.md`
 
 ---
 
