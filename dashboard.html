@@ -448,13 +448,14 @@
             <div class="stat-card">
                 <div class="stat-label">Open PnL</div>
                 <div id="live-open-pnl" class="live-value">--</div>
-            </div>            <div class="stat-card">
-                <div class="stat-label">Funding / Basis</div>
-                <div id="tape-funding" class="live-value" style="color:#00ff88;">--</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" style="border:1px solid rgba(112,0,255,0.3); background:rgba(112,0,255,0.05);">
+                <div class="stat-label">Funding / Basis</div>
+                <div id="tape-funding" class="live-value" style="color:#b580ff;">—</div>
+            </div>
+            <div class="stat-card" style="border:1px solid rgba(112,0,255,0.3); background:rgba(112,0,255,0.05);">
                 <div class="stat-label">OI Delta (5m)</div>
-                <div id="tape-oi-delta" class="live-value">--</div>
+                <div id="tape-oi-delta" class="live-value" style="color:#b580ff;">—</div>
             </div>
         </div>
     </section>
@@ -1364,28 +1365,51 @@
 
                     // ── Phase 26: Data Freshness Warning ──
                     const age = data.data_age_seconds || 0;
-                    if (age > 300) { // 5 minutes
+                    if (age > 300) {
                         els.sync.style.color = '#ff4d4d';
                         els.sync.style.fontWeight = 'bold';
-                        els.sync.textContent = '⚠️ STALE DATA (' + Math.round(age / 60) + 'm old)';
+                        els.sync.textContent = '⚠️ DATA STALE (' + Math.round(age / 60) + 'm old)';
+                    } else if (age > 120) {
+                        els.sync.style.color = '#ffa500';
+                        els.sync.style.fontWeight = 'normal';
+                        els.sync.textContent = 'Synced: ' + new Date().toLocaleString() + ' (⏳ ' + Math.round(age) + 's ago)';
                     } else {
                         els.sync.style.color = 'var(--text-muted)';
                         els.sync.style.fontWeight = 'normal';
+                        els.sync.textContent = 'Synced: ' + new Date().toLocaleString();
                     }
 
                     // ── Phase 26: Smart Money UI Injection ──
                     const deri = data.derivatives || {};
-                    const fndEl = document.getElementById('tape-funding');
-                    if (fndEl && deri.funding_rate !== undefined) {
-                        const fr = deri.funding_rate * 100;
-                        fndEl.textContent = (fr >= 0 ? '+' : '') + fr.toFixed(4) + '%';
-                        fndEl.style.color = fr < 0 ? '#00ff88' : (fr > 0.01 ? '#ff4d4d' : '#ffffff');
+                    const fundRate = deri.funding_rate;
+                    const basis = deri.basis_annualized;
+                    const oiDelta = deri.oi_change_24h;
+
+                    const fundEl = document.getElementById('tape-funding');
+                    if (fundEl) {
+                        if (fundRate !== undefined && basis !== undefined) {
+                            const fStr = (fundRate * 100).toFixed(4) + '%';
+                            const bPct = basis * 100;
+                            const bStr = bPct > 0 ? '+' + bPct.toFixed(2) + '%' : bPct.toFixed(2) + '%';
+                            fundEl.textContent = fStr + ' | ' + bStr;
+                            if (fundRate > 0.0001) fundEl.style.color = '#ff4d4d'; // Expensive longs
+                            else if (fundRate < -0.0001) fundEl.style.color = '#00ffcc'; // Expensive shorts
+                            else fundEl.style.color = '#b580ff';
+                        } else {
+                            fundEl.textContent = '—';
+                        }
                     }
+
                     const oiEl = document.getElementById('tape-oi-delta');
-                    if (oiEl && deri.oi_change_24h !== undefined) {
-                        const oic = deri.oi_change_24h;
-                        oiEl.textContent = (oic >= 0 ? '+' : '') + oic.toFixed(2) + '%';
-                        oiEl.style.color = oic >= 0 ? '#00ff88' : '#ff4d4d';
+                    if (oiEl) {
+                        if (oiDelta !== undefined) {
+                            oiEl.textContent = (oiDelta > 0 ? '+' : '') + oiDelta.toFixed(2) + '%';
+                            if (oiDelta > 1.5) oiEl.style.color = '#00ffcc'; // Large OI injection
+                            else if (oiDelta < -1.5) oiEl.style.color = '#ff4d4d'; // Large OI wipeout
+                            else oiEl.style.color = '#b580ff';
+                        } else {
+                            oiEl.textContent = '—';
+                        }
                     }
 
                     // ── Phase 25: Execution Copilot ──
