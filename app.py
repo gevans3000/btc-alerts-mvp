@@ -361,9 +361,13 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         
         # Phase 19 FIX 14: NEUTRAL = no conviction, skip portfolio entry
         if alert_id and alert.direction != "NEUTRAL":
+            ctx = alert.context if isinstance(alert.context, dict) else {}
             portfolio.on_alert(
                 alert_id, alert.symbol, alert.timeframe, alert.direction, 
-                current_price_for_state, alert.invalidation, alert.tp1, alert.action
+                current_price_for_state, alert.invalidation, alert.tp1, alert.action,
+                confidence=int(alert.confidence_score or 0),
+                regime=str(ctx.get("regime") or alert.regime or "unknown"),
+                session=str(ctx.get("session") or "unknown")
             )
 
     health = {
