@@ -1,129 +1,43 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="refresh" content="60">
     <title>BTC Alerts | Strategic Command</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #050507;
-            --surface: #111116;
-            --card-bg: #1a1a24;
-            --accent: #00ffcc;
-            --secondary: #7000ff;
-            --text: #f1f1f1;
-            --text-muted: #a1a1aa;
-            --border: #2a2a36;
-        }
-
-        @keyframes pulseGreen {
-            0% {
-                background-color: rgba(0, 255, 204, 0.4);
-            }
-
-            100% {
-                background-color: transparent;
-            }
-        }
-
-        @keyframes pulseRed {
-            0% {
-                background-color: rgba(255, 77, 77, 0.4);
-            }
-
-            100% {
-                background-color: transparent;
-            }
-        }
-
-        .pulse-up {
-            animation: pulseGreen 0.8s ease-out;
-        }
-
-        .pulse-down {
-            animation: pulseRed 0.8s ease-out;
-        }
-
-        .layout-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        @media (min-width: 1100px) {
-            .layout-grid {
-                grid-template-columns: 350px 1fr;
-            }
-        }
-
-        @media (min-width: 1400px) {
-            .layout-grid {
-                grid-template-columns: 420px 1fr;
-            }
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        :root { --bg:#050507; --surface:#111116; --card-bg:#1a1a24; --accent:#00ffcc; --secondary:#7000ff; --text:#f1f1f1; --text-muted:#a1a1aa; --border:#2a2a36; }
+        @keyframes pulseGreen { 0% { background-color: rgba(0, 255, 204, 0.4); } 100% { background-color: transparent; } }
+        @keyframes pulseRed { 0% { background-color: rgba(255, 77, 77, 0.4); } 100% { background-color: transparent; } }
+        .pulse-up { animation: pulseGreen 0.8s ease-out; }
+        .pulse-down { animation: pulseRed 0.8s ease-out; }
+        .layout-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+        @media (min-width: 1100px) { .layout-grid { grid-template-columns: 350px 1fr; } }
+        @media (min-width: 1400px) { .layout-grid { grid-template-columns: 420px 1fr; } }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             background-color: #050507;
-            background-image:
-                radial-gradient(circle at top right, rgba(0, 255, 204, 0.05), transparent 40%),
+            background-image: 
+                radial-gradient(circle at top right, rgba(0, 255, 204, 0.05), transparent 40%), 
                 radial-gradient(circle at bottom left, rgba(112, 0, 255, 0.05), transparent 40%),
                 linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
             background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
             background-position: 0 0, 0 0, -1px -1px, -1px -1px;
             background-attachment: fixed;
-            color: var(--text);
-            font-family: 'Outfit', sans-serif;
-            padding: 2rem;
-            max-width: 1400px;
+            color: var(--text); 
+            font-family: 'Outfit', sans-serif; 
+            padding: 2rem; 
+            max-width: 1400px; 
             margin: 0 auto;
         }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1.5rem;
-        }
-
-        h1 {
-            font-weight: 800;
-            font-size: 2.5rem;
-            letter-spacing: -1px;
-            background: linear-gradient(135deg, var(--accent), var(--secondary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        h2 {
-            margin-bottom: 1rem;
-            font-weight: 800;
-            font-size: 1.25rem;
-            color: var(--accent);
-        }
-
-        section {
-            margin-bottom: 1.5rem;
-        }
-
-        .panel,
-        .card,
-        .stat-card,
-        .scorecard-section {
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+        h1 { font-weight: 800; font-size: 2.5rem; letter-spacing: -1px; background: linear-gradient(135deg, var(--accent), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { margin-bottom: 1rem; font-weight: 800; font-size: 1.25rem; color: var(--accent); }
+        section { margin-bottom: 1.5rem; }
+        .panel, .card, .stat-card, .scorecard-section {
             background: rgba(15, 15, 20, 0.6);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -131,246 +45,60 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
             color: var(--text);
         }
-
-        .panel {
-            border-radius: 18px;
-            padding: 1.2rem;
-        }
-
-        .status {
-            text-align: right;
-        }
-
-        .badge-live {
-            background: rgba(0, 255, 204, 0.1);
-            color: var(--accent);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            border: 1px solid rgba(0, 255, 204, 0.4);
-        }
-
-        .badge-stale {
-            background: rgba(255, 77, 77, 0.12);
-            color: #ff4d4d;
-            border-color: rgba(255, 77, 77, 0.4);
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .card {
-            border-radius: 20px;
-            padding: 1.2rem;
-            background: var(--card-bg);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .stat-card {
-            padding: 1rem;
-            border-radius: 16px;
-        }
-
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-            font-size: 1.8rem;
-            font-weight: 800;
-        }
-
-        .stat-sub {
-            font-size: 0.8rem;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .chart-container {
-            background: var(--surface);
-            padding: 1rem;
-            border-radius: 20px;
-            border: 1px solid var(--border);
-        }
-
-        .matrix-table {
-            width: 100%;
-            border-collapse: collapse;
-            overflow: hidden;
-            border-radius: 12px;
-        }
-
-        .matrix-table th,
-        .matrix-table td {
-            border: 1px solid var(--border);
-            padding: 0.65rem;
-            vertical-align: top;
-        }
-
-        .matrix-table th {
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.04em;
-            text-align: left;
-        }
-
-        .pill {
-            display: inline-block;
-            border-radius: 999px;
-            padding: 3px 10px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-right: 6px;
-            margin-bottom: 4px;
-        }
-
-        .badge-good {
-            background: rgba(0, 255, 204, 0.15);
-            color: #00ffcc;
-            border: 1px solid rgba(0, 255, 204, 0.5);
-        }
-
-        .badge-warn {
-            background: rgba(255, 215, 0, 0.12);
-            color: #ffd700;
-            border: 1px solid rgba(255, 215, 0, 0.45);
-        }
-
-        .badge-bad {
-            background: rgba(255, 77, 77, 0.12);
-            color: #ff4d4d;
-            border: 1px solid rgba(255, 77, 77, 0.45);
-        }
-
-        .badge-neutral {
-            background: rgba(128, 128, 138, 0.12);
-            color: var(--text-muted);
-            border: 1px solid rgba(128, 128, 138, 0.35);
-        }
-
-        .mini {
-            color: var(--text-muted);
-            font-size: 0.82rem;
-            margin-top: 4px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .playbook {
-            margin-top: 0.8rem;
-            color: var(--text-muted);
-            font-size: 0.92rem;
-        }
-
-        .scorecard-section {
-            background: var(--surface);
-            border-radius: 18px;
-            padding: 1.2rem;
-            border: 1px solid var(--border);
-        }
-
-        pre {
-            font-family: 'JetBrains Mono', monospace;
-            white-space: pre-wrap;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            background: rgba(0, 0, 0, 0.3);
-            padding: 1rem;
-            border-radius: 12px;
-        }
-
-        .live-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.8rem;
-            margin-top: 0.8rem;
-        }
-
-        @media (min-width: 768px) {
-            .live-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-
-        @media (min-width: 1100px) {
-            .live-grid {
-                grid-template-columns: repeat(6, 1fr);
-            }
-        }
-
-        .bottom-panels {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-
-        @media (min-width: 1100px) {
-            .bottom-panels {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        .live-value {
-            font-size: 1.15rem;
-            font-weight: 700;
+        .panel { border-radius: 18px; padding: 1.2rem; }
+        .status { text-align: right; }
+        .badge-live { background: rgba(0,255,204,0.1); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; border: 1px solid rgba(0,255,204,0.4); }
+        .badge-stale { background: rgba(255,77,77,0.12); color: #ff4d4d; border-color: rgba(255,77,77,0.4); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+        .card { border-radius: 20px; padding: 1.2rem; background: var(--card-bg); }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 1rem; }
+        .stat-card { padding: 1rem; border-radius: 16px; }
+        .stat-label { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem; }
+        .stat-value { font-size: 1.8rem; font-weight: 800; }
+        .stat-sub { font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; }
+        .chart-container { background: var(--surface); padding: 1rem; border-radius: 20px; border: 1px solid var(--border); }
+        .matrix-table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 12px; }
+        .matrix-table th, .matrix-table td { border: 1px solid var(--border); padding: 0.65rem; vertical-align: top; }
+        .matrix-table th { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.04em; text-align: left; }
+        .pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.75rem; font-weight: 700; margin-right: 6px; margin-bottom: 4px; }
+        .badge-good { background: rgba(0,255,204,0.15); color: #00ffcc; border: 1px solid rgba(0,255,204,0.5); }
+        .badge-warn { background: rgba(255,215,0,0.12); color: #ffd700; border: 1px solid rgba(255,215,0,0.45); }
+        .badge-bad { background: rgba(255,77,77,0.12); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.45); }
+        .badge-neutral { background: rgba(128,128,138,0.12); color: var(--text-muted); border: 1px solid rgba(128,128,138,0.35); }
+        .mini { color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+        .playbook { margin-top: 0.8rem; color: var(--text-muted); font-size: 0.92rem; }
+        .scorecard-section { background: var(--surface); border-radius: 18px; padding: 1.2rem; border: 1px solid var(--border); }
+        pre { font-family: 'JetBrains Mono', monospace; white-space: pre-wrap; font-size: 0.85rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 12px; }
+        .live-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-top: 0.8rem; }
+        @media (min-width: 768px) { .live-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 1100px) { .live-grid { grid-template-columns: repeat(6, 1fr); } }
+        .bottom-panels { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+        @media (min-width: 1100px) { .bottom-panels { grid-template-columns: 1fr 1fr; } }
+        .live-value { 
+            font-size: 1.15rem; 
+            font-weight: 700; 
             font-family: 'JetBrains Mono', monospace;
             font-variant-numeric: tabular-nums;
         }
-
-        #livePrice,
-        #livePnL,
-        #distTP1,
-        #distStop,
-        #liveSpread {
+        #livePrice, #livePnL, #distTP1, #distStop, #liveSpread {
             font-family: 'JetBrains Mono', monospace;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.5px;
         }
-
-        #livePrice {
-            font-size: 1.8rem !important;
-            font-weight: 800;
+        #livePrice { font-size: 1.8rem !important; font-weight: 800; }
+        @keyframes breathePulse { 
+            0% { opacity: 0.6; transform: scale(0.95); } 
+            50% { opacity: 1; transform: scale(1.05); } 
+            100% { opacity: 0.6; transform: scale(0.95); } 
         }
-
-        @keyframes breathePulse {
-            0% {
-                opacity: 0.6;
-                transform: scale(0.95);
-            }
-
-            50% {
-                opacity: 1;
-                transform: scale(1.05);
-            }
-
-            100% {
-                opacity: 0.6;
-                transform: scale(0.95);
-            }
-        }
-
-        .pulse-dot {
+        .pulse-dot { 
             display: inline-block;
-            animation: breathePulse 2.5s infinite ease-in-out;
+            animation: breathePulse 2.5s infinite ease-in-out; 
         }
     </style>
 </head>
-
-<body>
-    <audio id="alert-chime" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-        preload="auto"></audio>
+    <body>
+    <audio id="alert-chime" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
     <header>
         <div>
             <h1>EMBER COMMAND</h1>
@@ -378,662 +106,332 @@
         </div>
         <div class="status">
             <span id="connection-badge" class="badge-live">Live Feed: Connecting</span>
-            <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: 2026-02-28
-                10:56:48</p>
+            <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: 2026-03-01 08:29:34</p>
         </div>
     </header>
     <section class="panel">
         <h2>Live Tape & Context</h2>
         <div class="live-grid">
-            <div class="stat-card">
-                <div class="stat-label">BTC Mid</div>
-                <div id="live-mid" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Spread</div>
-                <div id="live-spread" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">RVol</div>
-                <div id="tape-rvol" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Vol Regime</div>
-                <div id="tape-vol-regime" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">OI Regime</div>
-                <div id="tape-oi-regime" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Taker Ratio</div>
-                <div id="tape-taker" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">DXY Macro</div>
-                <div id="tape-dxy" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Sentiment</div>
-                <div id="tape-sentiment" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Balance</div>
-                <div id="live-balance" class="live-value">$10,000.00</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Kelly Sizing</div>
-                <div id="live-kelly" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Open / Closed</div>
-                <div id="live-oc" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Avg R</div>
-                <div id="live-pf" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Total R</div>
-                <div id="live-total-r" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Drawdown</div>
-                <div id="live-dd" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Peak Equity</div>
-                <div id="live-peak" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Open PnL</div>
-                <div id="live-open-pnl" class="live-value">--</div>
-            </div>
-            <div class="stat-card" style="border:1px solid rgba(112,0,255,0.3); background:rgba(112,0,255,0.05);">
-                <div class="stat-label">Funding / Basis</div>
-                <div id="tape-funding" class="live-value" style="color:#b580ff;">—</div>
-            </div>
-            <div class="stat-card" style="border:1px solid rgba(112,0,255,0.3); background:rgba(112,0,255,0.05);">
-                <div class="stat-label">OI Delta (5m)</div>
-                <div id="tape-oi-delta" class="live-value" style="color:#b580ff;">—</div>
-            </div>
+            <div class="stat-card"><div class="stat-label">BTC Mid</div><div id="live-mid" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">Spread</div><div id="live-spread" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">RVol</div><div id="tape-rvol" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">Vol Regime</div><div id="tape-vol-regime" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">OI Regime</div><div id="tape-oi-regime" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">Taker Ratio</div><div id="tape-taker" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">DXY Macro</div><div id="tape-dxy" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">Sentiment</div><div id="tape-sentiment" class="live-value">—</div></div>
+            <div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">$8,943.25</div></div>
+            <div class="stat-card"><div class="stat-label">Win Rate (7d)</div><div id="live-winrate" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">Avg R (7d)</div><div id="live-pf" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div>
         </div>
     </section>
     <div class="layout-grid">
-
-        <section class='panel'>
-            <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;'>
-                <h2 style='margin:0;'>Verdict Center</h2>
-                <div style='display:flex;gap:4px;'>
-                    <button id='muteBtn' class='pill badge-neutral' onclick='toggleMute()'
-                        style='margin:0;cursor:pointer;min-width:40px;'>🔊</button>
-                    <button id='filterBtn' class='pill badge-neutral' onclick='toggleFilter()'
-                        style='margin:0;cursor:pointer;'>ALL</button>
-                </div>
-            </div>
-            <div class='mini' style='margin-bottom:8px;'>LONG Edge: <span id='long-edge'
-                    class='pill badge-neutral'>--</span></div>
-            <div class='mini' style='margin-bottom:8px;'>SHORT Edge: <span id='short-edge'
-                    class='pill badge-neutral'>--</span></div>
-            <div
-                style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-                <div style='display:flex;justify-content:space-between;align-items:center;'>
-                    <div>
-                        <div class='mini'>Live BTC Price</div>
-                        <div id='livePrice' style='font-weight:800;'>Loading...</div>
-                    </div>
-                    <div style='text-align:right;'>
-                        <div class='mini'>Unrealized PnL</div>
-                        <div id='livePnL'>—</div>
-                    </div>
-                </div>
-                <div style='display:flex;gap:1rem;margin-top:.6rem;'>
-                    <div class='mini'>→ TP1 <span id='distTP1'>—</span></div>
-                    <div class='mini'>→ STOP <span id='distStop'>—</span></div>
-                    <div class='mini'>SPREAD <span id='liveSpread'>—</span></div>
-                </div>
-                <div id="bs-filter-display" class="mini"
-                    style="margin-top:8px;padding:6px 10px;border-radius:8px;font-weight:700;font-size:0.78rem;text-align:center;transition:all 0.3s ease;">
-                </div>
-            </div>
-            <div style='margin-bottom:1rem;'>
-                <div class='mini' style='margin-bottom:6px;'>Conviction Signals</div><span
-                    class='pill badge-neutral'>AVWAP_ABOVE_1SD</span><span
-                    class='pill badge-neutral'>ATR_EXPANSION_ONSET</span><span
-                    class='pill badge-neutral'>FG_EXTREME_FEAR</span><span
-                    class='pill badge-neutral'>REGIME_TREND</span><span
-                    class='pill badge-neutral'>FLOW_LS_CROWDED_LONG</span><span
-                    class='pill badge-neutral'>VOL_REGIME_EXPANSION</span><span
-                    class='pill badge-neutral'>MACRO_RISK_ON</span><span
-                    class='pill badge-neutral'>STRUCTURE_BOS_BEAR</span>
-            </div>
-            <div id='keyLevelsCard'
-                style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-                <div class='mini' style='margin-bottom:6px;'>Key Levels</div>
-                <div
-                    style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;font-family:JetBrains Mono,monospace;font-size:.78rem;'>
-                    <div>PDH: <span id='key-pdh' style='color:#ffd700;'>—</span></div>
-                    <div>PDL: <span id='key-pdl' style='color:#ffd700;'>—</span></div>
-                    <div>POC: <span id='key-poc' style='color:#00ffcc;'>—</span></div>
-                    <div>VAH: <span id='key-vah' style='color:#4488ff;'>—</span></div>
-                    <div>VAL: <span id='key-val' style='color:#4488ff;'>—</span></div>
-                    <div>AVWAP: <span id='key-avwap'>—</span> <span id='key-avwap-side'
-                            style='font-size:.68rem;'>—</span></div>
-                    <div>Structure: <span id='key-struct-event'>—</span></div>
-                    <div>Pivot H: <span id='key-pivot-high'>—</span></div>
-                    <div>Pivot L: <span id='key-pivot-low'>—</span></div>
-                    <div>Bid Walls: <span id='key-bid-walls' style='color:#00ff88;'>—</span></div>
-                    <div>Ask Walls: <span id='key-ask-walls' style='color:#ff4444;'>—</span></div>
-                    <div>Liquidity: <span id='key-liq-targets' style='color:#ffa500;'>—</span></div>
-                </div>
-            </div>
-            <div id='radarCard'
-                style='background:rgba(255,255,255,.03);border:1px solid #ff4d4d;border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-                <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;'><span
-                        class='mini'>Confluence Radar</span><span id='radarScore' class='pill'
-                        style='border:1px solid #ff4d4d;color:#ff4d4d;'>0/15 WEAK</span></div>
-                <div
-                    style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;overflow:hidden;'>
-                    <div id='radarBar' style='height:100%;width:0%;background:#ff4d4d;transition:width 0.4s ease;'>
-                    </div>
-                </div>
-                <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'>
-                    <div class='mini' title='Squeeze=NONE'>⚫ <span style='color:var(--text-muted)'>Squeeze</span> <span
-                            class='mini' style='opacity:0.5; font-size:0.7em;'>(Squeeze=NONE)</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>Trend
-                            (HTF)</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🔴</span> <span
-                            style='color:#ff4d4d'>Momentum</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>ML
-                            Model</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🔴</span> <span
-                            style='color:#ff4d4d'>Funding</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>DXY
-                            Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>Gold
-                            Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>Fear &
-                            Greed</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Order
-                            Book</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>OI /
-                            Basis</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🟢</span> <span
-                            style='color:var(--accent)'>Structure</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🟢</span> <span
-                            style='color:var(--accent)'>Levels</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🔴</span> <span
-                            style='color:#ff4d4d'>AVWAP</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>VP
-                            Status</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div>
-                    <div class='mini' title='No auto R:R computed'>⚫ <span style='color:var(--text-muted)'>Auto
-                            R:R</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No auto R:R
-                            computed)</span></div>
-                </div>
-                <div
-                    style='margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.4rem;font-size:.7rem;font-family:JetBrains Mono,monospace;color:var(--text-muted);'>
-                    Net: <span id='radarNet' style='color:var(--accent);font-weight:700;'>+0</span> &nbsp;🟢 0 &nbsp;🔴
-                    0 &nbsp;⚫ 15</div>
-            </div>
-            <div
-                style='background:rgba(255,77,77,0.08);border:1px solid #ff4d4d;border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-                <div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span
-                        class='pill' style='border:1px solid #ff4d4d;color:#ff4d4d;'>RED</span></div>
-                <div class='mini' style='color:var(--text)'>✅ TF Alignment</div>
-                <div class='mini' style='color:#ff4d4d'>❌ ML Conviction</div>
-                <div class='mini' style='color:#ff4d4d'>❌ R:R >= 1.2</div>
-                <div class='mini' style='color:#ff4d4d'>❌ Max DD <= 12%</div>
-                        <div class='mini' style='color:var(--text)'>✅ No HTF conflict</div>
-                </div>
-                <button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;background:#ff4d4d;'
-                    onclick="requestExecute('latest-btc')">⚠️ EXECUTE (HIGH RISK)</button>
-        </section>
-        <div id='executeModal'
-            style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;'>
-            <div
-                style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;max-width:360px;width:90%;'>
-                <h3 style='margin-bottom:.6rem;'>Confirm Execute</h3>
-                <div id='executeMeta' class='mini'></div>
-                <div style='margin-top:1rem;display:flex;gap:.5rem;justify-content:flex-end;'><button
-                        class='pill badge-neutral' onclick='closeExecuteModal()'>Cancel</button><button
-                        id='confirmExecuteBtn' class='pill badge-good' disabled>Confirm (3)</button></div>
-            </div>
+        
+    <section class='panel'>
+      <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;'>
+        <h2 style='margin:0;'>Verdict Center</h2>
+        <div style='display:flex;gap:4px;'>
+          <button id='muteBtn' class='pill badge-neutral' onclick='toggleMute()' style='margin:0;cursor:pointer;min-width:40px;'>🔊</button>
+          <button id='filterBtn' class='pill badge-neutral' onclick='toggleFilter()' style='margin:0;cursor:pointer;'>ALL</button>
         </div>
-
-        <section class="panel"
-            style="display: flex; flex-direction: column; padding: 0; overflow: hidden; min-height: 500px;">
+      </div>
+      <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill badge-good'>LONG</span></div>
+      <div class='mini' style='margin-bottom:8px;'>Edge (last 20): <span class='pill badge-warn'>50% (10W)</span></div>
+      <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
+        <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
+        <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
+      </div>
+      <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div><span class='pill badge-neutral'>PDH_RECLAIM_BULL</span><span class='pill badge-neutral'>HTF_ALIGNED</span><span class='pill badge-neutral'>AVWAP_ABOVE_1SD</span><span class='pill badge-neutral'>FLOW_LS_CROWDED_LONG</span><span class='pill badge-neutral'>BID_WALL_SUPPORT</span><span class='pill badge-neutral'>BASIS_BEARISH</span><span class='pill badge-neutral'>EQUAL_HIGHS_NEARBY</span><span class='pill badge-neutral'>REGIME_TREND</span></div>
+      <div id='keyLevelsCard' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
+        <div class='mini' style='margin-bottom:6px;'>Key Levels</div>
+        <div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;font-family:JetBrains Mono,monospace;font-size:.78rem;'>
+          <div>PDH: <span id='key-pdh' style='color:#ffd700;'>—</span></div>
+          <div>PDL: <span id='key-pdl' style='color:#ffd700;'>—</span></div>
+          <div>POC: <span id='key-poc' style='color:#00ffcc;'>—</span></div>
+          <div>VAH: <span id='key-vah' style='color:#4488ff;'>—</span></div>
+          <div>VAL: <span id='key-val' style='color:#4488ff;'>—</span></div>
+          <div>AVWAP: <span id='key-avwap'>—</span> <span id='key-avwap-side' style='font-size:.68rem;'>—</span></div>
+          <div>Structure: <span id='key-struct-event'>—</span></div>
+          <div>Pivot H: <span id='key-pivot-high'>—</span></div>
+          <div>Pivot L: <span id='key-pivot-low'>—</span></div>
+          <div>Bid Walls: <span id='key-bid-walls' style='color:#00ff88;'>—</span></div>
+          <div>Ask Walls: <span id='key-ask-walls' style='color:#ff4444;'>—</span></div>
+          <div>Liquidity: <span id='key-liq-targets' style='color:#ffa500;'>—</span></div>
+        </div>
+      </div>
+      <div id='radarCard' style='background:rgba(255,255,255,.03);border:1px solid #ff4d4d;border-radius:12px;padding:1rem;margin-bottom:1rem;'>
+        <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;'><span class='mini'>Confluence Radar</span><span id='radarScore' class='pill' style='border:1px solid #ff4d4d;color:#ff4d4d;'>0/15 WEAK</span></div>
+        <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;overflow:hidden;'><div id='radarBar' style='height:100%;width:0%;background:#ff4d4d;transition:width 0.4s ease;'></div></div>
+        <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'><div class='mini' title='Squeeze=NONE'>⚫ <span style='color:var(--text-muted)'>Squeeze</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Squeeze=NONE)</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Trend (HTF)</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Momentum</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>ML Model</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Funding</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title='Needs: DXY_FALLING_BULLISH or DXY_RISING_BEARISH'>⚫ <span style='color:var(--text-muted)'>DXY Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: DXY_FALLING_BULLISH or DXY_RISING_BEARISH)</span></div><div class='mini' title='Needs: GOLD_RISING_BULLISH or GOLD_FALLING_BEARISH'>⚫ <span style='color:var(--text-muted)'>Gold Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: GOLD_RISING_BULLISH or GOLD_FALLING_BEARISH)</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Fear & Greed</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Order Book</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>OI / Basis</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title='Trend=neutral, no BOS/CHoCH'>⚫ <span style='color:var(--text-muted)'>Structure</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Trend=neutral, no BOS/CHoCH)</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Levels</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>AVWAP</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title='POC=$67,560, price near value area'>⚫ <span style='color:var(--text-muted)'>VP Status</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(POC=$67,560, price near value area)</span></div><div class='mini' title='No auto R:R computed'>⚫ <span style='color:var(--text-muted)'>Auto R:R</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No auto R:R computed)</span></div></div>
+        <div style='margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.4rem;font-size:.7rem;font-family:JetBrains Mono,monospace;color:var(--text-muted);'>Net: <span id='radarNet' style='color:var(--accent);font-weight:700;'>+0</span> &nbsp;🟢 0 &nbsp;🔴 0 &nbsp;⚫ 15</div>
+      </div>
+      <div style='background:rgba(255,215,0,0.08);border:1px solid #ffd700;border-radius:12px;padding:1rem;margin-bottom:1rem;'><div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span class='pill' style='border:1px solid #ffd700;color:#ffd700;'>AMBER</span></div><div class='mini' style='color:var(--text)'>✅ TF Alignment</div><div class='mini' style='color:var(--text)'>✅ ML Conviction</div><div class='mini' style='color:#ff4d4d'>❌ R:R >= 1.2</div><div class='mini' style='color:#ff4d4d'>❌ Max DD <= 12%</div><div class='mini' style='color:var(--text)'>✅ No HTF conflict</div></div>
+      <button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;' onclick="requestExecute('latest-btc')">1-CLICK EXECUTE</button>
+    </section>
+    <div id='executeModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;'>
+      <div style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;max-width:360px;width:90%;'><h3 style='margin-bottom:.6rem;'>Confirm Execute</h3><div id='executeMeta' class='mini'></div><div style='margin-top:1rem;display:flex;gap:.5rem;justify-content:flex-end;'><button class='pill badge-neutral' onclick='closeExecuteModal()'>Cancel</button><button id='confirmExecuteBtn' class='pill badge-good' disabled>Confirm (3)</button></div></div>
+    </div>
+    
+        <section class="panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; min-height: 500px;">
             <div style="padding: 1.2rem; padding-bottom: 0;">
                 <h2 style="margin: 0;">Live Charting</h2>
             </div>
             <!-- TradingView Widget BEGIN -->
             <div class="tradingview-widget-container" style="flex-grow: 1; height: 100%; width: 100%; padding: 1.2rem;">
-                <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-                <script type="text/javascript">
-                    new TradingView.widget({
-                        "autosize": true,
-                        "symbol": "BINANCE:BTCUSDT.P",
-                        "interval": "5",
-                        "timezone": "Etc/UTC",
-                        "theme": "dark",
-                        "style": "1",
-                        "locale": "en",
-                        "enable_publishing": false,
-                        "backgroundColor": "rgba(22, 22, 28, 0)",
-                        "gridColor": "#23232e",
-                        "hide_top_toolbar": false,
-                        "save_image": false,
-                        "container_id": "tradingview_chart",
-                        "studies": [
-                            "Volume@tv-basicstudies",
-                            "VWAP@tv-basicstudies"
-                        ]
-                    });
-                </script>
+              <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget({
+                "autosize": true,
+                "symbol": "BINANCE:BTCUSDT.P",
+                "interval": "5",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "enable_publishing": false,
+                "backgroundColor": "rgba(22, 22, 28, 0)",
+                "gridColor": "#23232e",
+                "hide_top_toolbar": false,
+                "save_image": false,
+                "container_id": "tradingview_chart",
+                "studies": [
+                  "Volume@tv-basicstudies",
+                  "VWAP@tv-basicstudies"
+                ]
+              });
+              </script>
             </div>
             <!-- TradingView Widget END -->
         </section>
-        <section class="panel" style="padding: 1.2rem;">
-            <h2 style="margin: 0 0 0.8rem 0;">Execution Copilot</h2>
-            <div id="copilot-container" style="display:flex;align-items:center;gap:1rem;">
-                <div id="copilot-action-btn" class="pill badge-neutral"
-                    style="font-size:1.1rem;padding:10px 18px;white-space:nowrap;min-width:180px;text-align:center;">
-                    STANDBY</div>
-                <div>
-                    <div id="copilot-msg" class="mini" style="color:var(--text-muted);">No active positions</div>
-                    <div id="copilot-detail" class="mini"
-                        style="color:var(--text-muted);margin-top:4px;font-family:JetBrains Mono,monospace;font-size:0.75rem;">
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
-
+    
     <section class="panel">
         <h2>Execution Matrix (BTC)</h2>
         <table class="matrix-table">
             <thead>
-                <tr>
-                    <th>Lane</th>
-                    <th>5m Trigger</th>
-                    <th>15m Setup</th>
-                    <th>1h Bias</th>
-                </tr>
+                <tr><th>Lane</th><th>5m Trigger</th><th>15m Setup</th><th>1h Bias</th></tr>
             </thead>
             <tbody>
-                <tr>
-                    <td><strong>Alignment View</strong></td>
-                    <td>
-                        <div class="pill-wrap">
-                            <span class="pill badge-good">LONG</span>
-                            <span class="pill badge-warn">B</span>
-                            <span class="pill badge-neutral">96/100</span>
-
-                        </div>
-
-                        <div class="mini">Regime: range · Session: weekend</div>
-                        <div class="mini">Entry: $64,893 · Stop: $64,552 · TP1: $65,121 · R:R 0.67</div>
-                        <div class="mini">Blockers: None</div>
-                    </td>
-
-                    <td>
-                        <div class="pill-wrap">
-                            <span class="pill badge-good">LONG</span>
-                            <span class="pill badge-warn">B</span>
-                            <span class="pill badge-neutral">24/100</span>
-
-                        </div>
-
-                        <div class="mini">Regime: range · Session: weekend</div>
-                        <div class="mini">Entry: $64,893 · Stop: $64,181 · TP1: $65,368 · R:R 0.67</div>
-                        <div class="mini">Blockers: None</div>
-                    </td>
-
-                    <td>
-                        <div class="pill-wrap">
-                            <span class="pill badge-bad">SHORT</span>
-                            <span class="pill badge-warn">B</span>
-                            <span class="pill badge-neutral">26/100</span>
-
-                        </div>
-
-                        <div class="mini">Regime: trend · Session: weekend</div>
-                        <div class="mini">Entry: $64,893 · Stop: $66,506 · TP1: $63,574 · R:R 0.82</div>
-                        <div class="mini">Blockers: None</div>
-                    </td>
-                </tr>
+                <tr><td><strong>Alignment View</strong></td>
+        <td>
+            <div class="pill-wrap">
+                <span class="pill badge-bad">SHORT</span>
+                <span class="pill badge-warn">B</span>
+                <span class="pill badge-neutral">91/100</span>
+                
+            </div>
+            
+            <div class="mini">Regime: chop · Session: weekend</div>
+            <div class="mini">Entry: $66,753 · Stop: $67,036 · TP1: $66,547 · R:R 0.73</div>
+            <div class="mini">Blockers: None</div>
+        </td>
+        
+        <td>
+            <div class="pill-wrap">
+                <span class="pill badge-good">LONG</span>
+                <span class="pill badge-warn">B</span>
+                <span class="pill badge-neutral">100/100</span>
+                
+            </div>
+            
+            <div class="mini">Regime: range · Session: weekend</div>
+            <div class="mini">Entry: $67,879 · Stop: $67,189 · TP1: $68,338 · R:R 0.67</div>
+            <div class="mini">Blockers: None</div>
+        </td>
+        
+        <td>
+            <div class="pill-wrap">
+                <span class="pill badge-good">LONG</span>
+                <span class="pill badge-warn">B</span>
+                <span class="pill badge-neutral">46/100</span>
+                
+            </div>
+            
+            <div class="mini">Regime: trend · Session: weekend</div>
+            <div class="mini">Entry: $67,879 · Stop: $65,956 · TP1: $69,452 · R:R 0.82</div>
+            <div class="mini">Blockers: None</div>
+        </td>
+        </tr>
                 <tr>
                     <td><strong>Execution Decision</strong></td>
                     <td colspan="3">
                         <span class="pill badge-warn">WAIT</span>
-
-                        <span class="mini" style="margin-left:8px;">• 2/3 aligned (15m, 5m = LONG). Waiting on 1h to
-                            flip.</span>
+                        
+                        <span class="mini" style="margin-left:8px;">• 2/3 aligned (1h, 15m = LONG). Waiting on 5m to flip.</span>
                     </td>
                 </tr>
             </tbody>
         </table>
-        <p class="playbook">Playbook: <strong>1h = bias</strong> · <strong>15m = setup</strong> · <strong>5m =
-                trigger</strong>.</p>
+        <p class="playbook">Playbook: <strong>1h = bias</strong> · <strong>15m = setup</strong> · <strong>5m = trigger</strong>.</p>
     </section>
-
+    
     <div class="bottom-panels">
         <div>
             <section style="margin-bottom: 1.5rem;">
                 <h2>Performance Metrics</h2>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">Equity Peak</div>
-                        <div id="live-peak" class="stat-value" style="color: var(--accent)">$10,000.00</div>
-                        <div class="stat-sub">Max ever balance</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Total R</div>
-                        <div id="live-total-r" class="stat-value">--</div>
-                        <div class="stat-sub">Cumulative Profit-in-R</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Open Unr. PnL</div>
-                        <div id="live-open-pnl" class="stat-value">--</div>
-                        <div class="stat-sub">Floating USDT Profit</div>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <svg viewBox="0 0 800 200" preserveAspectRatio="none" style="width: 100%; height: 150px;">
-                        <defs>
-                            <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.2" />
-                                <stop offset="100%" style="stop-color:var(--accent);stop-opacity:0" />
-                            </linearGradient>
-                        </defs>
-                        <polyline
-                            points="0.0,16.66666666666663 28.57142857142857,157.1663375734065 57.14285714285714,165.92316609057093 85.71428571428571,174.67999460773535 114.28571428571428,183.33333333333337 142.85714285714286,176.25332892148063 171.42857142857142,170.48443643774866 200.0,164.68757356621683 228.57142857142856,158.85206494220813 257.14285714285717,153.05520207067627 285.7142857142857,161.92478872164486 314.2857142857143,170.73640674389802 342.85714285714283,164.41438884990777 371.42857142857144,158.57705899445656 400.0,152.70081360663588 428.57142857142856,161.5739441422449 457.1428571428571,155.7200169526057 485.71428571428567,149.8637507991038 514.2857142857143,158.43055613744585 542.8571428571429,152.49622202832276 571.4285714285714,146.56188791920005 600.0,140.06405534284912 628.5714285714286,148.9985751353325 657.1428571428571,143.04222860701037 685.7142857142857,152.01194499261567 714.2857142857143,144.67308613166588 742.8571428571429,138.14965603304387 771.4285714285714,132.13722795881378 800.0,126.16828941857466"
-                            fill="none" stroke="var(--accent)" stroke-width="3" />
-                        <path
-                            d="M0,200 L0.0,16.66666666666663 L28.57142857142857,157.1663375734065 L57.14285714285714,165.92316609057093 L85.71428571428571,174.67999460773535 L114.28571428571428,183.33333333333337 L142.85714285714286,176.25332892148063 L171.42857142857142,170.48443643774866 L200.0,164.68757356621683 L228.57142857142856,158.85206494220813 L257.14285714285717,153.05520207067627 L285.7142857142857,161.92478872164486 L314.2857142857143,170.73640674389802 L342.85714285714283,164.41438884990777 L371.42857142857144,158.57705899445656 L400.0,152.70081360663588 L428.57142857142856,161.5739441422449 L457.1428571428571,155.7200169526057 L485.71428571428567,149.8637507991038 L514.2857142857143,158.43055613744585 L542.8571428571429,152.49622202832276 L571.4285714285714,146.56188791920005 L600.0,140.06405534284912 L628.5714285714286,148.9985751353325 L657.1428571428571,143.04222860701037 L685.7142857142857,152.01194499261567 L714.2857142857143,144.67308613166588 L742.8571428571429,138.14965603304387 L771.4285714285714,132.13722795881378 L800.0,126.16828941857466 L800,200 Z"
-                            fill="url(#grad)" />
-                    </svg>
-                </div>
-
+                
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Virtual Balance</div>
+                <div class="stat-value" style="color: #ff4d4d">$8,943.25</div>
+                <div class="stat-sub">-10.57% from start</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value">16.29%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Open / Closed</div>
+                <div class="stat-value">1 / 33</div>
+            </div>
+        </div>
+        <div class="chart-container">
+    <svg viewBox="0 0 800 200" preserveAspectRatio="none" style="width: 100%; height: 150px;">
+        <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.2" />
+                <stop offset="100%" style="stop-color:var(--accent);stop-opacity:0" />
+            </linearGradient>
+        </defs>
+        <polyline points="0.0,16.66666666666663 24.242424242424242,157.1663375734065 48.484848484848484,165.92316609057093 72.72727272727273,174.67999460773535 96.96969696969697,183.33333333333337 121.21212121212122,176.25332892148063 145.45454545454547,170.48443643774866 169.6969696969697,164.68757356621683 193.93939393939394,158.85206494220813 218.18181818181816,153.05520207067627 242.42424242424244,161.92478872164486 266.66666666666663,170.73640674389802 290.90909090909093,164.41438884990777 315.1515151515151,158.57705899445656 339.3939393939394,152.70081360663588 363.6363636363636,161.5739441422449 387.8787878787879,155.7200169526057 412.1212121212121,149.8637507991038 436.3636363636363,158.43055613744585 460.6060606060606,152.49622202832276 484.8484848484849,146.56188791920005 509.09090909090907,140.06405534284912 533.3333333333333,148.9985751353325 557.5757575757576,143.04222860701037 581.8181818181819,152.01194499261567 606.060606060606,144.67308613166588 630.3030303030303,138.14965603304387 654.5454545454546,132.13722795881378 678.7878787878788,126.16828941857466 703.030303030303,120.15586134434459 727.2727272727273,129.23462773643178 751.5151515151515,123.14232388477203 775.7575757575758,132.31103931759966 800.0,124.80936305437707" fill="none" stroke="var(--accent)" stroke-width="3" />
+        <path d="M0,200 L0.0,16.66666666666663 L24.242424242424242,157.1663375734065 L48.484848484848484,165.92316609057093 L72.72727272727273,174.67999460773535 L96.96969696969697,183.33333333333337 L121.21212121212122,176.25332892148063 L145.45454545454547,170.48443643774866 L169.6969696969697,164.68757356621683 L193.93939393939394,158.85206494220813 L218.18181818181816,153.05520207067627 L242.42424242424244,161.92478872164486 L266.66666666666663,170.73640674389802 L290.90909090909093,164.41438884990777 L315.1515151515151,158.57705899445656 L339.3939393939394,152.70081360663588 L363.6363636363636,161.5739441422449 L387.8787878787879,155.7200169526057 L412.1212121212121,149.8637507991038 L436.3636363636363,158.43055613744585 L460.6060606060606,152.49622202832276 L484.8484848484849,146.56188791920005 L509.09090909090907,140.06405534284912 L533.3333333333333,148.9985751353325 L557.5757575757576,143.04222860701037 L581.8181818181819,152.01194499261567 L606.060606060606,144.67308613166588 L630.3030303030303,138.14965603304387 L654.5454545454546,132.13722795881378 L678.7878787878788,126.16828941857466 L703.030303030303,120.15586134434459 L727.2727272727273,129.23462773643178 L751.5151515151515,123.14232388477203 L775.7575757575758,132.31103931759966 L800.0,124.80936305437707 L800,200 Z" fill="url(#grad)" />
+    </svg>
+    </div>
+        
             </section>
-
-            <section class="panel">
-                <h2>Timeframe Edge Scoreboard</h2>
-                <div style="margin-bottom: 0.8rem;"><span class="pill badge-good">Recommended Focus: 5m</span>
-                    <span class="mini" style="margin-left: 8px;">Criteria: min 10 trades + highest avg R.</span>
-                </div>
-                <table class="matrix-table">
-                    <thead>
-                        <tr>
-                            <th>TF</th>
-                            <th>Trades</th>
-                            <th>Win Rate</th>
-                            <th>Avg R</th>
-                            <th>Median R</th>
-                            <th>Gross R</th>
-                            <th>Max Losing Streak</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>5m</td>
-                            <td>15</td>
-                            <td>66.7%</td>
-                            <td><span class='pill badge-good'>0.13R</span></td>
-                            <td>0.67R</td>
-                            <td>1.97R</td>
-                            <td>2</td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td>8</td>
-                            <td>75.0%</td>
-                            <td><span class='pill badge-warn'>0.29R</span></td>
-                            <td>0.67R</td>
-                            <td>2.32R</td>
-                            <td>1</td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>5</td>
-                            <td>60.0%</td>
-                            <td><span class='pill badge-warn'>0.01R</span></td>
-                            <td>0.67R</td>
-                            <td>0.07R</td>
-                            <td>1</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
-
+            
+    <section class="panel">
+        <h2>Timeframe Edge Scoreboard</h2>
+        <div style="margin-bottom: 0.8rem;"><span class="pill badge-good">Recommended Focus: 15m</span>
+        <span class="mini" style="margin-left: 8px;">Criteria: min 10 trades + highest avg R.</span></div>
+        <table class="matrix-table">
+            <thead>
+                <tr><th>TF</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Median R</th><th>Gross R</th><th>Max Losing Streak</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>5m</td><td>17</td><td>64.7%</td><td><span class='pill badge-good'>0.10R</span></td><td>0.67R</td><td>1.64R</td><td>2</td></tr><tr><td>15m</td><td>11</td><td>72.7%</td><td><span class='pill badge-good'>0.26R</span></td><td>0.67R</td><td>2.81R</td><td>1</td></tr><tr><td>1h</td><td>5</td><td>60.0%</td><td><span class='pill badge-warn'>0.01R</span></td><td>0.67R</td><td>0.07R</td><td>1</td></tr>
+            </tbody>
+        </table>
+    </section>
+    
         </div>
         <div>
-
-            <section class="panel">
-                <h2>Active Trade Lifecycle</h2>
-                <table class="matrix-table">
-                    <thead>
-                        <tr>
-                            <th>TF</th>
-                            <th>Direction</th>
-                            <th>Age</th>
-                            <th>Time Used</th>
-                            <th>Planned R:R</th>
-                            <th>Blockers</th>
-                            <th>Management Priority</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>5m</td>
-                            <td>LONG</td>
-                            <td>0m</td>
-                            <td>0%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td>LONG</td>
-                            <td>1.5h</td>
-                            <td>12%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td>SHORT</td>
-                            <td>37m</td>
-                            <td>5%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td>LONG</td>
-                            <td>0m</td>
-                            <td>0%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>LONG</td>
-                            <td>22.6h</td>
-                            <td>47%</td>
-                            <td>0.73</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>SHORT</td>
-                            <td>2.0h</td>
-                            <td>4%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>SHORT</td>
-                            <td>1.9h</td>
-                            <td>4%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>SHORT</td>
-                            <td>1.5h</td>
-                            <td>3%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>SHORT</td>
-                            <td>37m</td>
-                            <td>1%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>SHORT</td>
-                            <td>0m</td>
-                            <td>0%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
-
-
-            <section class="panel">
-                <h2>📡 Recent Signals (Last 10)</h2>
-                <table class="matrix-table">
-                    <thead>
-                        <tr>
-                            <th>TF</th>
-                            <th>Dir</th>
-                            <th>Conf</th>
-                            <th>Tier</th>
-                            <th>Codes</th>
-                            <th>Age</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>1h</td>
-                            <td><span class="pill badge-bad">SHORT</span></td>
-                            <td>26</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>22</td>
-                            <td>1s</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>24</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>22</td>
-                            <td>1s</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>5m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>96</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>22</td>
-                            <td>1s</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td><span class="pill badge-bad">SHORT</span></td>
-                            <td>82</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>18</td>
-                            <td>37m</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-bad">SHORT</span></td>
-                            <td>80</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>19</td>
-                            <td>37m</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>5m</td>
-                            <td><span class="pill badge-bad">SHORT</span></td>
-                            <td>65</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>20</td>
-                            <td>37m</td>
-                            <td><span class="pill badge-bad">LOSS</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td><span class="pill badge-bad">SHORT</span></td>
-                            <td>58</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>17</td>
-                            <td>1.5h</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>45</td>
-                            <td><span class="pill badge-good">A+</span></td>
-                            <td>20</td>
-                            <td>1.5h</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td><span class="pill badge-bad">SHORT</span></td>
-                            <td>30</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>20</td>
-                            <td>1.9h</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-bad">SHORT</span></td>
-                            <td>91</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>22</td>
-                            <td>1.9h</td>
-                            <td><span class="pill badge-good">WIN_TP1</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
-
+            
+    <section class="panel">
+        <h2>Active Trade Lifecycle</h2>
+        <table class="matrix-table">
+            <thead>
+                <tr><th>TF</th><th>Direction</th><th>Age</th><th>Time Used</th><th>Planned R:R</th><th>Blockers</th><th>Management Priority</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1h</td><td>LONG</td><td>13.1h</td><td>27%</td><td>0.82</td><td>None</td><td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td></tr><tr><td>1h</td><td>SHORT</td><td>13.1h</td><td>27%</td><td>0.82</td><td>None</td><td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td></tr><tr><td>1h</td><td>SHORT</td><td>13.0h</td><td>27%</td><td>0.82</td><td>None</td><td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td></tr><tr><td>1h</td><td>LONG</td><td>11.4h</td><td>24%</td><td>0.82</td><td>None</td><td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td></tr>
+            </tbody>
+        </table>
+    </section>
+    
+            
+    <section class="panel">
+        <h2>📡 Recent Signals (Last 10)</h2>
+        <table class="matrix-table">
+            <thead>
+                <tr><th>TF</th><th>Dir</th><th>Conf</th><th>Tier</th><th>Codes</th><th>Age</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+        <tr>
+            <td>1h</td>
+            <td><span class="pill badge-good">LONG</span></td>
+            <td>46</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>24</td>
+            <td>11.4h</td>
+            <td><span class="pill badge-warn">OPEN</span></td>
+        </tr>
+        <tr>
+            <td>15m</td>
+            <td><span class="pill badge-good">LONG</span></td>
+            <td>100</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>19</td>
+            <td>11.4h</td>
+            <td><span class="pill badge-bad">LOSS</span></td>
+        </tr>
+        <tr>
+            <td>15m</td>
+            <td><span class="pill badge-good">LONG</span></td>
+            <td>100</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>21</td>
+            <td>12.8h</td>
+            <td><span class="pill badge-good">WIN_TP2</span></td>
+        </tr>
+        <tr>
+            <td>5m</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>91</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>20</td>
+            <td>12.8h</td>
+            <td><span class="pill badge-bad">LOSS</span></td>
+        </tr>
+        <tr>
+            <td>15m</td>
+            <td><span class="pill badge-good">LONG</span></td>
+            <td>100</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>21</td>
+            <td>12.9h</td>
+            <td><span class="pill badge-good">WIN_TP2</span></td>
+        </tr>
+        <tr>
+            <td>5m</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>63</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>19</td>
+            <td>12.9h</td>
+            <td><span class="pill badge-bad">LOSS</span></td>
+        </tr>
+        <tr>
+            <td>1h</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>16</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>21</td>
+            <td>13.0h</td>
+            <td><span class="pill badge-warn">OPEN</span></td>
+        </tr>
+        <tr>
+            <td>15m</td>
+            <td><span class="pill badge-good">LONG</span></td>
+            <td>100</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>20</td>
+            <td>13.0h</td>
+            <td><span class="pill badge-good">WIN_TP2</span></td>
+        </tr>
+        <tr>
+            <td>5m</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>91</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>18</td>
+            <td>13.0h</td>
+            <td><span class="pill badge-bad">LOSS</span></td>
+        </tr>
+        <tr>
+            <td>1h</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>16</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>21</td>
+            <td>13.1h</td>
+            <td><span class="pill badge-warn">OPEN</span></td>
+        </tr></tbody>
+        </table>
+    </section>
+    
         </div>
     </div>
     <section>
@@ -1046,11 +444,11 @@
                 </div>
                 <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 10:55</p>
+                    <p>Last Signal: 19:35</p>
                     <p>TP1 Hit: ❌</p>
                 </div>
             </div>
-
+            
             <div class="card">
                 <div class="card-header">
                     <span class="symbol">BTC</span>
@@ -1058,11 +456,11 @@
                 </div>
                 <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 10:45</p>
+                    <p>Last Signal: 21:00</p>
                     <p>TP1 Hit: ❌</p>
                 </div>
             </div>
-
+            
             <div class="card">
                 <div class="card-header">
                     <span class="symbol">BTC</span>
@@ -1070,57 +468,57 @@
                 </div>
                 <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 10:00</p>
+                    <p>Last Signal: 21:00</p>
                     <p>TP1 Hit: ❌</p>
                 </div>
             </div>
-        </div>
+            </div>
     </section>
     <section class="scorecard-section">
         <h2>Intelligence Report</h2>
         <pre># PID-129 BTC Alerts Performance Scorecard
 
-**Generated:** 2026-02-28 15:56:48 UTC
+**Generated:** 2026-03-01 13:29:34 UTC
 
 ## Signal Summary (Last 7 Days)
 
-- **Total Alerts:** 37
-- **Directional Split:** 14 LONG / 23 SHORT
-- **High Confidence (>=70):** 15
+- **Total Alerts:** 53
+- **Directional Split:** 23 LONG / 30 SHORT
+- **High Confidence (>=70):** 24
 
 ## Trading Performance (Paper)
 
-- **Resolved Trades:** 27
-- **Win Rate:** 63.0%
-- **Total P&L (R):** 6.92R
-- **Average R per Trade:** 0.26R
-- **Outcomes:** {'WIN_TP2': 7, 'LOSS': 8, 'WIN_TP1': 10, 'TIMEOUT': 2}
+- **Resolved Trades:** 49
+- **Win Rate:** 57.1%
+- **Total P&L (R):** 8.33R
+- **Average R per Trade:** 0.17R
+- **Outcomes:** {'WIN_TP2': 15, 'LOSS': 19, 'WIN_TP1': 13, 'TIMEOUT': 2}
 
 ## Strategy Breakdown
 
-- **TREND_CONTINUATION**: 20 alerts
+- **TREND_CONTINUATION**: 31 alerts
+- **NONE**: 12 alerts
 - **MEAN_REVERSION**: 8 alerts
-- **NONE**: 7 alerts
 - **VOLATILITY_EXPANSION**: 2 alerts
 
 ## Recent Alerts (Last 10)
 
 | Time | Direction | Strategy | Confidence | Outcome |
 |:---|:---|:---|:---|:---|
-| 2026-02-28 14:02 | SHORT | MEAN_REVERSION | 91 | WIN_TP1 |
-| 2026-02-28 14:02 | SHORT | TREND_CONTINUATION | 30 | PENDING |
-| 2026-02-28 14:29 | LONG | VOLATILITY_EXPANSION | 45 | PENDING |
-| 2026-02-28 14:29 | SHORT | TREND_CONTINUATION | 58 | PENDING |
-| 2026-02-28 15:19 | SHORT | TREND_CONTINUATION | 65 | LOSS |
-| 2026-02-28 15:19 | SHORT | NONE | 80 | PENDING |
-| 2026-02-28 15:19 | SHORT | TREND_CONTINUATION | 82 | PENDING |
-| 2026-02-28 15:56 | LONG | TREND_CONTINUATION | 96 | PENDING |
-| 2026-02-28 15:56 | LONG | NONE | 24 | PENDING |
-| 2026-02-28 15:56 | SHORT | TREND_CONTINUATION | 26 | PENDING |
+| 2026-03-01 00:25 | SHORT | TREND_CONTINUATION | 16 | PENDING |
+| 2026-03-01 00:30 | SHORT | NONE | 91 | LOSS |
+| 2026-03-01 00:30 | LONG | TREND_CONTINUATION | 100 | WIN_TP2 |
+| 2026-03-01 00:30 | SHORT | TREND_CONTINUATION | 16 | PENDING |
+| 2026-03-01 00:35 | SHORT | NONE | 63 | LOSS |
+| 2026-03-01 00:35 | LONG | TREND_CONTINUATION | 100 | WIN_TP2 |
+| 2026-03-01 00:40 | SHORT | NONE | 91 | LOSS |
+| 2026-03-01 00:40 | LONG | TREND_CONTINUATION | 100 | WIN_TP2 |
+| 2026-03-01 02:02 | LONG | TREND_CONTINUATION | 100 | LOSS |
+| 2026-03-01 02:02 | LONG | TREND_CONTINUATION | 46 | PENDING |
 
 ## System Health (Audit Log - Last 24h)
 
-- **Cycles Completed:** 21
+- **Cycles Completed:** 39
 - **Peak Confidence Seen:** 100
 - **Status:** Bot Active & Scanning
 </pre>
@@ -1128,461 +526,140 @@
     <footer style="margin-top: 2rem; text-align: center; color: var(--text-muted); padding-bottom: 2rem;">
         &copy; 2026 EMBER Loop | BTC Alerts MVP
     </footer>
-    <dialog id="execModal"
-        style="max-width:420px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);padding:1rem;">
-        <h3 style="margin-bottom:.5rem;">Confirm Execution</h3>
-        <p class="mini" id="execCountdown">Arming confirmation...</p>
-        <div style="display:flex;gap:.5rem;margin-top:1rem;"><button id="cancelExec" class="pill badge-neutral"
-                style="border:0;cursor:pointer;">Cancel</button><button id="confirmExec" class="pill badge-good"
-                style="border:0;cursor:pointer;" disabled>Confirm</button></div>
+    <dialog id="execModal" style="max-width:420px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);padding:1rem;">
+      <h3 style="margin-bottom:.5rem;">Confirm Execution</h3><p class="mini" id="execCountdown">Arming confirmation...</p>
+      <div style="display:flex;gap:.5rem;margin-top:1rem;"><button id="cancelExec" class="pill badge-neutral" style="border:0;cursor:pointer;">Cancel</button><button id="confirmExec" class="pill badge-good" style="border:0;cursor:pointer;" disabled>Confirm</button></div>
     </dialog>
     <script>
-        let state = { livePrice: 0, spread: 0, inTrade: false, entryPrice: 0, tp1Price: 0, stopPrice: 0, direction: "NEUTRAL", overrides: {} };
-        const els = {
-            badge: document.getElementById('connection-badge'),
-            sync: document.getElementById('sync-label'),
-            mid: document.getElementById('live-mid'),
-            spread: document.getElementById('live-spread'),
-            balance: document.getElementById('live-balance'),
-            kelly: document.getElementById('live-kelly'),
-            oc: document.getElementById('live-oc'),
-            pf: document.getElementById('live-pf'),
-            dd: document.getElementById('live-dd'),
-            le: document.getElementById('long-edge'),
-            se: document.getElementById('short-edge'),
-            peak: document.getElementById('live-peak'),
-            total_r: document.getElementById('live-total-r'),
-            open_pnl: document.getElementById('live-open-pnl')
-        };
-
-        function fmtMoney(n, d = 0) { return (n !== undefined && n !== null) ? '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) : '--'; }
-
-        async function sendCommand(cmd) {
-            try {
-                const resp = await fetch('/api/command', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(cmd)
-                });
-                const data = await resp.json();
-                console.log('Command result:', data);
-            } catch (e) {
-                console.error('Command failed:', e);
-            }
+      let state = {livePrice:0,spread:0,inTrade:true,entryPrice:67878.6,tp1Price:69451.81285714287,stopPrice:65955.7842857143,direction:"LONG"};
+      const els = {badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),gate:document.getElementById('live-gate')};
+      function fmtMoney(n,d=0) { return Number.isFinite(n) ? '$' + n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}) : '--'; }
+      function deriveConfluence(alerts) { const t=['5m','15m','1h'],m=Object.create(null); for (const a of (alerts||[])) if (a.symbol==='BTC' && t.includes(a.timeframe)) m[a.timeframe]=a; const p=t.map(tf=>m[tf]).filter(Boolean); if (p.length<3) return 'Partial'; const d=p.map(x=>String(x.direction||'NEUTRAL').toUpperCase()); return d.every(x=>x===d[0]&&x!=='NEUTRAL') ? d[0] + ' aligned' : 'Mixed'; }
+      function updateLivePrice() {
+        if(!state.livePrice) return;
+        const priceEl=document.getElementById('livePrice');
+        if(priceEl) {
+          const oldPrice = parseFloat(priceEl.textContent.replace(/[$,]/g, ''));
+          priceEl.textContent=fmtMoney(state.livePrice,0);
+          if (!isNaN(oldPrice)) {
+              if (state.livePrice > oldPrice) {
+                  priceEl.classList.remove('pulse-down');
+                  void priceEl.offsetWidth;
+                  priceEl.classList.add('pulse-up');
+              } else if (state.livePrice < oldPrice) {
+                  priceEl.classList.remove('pulse-up');
+                  void priceEl.offsetWidth;
+                  priceEl.classList.add('pulse-down');
+              }
+          }
         }
-
-        function updateLivePrice() {
-            if (!state.livePrice) return;
-            const priceEl = document.getElementById('livePrice');
-            if (priceEl) {
-                const oldPrice = parseFloat(priceEl.textContent.replace(/[$,]/g, ''));
-                priceEl.textContent = fmtMoney(state.livePrice, 0);
-                if (!isNaN(oldPrice)) {
-                    if (state.livePrice > oldPrice) {
-                        priceEl.classList.remove('pulse-down');
-                        void priceEl.offsetWidth;
-                        priceEl.classList.add('pulse-up');
-                    } else if (state.livePrice < oldPrice) {
-                        priceEl.classList.remove('pulse-up');
-                        void priceEl.offsetWidth;
-                        priceEl.classList.add('pulse-down');
-                    }
-                }
-            }
-            const spreadEl = document.getElementById('liveSpread');
-            if (spreadEl) spreadEl.textContent = '$' + state.spread.toFixed(1);
-
-            if (state.inTrade && state.entryPrice > 0) {
-                const toTp = state.direction === 'SHORT' ? state.livePrice - state.tp1Price : state.tp1Price - state.livePrice;
-                const toStop = state.direction === 'SHORT' ? state.stopPrice - state.livePrice : state.livePrice - state.stopPrice;
-                document.getElementById('distTP1').textContent = (toTp >= 0 ? '+' : '-') + '$' + Math.abs(toTp).toFixed(0) + ' (' + ((toTp / state.livePrice) * 100).toFixed(2) + '%)';
-                document.getElementById('distStop').textContent = (toStop >= 0 ? '+' : '-') + '$' + Math.abs(toStop).toFixed(0) + ' (' + ((toStop / state.livePrice) * 100).toFixed(2) + '%)';
-
-                const mult = state.direction === 'SHORT' ? -1 : 1;
-                const posSize = state.positionSize || 10000;
-                const pnl = (state.livePrice - state.entryPrice) / state.entryPrice * mult * posSize;
-                const pnlEl = document.getElementById('livePnL');
-                if (pnlEl) { pnlEl.textContent = (pnl >= 0 ? '+' : '-') + '$' + Math.abs(pnl).toFixed(0); pnlEl.style.color = pnl >= 0 ? 'var(--accent)' : '#ff4d4d'; }
-            } else {
-                document.getElementById('livePrice').textContent = fmtMoney(state.livePrice, 0);
-                document.getElementById('livePnL').textContent = '—';
-                document.getElementById('distTP1').textContent = '—';
-                document.getElementById('distStop').textContent = '—';
-            }
+        const spreadEl=document.getElementById('liveSpread');
+        if(spreadEl) spreadEl.textContent='$'+state.spread.toFixed(1);
+        if(state.entryPrice>0&&state.tp1Price>0&&state.stopPrice>0){
+          const toTp=state.direction==='SHORT' ? state.livePrice-state.tp1Price : state.tp1Price-state.livePrice;
+          const toStop=state.direction==='SHORT' ? state.stopPrice-state.livePrice : state.livePrice-state.stopPrice;
+          document.getElementById('distTP1').textContent=(toTp>=0?'+':'-')+'$'+Math.abs(toTp).toFixed(0)+' ('+((toTp/state.livePrice)*100).toFixed(2)+'%)';
+          document.getElementById('distStop').textContent=(toStop>=0?'+':'-')+'$'+Math.abs(toStop).toFixed(0)+' ('+((toStop/state.livePrice)*100).toFixed(2)+'%)';
         }
-
-        function connectWS() {
-            const p = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws';
-            const ws = new WebSocket(p);
-            ws.onopen = () => { els.badge.textContent = 'Live Feed: Online'; els.badge.classList.remove('badge-stale'); };
-            ws.onmessage = (ev) => {
-                try {
-                    const data = JSON.parse(ev.data);
-                    const ob = data.orderbook || {};
-                    state.livePrice = Number(ob.mid || 0);
-                    state.spread = Number(ob.spread || 0);
-                    updateLivePrice();
-                    els.mid.textContent = fmtMoney(state.livePrice, 2);
-                    els.spread.textContent = state.spread.toFixed(2);
-
-                    const po = data.portfolio || {};
-                    els.balance.textContent = fmtMoney(Number(po.balance || 0), 2);
-                    els.peak.textContent = fmtMoney(Number(po.peak_balance || 0), 2);
-
-                    const st = data.stats || {};
-                    window._lastStats = st;
-                    window._lastBalance = Number(po.balance || 0);
-                    els.pf.textContent = Number(st.avg_r || 0).toFixed(2) + 'R';
-                    els.oc.textContent = (po.positions ? po.positions.length : 0) + ' / ' + (st.total_trades || 0);
-                    els.kelly.textContent = Math.round((st.kelly_pct || 0) * 100) + '%';
-                    els.dd.textContent = (st.drawdown_pct || 0).toFixed(1) + '%';
-
-                    // Unrealized PnL from stats
-                    if (els.open_pnl) {
-                        const upnl = st.open_upnl || 0;
-                        els.open_pnl.textContent = (upnl >= 0 ? '+' : '-') + '$' + Math.abs(upnl).toFixed(2);
-                        els.open_pnl.style.color = upnl >= 0 ? 'var(--accent)' : '#ff4d4d';
-                    }
-                    if (els.total_r) {
-                        els.total_r.textContent = (st.total_r || 0).toFixed(2) + 'R';
-                        els.total_r.style.color = (st.total_r || 0) >= 0 ? 'var(--accent)' : '#ff4d4d';
-                    }
-
-                    // Directional Edge
-                    const ls = st.long_stats || {};
-                    const ss = st.short_stats || {};
-                    if (els.le) {
-                        els.le.textContent = (ls.win_rate || 0) + '% (' + (ls.wins || 0) + 'W / ' + (ls.count || 0) + 'T)';
-                        els.le.className = 'pill ' + ((ls.win_rate || 0) >= 50 ? 'badge-good' : 'badge-bad');
-                    }
-                    if (els.se) {
-                        els.se.textContent = (ss.win_rate || 0) + '% (' + (ss.wins || 0) + 'W / ' + (ss.count || 0) + 'T)';
-                        els.se.className = 'pill ' + ((ss.win_rate || 0) >= 50 ? 'badge-good' : 'badge-bad');
-                    }
-
-                    // Overrides + Auto-Pilot Indicator
-                    state.overrides = data.overrides || {};
-                    const fBtn = document.getElementById('filterBtn');
-                    const ap = data.auto_pilot || {};
-                    if (fBtn) {
-                        if (ap.active) {
-                            fBtn.textContent = '🤖 AUTO (' + (ap.auto_muted || []).length + ' muted)';
-                            fBtn.className = 'pill badge-warn';
-                            fBtn.title = 'Auto-pilot muting: ' + (ap.auto_muted || []).join(', ') + ' | Regime: ' + (ap.regime || 'normal');
-                        } else if (state.overrides.min_score) {
-                            fBtn.textContent = 'FLOOR: ' + state.overrides.min_score;
-                            fBtn.className = 'pill badge-good';
-                            fBtn.title = '';
-                        } else {
-                            fBtn.textContent = 'ALL';
-                            fBtn.className = 'pill badge-neutral';
-                            fBtn.title = '';
-                        }
-                    }
-
-                    const btcAlerts = (data.alerts || []);
-                    if (btcAlerts.length > 0) {
-                        const wsLatest = btcAlerts[0] || {};
-                        state.direction = wsLatest.direction;
-                        state.entryPrice = wsLatest.price;
-                        state.tp1Price = wsLatest.tp1;
-                        state.stopPrice = wsLatest.invalidation;
-                        state.inTrade = (po.positions && po.positions.length > 0);
-                        state.positionSize = state.inTrade ? po.positions[0].size_usdt : 0;
-
-                        const wsCS = new Set(((wsLatest.decision_trace || {}).codes) || []);
-                        const alertCtx = ((wsLatest.decision_trace || {}).context) || {};
-                        const cachedCtx = data.cached_context || {};
-                        const wsCtx = Object.assign({}, cachedCtx, alertCtx);
-                        const wsSL = wsCtx.session_levels || {};
-                        const wsVP = wsCtx.volume_profile || {};
-                        const wsAV = wsCtx.avwap || {};
-                        const wsST = wsCtx.structure || {};
-                        const wsVI = wsCtx.volume_impulse || {};
-                        const wsMC = wsCtx.macro_correlation || {};
-                        const wsSN = wsCtx.sentiment || {};
-                        const wsLQ = wsCtx.liquidity || {};
-                        const wsOR = wsCtx.oi_regime || '—';
-
-                        const _el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-                        _el('tape-oi-regime', wsOR.toUpperCase());
-                        _el('tape-dxy', (wsMC.dxy || '—').toUpperCase());
-                        _el('tape-sentiment', wsSN.score ? wsSN.score.toFixed(2) : '—');
-                        const taker = (data.flows || {}).taker_ratio;
-                        _el('tape-taker', taker ? taker.toFixed(2) : '—');
-
-                        _el('key-pdh', wsSL.pdh ? '$' + Number(wsSL.pdh).toLocaleString() : '—');
-                        _el('key-pdl', wsSL.pdl ? '$' + Number(wsSL.pdl).toLocaleString() : '—');
-                        _el('key-poc', wsVP.poc ? '$' + Number(wsVP.poc).toLocaleString() : '—');
-                        _el('key-vah', wsVP.vah ? '$' + Number(wsVP.vah).toLocaleString() : '—');
-                        _el('key-val', wsVP.val ? '$' + Number(wsVP.val).toLocaleString() : '—');
-                        _el('key-avwap', wsAV.value ? '$' + Number(wsAV.value).toLocaleString() : '—');
-                        _el('key-avwap-side', wsAV.position || '—');
-                        const asE = document.getElementById('key-avwap-side');
-                        if (asE && wsAV.position) { asE.style.color = wsAV.position === 'ABOVE' ? '#00ff88' : wsAV.position === 'BELOW' ? '#ff4444' : '#ffffff'; }
-                        _el('key-struct-event', wsST.event || wsST.trend || '—');
-                        const seE = document.getElementById('key-struct-event');
-                        if (seE && (wsST.event || wsST.trend)) { const t = (wsST.event || wsST.trend).toUpperCase(); seE.style.color = t.includes('BULL') ? '#00ff88' : t.includes('BEAR') ? '#ff4444' : '#ffffff'; }
-                        _el('key-pivot-high', wsST.last_pivot_high ? '$' + Number(wsST.last_pivot_high).toLocaleString() : '—');
-                        _el('key-pivot-low', wsST.last_pivot_low ? '$' + Number(wsST.last_pivot_low).toLocaleString() : '—');
-                        _el('key-bid-walls', wsLQ.bid_walls !== undefined ? wsLQ.bid_walls : '—');
-                        _el('key-ask-walls', wsLQ.ask_walls !== undefined ? wsLQ.ask_walls : '—');
-                        const eql = wsCtx.equal_levels || {};
-                        _el('key-liq-targets', eql.eq_highs > 0 ? 'EQH' : eql.eq_lows > 0 ? 'EQL' : 'None');
-
-                        const rvE = document.getElementById('tape-rvol');
-                        if (rvE) { rvE.textContent = wsVI.rvol ? wsVI.rvol + 'x' : '—'; rvE.style.color = wsVI.rvol >= 2.0 ? '#00ff88' : wsVI.rvol >= 1.2 ? '#ffa500' : '#ffffff'; }
-                        const vrE = document.getElementById('tape-vol-regime');
-                        if (vrE) {
-                            vrE.textContent = (wsVI.regime || '—').toUpperCase(); vrE.style.color = wsVI.regime === 'expansion' ? '#ff6b00' : wsVI.regime === 'low' ? '#4488ff' : '#ffffff';
-                            if (wsCS.has('ATR_EXPANSION_ONSET')) { vrE.textContent += ' ⚡'; vrE.style.color = '#ff6b00'; }
-                        }
-
-                        const wsPD = [[['SQUEEZE_FIRE', 'SQUEEZE_ON'], [], 'Squeeze'], [['HTF_ALIGNED'], ['HTF_COUNTER'], 'Trend (HTF)'], [['SENTIMENT_BULL', 'FLOW_TAKER_BULLISH', 'VOLUME_IMPULSE_BULL'], ['SENTIMENT_BEAR', 'FLOW_TAKER_BEARISH', 'VOLUME_IMPULSE_BEAR'], 'Momentum'], [['ML_CONFIDENCE_BOOST'], ['ML_SKEPTICISM'], 'ML Model'], [['FUNDING_EXTREME_LOW', 'FUNDING_LOW'], ['FUNDING_EXTREME_HIGH', 'FUNDING_HIGH'], 'Funding'], [['DXY_FALLING_BULLISH'], ['DXY_RISING_BEARISH'], 'DXY Macro'], [['DXY_FIXED', 'MACRO_RISK_ON'], ['MACRO_RISK_OFF'], 'Macro Context'], [['FG_EXTREME_FEAR', 'FG_FEAR'], ['FG_EXTREME_GREED', 'FG_GREED'], 'Fear & Greed'], [['BID_WALL_SUPPORT'], ['ASK_WALL_RESISTANCE'], 'Order Book'], [['OI_SURGE_MAJOR', 'OI_SURGE_MINOR', 'BASIS_BULLISH', 'OI_NEW_LONGS'], ['BASIS_BEARISH', 'OI_NEW_SHORTS'], 'OI / Basis'], [['STRUCTURE_BOS_BULL', 'STRUCTURE_CHOCH_BULL'], ['STRUCTURE_BOS_BEAR', 'STRUCTURE_CHOCH_BEAR'], 'Structure'], [['PDL_SWEEP_BULL', 'EQL_SWEEP_BULL', 'SESSION_LOW_SWEEP', 'PDH_RECLAIM_BULL'], ['PDH_SWEEP_BEAR', 'EQH_SWEEP_BEAR', 'SESSION_HIGH_SWEEP', 'PDL_BREAK_BEAR'], 'Levels'], [['AVWAP_RECLAIM_BULL'], ['AVWAP_REJECT_BEAR'], 'AVWAP'], [['ABOVE_VALUE'], ['BELOW_VALUE'], 'VP Status'], [['AUTO_RR_EXCELLENT'], ['AUTO_RR_POOR'], 'Auto R:R']];
-                        let wsAl = 0, wsAg = 0;
-                        const wsRH = wsPD.map(([b, br, lbl]) => {
-                            const hb = b.some(c => wsCS.has(c));
-                            const hbr = br.some(c => wsCS.has(c));
-                            let ic = '⚫', co = 'var(--text-muted)';
-                            if ((wsLatest.direction === 'LONG' && hb) || (wsLatest.direction === 'SHORT' && hbr)) { ic = '🟢'; co = 'var(--accent)'; wsAl++; }
-                            else if ((wsLatest.direction === 'LONG' && hbr) || (wsLatest.direction === 'SHORT' && hb)) { ic = '🔴'; co = '#ff4d4d'; wsAg++; }
-                            return "<div class='mini'>" + ic + " <span style='color:" + co + "'>" + lbl + "</span></div>";
-                        }).join('');
-
-                        const wsT = wsPD.length, wsPct = Math.round((wsAl / wsT) * 100), wsLbl = wsAl >= 7 ? 'STRONG' : wsAl >= 4 ? 'MODERATE' : 'WEAK', wsClr = wsAl >= 7 ? 'var(--accent)' : wsAl >= 4 ? '#ffd700' : '#ff4d4d', wsNet = wsAl - wsAg;
-                        els.oc.textContent = (po.positions ? po.positions.length : 0) + ' / ' + (st.total_trades || 0);
-                        const rSc = document.getElementById('radarScore');
-                        if (rSc) { rSc.textContent = wsAl + '/' + wsT + ' ' + wsLbl; rSc.style.color = wsClr; rSc.style.borderColor = wsClr; };
-                        const rBr = document.getElementById('radarBar');
-                        if (rBr) { rBr.style.width = wsPct + '%'; rBr.style.background = wsClr; };
-                        const rGr = document.getElementById('radarGrid');
-                        if (rGr) rGr.innerHTML = wsRH;
-                        const rNt = document.getElementById('radarNet');
-                        if (rNt) { rNt.textContent = (wsNet >= 0 ? '+' : '') + wsNet; rNt.style.color = wsNet >= 0 ? 'var(--accent)' : '#ff4d4d'; };
-                    }
-
-                    els.sync.textContent = 'Synced: ' + new Date().toLocaleString();
-
-                    // ── Phase 26: Data Freshness Warning ──
-                    const age = data.data_age_seconds || 0;
-                    if (age > 300) {
-                        els.sync.style.color = '#ff4d4d';
-                        els.sync.style.fontWeight = 'bold';
-                        els.sync.textContent = '⚠️ DATA STALE (' + Math.round(age / 60) + 'm old)';
-                    } else if (age > 120) {
-                        els.sync.style.color = '#ffa500';
-                        els.sync.style.fontWeight = 'normal';
-                        els.sync.textContent = 'Synced: ' + new Date().toLocaleString() + ' (⏳ ' + Math.round(age) + 's ago)';
-                    } else {
-                        els.sync.style.color = 'var(--text-muted)';
-                        els.sync.style.fontWeight = 'normal';
-                        els.sync.textContent = 'Synced: ' + new Date().toLocaleString();
-                    }
-
-                    // ── Phase 26: Smart Money UI Injection ──
-                    const deri = data.derivatives || {};
-                    const fundRate = deri.funding_rate;
-                    const basis = deri.basis_annualized;
-                    const oiDelta = deri.oi_change_24h;
-
-                    const fundEl = document.getElementById('tape-funding');
-                    if (fundEl) {
-                        if (fundRate !== undefined && basis !== undefined) {
-                            const fStr = (fundRate * 100).toFixed(4) + '%';
-                            const bPct = basis * 100;
-                            const bStr = bPct > 0 ? '+' + bPct.toFixed(2) + '%' : bPct.toFixed(2) + '%';
-                            fundEl.textContent = fStr + ' | ' + bStr;
-                            if (fundRate > 0.0001) fundEl.style.color = '#ff4d4d'; // Expensive longs
-                            else if (fundRate < -0.0001) fundEl.style.color = '#00ffcc'; // Expensive shorts
-                            else fundEl.style.color = '#b580ff';
-                        } else {
-                            fundEl.textContent = '—';
-                        }
-                    }
-
-                    const oiEl = document.getElementById('tape-oi-delta');
-                    if (oiEl) {
-                        if (oiDelta !== undefined) {
-                            oiEl.textContent = (oiDelta > 0 ? '+' : '') + oiDelta.toFixed(2) + '%';
-                            if (oiDelta > 1.5) oiEl.style.color = '#00ffcc'; // Large OI injection
-                            else if (oiDelta < -1.5) oiEl.style.color = '#ff4d4d'; // Large OI wipeout
-                            else oiEl.style.color = '#b580ff';
-                        } else {
-                            oiEl.textContent = '—';
-                        }
-                    }
-
-                    // ── Phase 25: Execution Copilot ──
-                    const cpAction = document.getElementById('copilot-action-btn');
-                    const cpMsg = document.getElementById('copilot-msg');
-                    const cpDetail = document.getElementById('copilot-detail');
-                    if (cpAction && cpMsg) {
-                        let cpText = 'STANDBY';
-                        let cpMessage = 'No active positions — monitoring.';
-                        let cpClass = 'pill badge-neutral';
-                        let cpExtra = '';
-
-                        const positions = (po.positions || []);
-                        if (positions.length > 0 && state.livePrice > 0) {
-                            const pos = positions[0];
-                            const entry = pos.entry_price || 0;
-                            const dir = pos.direction || 'LONG';
-                            const sz = Number(pos.size_usdt) || 0;
-                            if (entry > 0 && sz > 0 && isFinite(entry)) {
-                                const pnlPct = dir === 'LONG'
-                                    ? ((state.livePrice - entry) / entry) * 100
-                                    : ((entry - state.livePrice) / entry) * 100;
-                                const pnlDollar = (pnlPct / 100) * sz;
-
-                                cpExtra = dir + ' @ ' + fmtMoney(entry, 0) + ' | PnL: ' + (pnlDollar >= 0 ? '+' : '') + '$' + Math.abs(pnlDollar).toFixed(0) + ' (' + pnlPct.toFixed(2) + '%)';
-
-                                if (pnlPct > 1.5) {
-                                    cpText = '💰 TAKE 50% + TRAIL';
-                                    cpMessage = 'Massive run detected (+' + pnlPct.toFixed(2) + '%). Take partial profit and trail stop to breakeven.';
-                                    cpClass = 'pill badge-good';
-                                    if (cpAction) cpAction.style.animation = 'breathePulse 1.5s infinite ease-in-out';
-                                } else if (pnlPct > 0.75) {
-                                    cpText = '🔒 MOVE STOP → BE';
-                                    cpMessage = 'Momentum intact (+' + pnlPct.toFixed(2) + '%). Trail stop to breakeven — risk-free trade.';
-                                    cpClass = 'pill badge-good';
-                                    if (cpAction) cpAction.style.animation = '';
-                                } else if (pnlPct > 0.0) {
-                                    cpText = '✊ HOLD';
-                                    cpMessage = 'Position active at ' + fmtMoney(entry, 0) + '. Let edge play out.';
-                                    cpClass = 'pill badge-warn';
-                                    if (cpAction) cpAction.style.animation = '';
-                                } else if (pnlPct > -0.75) {
-                                    cpText = '⚠️ PATIENCE';
-                                    cpMessage = 'Minor heat (' + pnlPct.toFixed(2) + '%). Still within normal noise range.';
-                                    cpClass = 'pill badge-warn';
-                                    if (cpAction) cpAction.style.animation = '';
-                                } else {
-                                    cpText = '🚨 CUT LOSSES';
-                                    cpMessage = 'Trade invalidated (' + pnlPct.toFixed(2) + '%). Market-close to protect capital.';
-                                    cpClass = 'pill badge-bad';
-                                    if (cpAction) cpAction.style.animation = 'breathePulse 1s infinite ease-in-out';
-                                }
-                            }
-                        }
-                        cpAction.textContent = cpText;
-                        cpAction.className = cpClass;
-                        cpMsg.textContent = cpMessage;
-                        if (cpDetail) cpDetail.textContent = cpExtra;
-                    }
-
-                    // ── Phase 25: BS-Filter Warning ──
-                    const bsEl = document.getElementById('bs-filter-display');
-                    if (bsEl) {
-                        const bsText = data.bs_filter || 'CLEAR';
-                        const bsSev = data.bs_severity || 0;
-                        bsEl.textContent = bsText;
-                        if (bsSev >= 2) {
-                            bsEl.style.background = 'rgba(255,77,77,0.15)';
-                            bsEl.style.color = '#ff4d4d';
-                            bsEl.style.border = '1px solid rgba(255,77,77,0.4)';
-                        } else if (bsSev >= 1) {
-                            bsEl.style.background = 'rgba(255,165,0,0.1)';
-                            bsEl.style.color = '#ffa500';
-                            bsEl.style.border = '1px solid rgba(255,165,0,0.3)';
-                        } else {
-                            bsEl.textContent = '✅ ORDER FLOW CLEAR';
-                            bsEl.style.background = 'rgba(0,255,204,0.06)';
-                            bsEl.style.color = 'var(--accent)';
-                            bsEl.style.border = '1px solid rgba(0,255,204,0.2)';
-                        }
-                    }
-
-                    // ── Phase 25: Drawdown Circuit Breaker ──
-                    const cb = data.circuit_breaker || {};
-                    const execBtn = document.getElementById('executeBtn');
-                    if (execBtn) {
-                        if (cb.active) {
-                            execBtn.disabled = true;
-                            execBtn.textContent = '⛔ CIRCUIT BREAKER (' + (cb.reason || 'high risk') + ')';
-                            execBtn.style.opacity = '0.5';
-                            execBtn.style.cursor = 'not-allowed';
-                        } else {
-                            execBtn.disabled = false;
-                            execBtn.style.opacity = '1';
-                            execBtn.style.cursor = 'pointer';
-                            // Restore correct tier-colored label
-                            const latest = (data.alerts || [])[0] || {};
-                            const tier = latest.tier || 'NO-TRADE';
-                            if (tier === 'A+') {
-                                execBtn.textContent = '🟢 EXECUTE';
-                                execBtn.style.background = '#00cc88';
-                            } else if (tier === 'B') {
-                                execBtn.textContent = '🟡 EXECUTE (WATCH)';
-                                execBtn.style.background = '#cc8800';
-                            } else {
-                                execBtn.textContent = '⚠️ EXECUTE (HIGH RISK)';
-                                execBtn.style.background = '#ff4d4d';
-                            }
-                        }
-                    }
-                } catch (_err) { console.error(_err); }
-            };
-            ws.onclose = () => { els.badge.textContent = 'Live Feed: Reconnecting'; els.badge.classList.add('badge-stale'); setTimeout(connectWS, 1500); };
+        if(state.inTrade && state.entryPrice>0){
+          const mult=state.direction==='SHORT'?-1:1;
+          const pnl=(state.livePrice-state.entryPrice)*mult;
+          const pnlEl=document.getElementById('livePnL');
+          if(pnlEl){pnlEl.textContent=(pnl>=0?'+':'-')+'$'+Math.abs(pnl).toFixed(0); pnlEl.style.color=pnl>=0?'var(--accent)':'#ff4d4d';}
         }
+      }
+      function closeExecuteModal() { const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }
+      function requestExecute(alertId) { const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{n-=1; if(n<=0){clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();} else {btn.textContent='Confirm ('+n+')';}},1000); }
+      function connectWS() { const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}; ws.onmessage=(ev)=>{ try { const data=JSON.parse(ev.data); const ob=data.orderbook||{}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2);
+const btcAlerts = (data.alerts||[]).filter(a=>a.symbol==='BTC');
+const wsLatest=btcAlerts.slice(-1)[0]||{};
+const wsDir=String(wsLatest.direction||state.direction).toUpperCase();
+const wsTier=String(wsLatest.tier||"").toUpperCase();
+if (wsTier === "A+" && wsLatest.timestamp && wsLatest.timestamp !== window._lastPlayedAlertTs) {
+    window._lastPlayedAlertTs = wsLatest.timestamp;
+    if (!window._isMuted) {
+        const audio = document.getElementById('alert-chime');
+        if (audio) audio.play().catch(e => console.log('Audio blocked:', e));
+    }
+    if (Notification.permission === "granted") {
+        new Notification("A+ Trade Alert", { body: wsDir + ' on ' + wsLatest.timeframe });
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission();
+    }
+}
+const wsCS=new Set(((wsLatest.decision_trace||{}).codes)||[]);
+const wsCtx = ((wsLatest.decision_trace||{}).context)||{};
+const wsSL = wsCtx.session_levels||{};
+const wsVP = wsCtx.volume_profile||{};
+const wsAV = wsCtx.avwap||{};
+const wsST = wsCtx.structure||{};
+const wsVI = wsCtx.volume_impulse||{};
+const wsMC = wsCtx.macro_correlation||{};
+const wsSN = wsCtx.sentiment||{};
+const wsLQ = wsCtx.liquidity||{};
+const wsOR = wsCtx.oi_regime||'—';
 
-        function toggleMute() {
-            const recipe = prompt("Mute recipe (e.g. HTF_REVERSAL) for 60 mins?", "BOS_CONTINUATION");
-            if (recipe) {
-                sendCommand({ action: "mute_recipe", recipe: recipe, minutes: 60 });
-            }
-        }
-        function toggleFilter() {
-            const val = prompt("Set minimum score floor (0-100)?", "50");
-            if (val !== null) {
-                sendCommand({ action: "set_min_score", value: parseInt(val) });
-            }
-        }
+const _el = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+_el('tape-oi-regime', wsOR.toUpperCase());
+_el('tape-dxy', (wsMC.dxy || '—').toUpperCase());
+_el('tape-sentiment', wsSN.score ? wsSN.score.toFixed(2) : '—');
+const taker = (data.flows||{}).taker_ratio;
+_el('tape-taker', taker ? taker.toFixed(2) : '—');
 
-        function requestExecute(alertId) {
-            const modal = document.getElementById('executeModal');
-            if (!modal) return;
-            modal.style.display = 'flex';
+_el('key-pdh', wsSL.pdh ? '$'+Number(wsSL.pdh).toLocaleString() : '—');
+_el('key-pdl', wsSL.pdl ? '$'+Number(wsSL.pdl).toLocaleString() : '—');
+_el('key-poc', wsVP.poc ? '$'+Number(wsVP.poc).toLocaleString() : '—');
+_el('key-vah', wsVP.vah ? '$'+Number(wsVP.vah).toLocaleString() : '—');
+_el('key-val', wsVP.val ? '$'+Number(wsVP.val).toLocaleString() : '—');
+_el('key-avwap', wsAV.value ? '$'+Number(wsAV.value).toLocaleString() : '—');
+_el('key-avwap-side', wsAV.position || '—');
+const asE = document.getElementById('key-avwap-side');
+if(asE && wsAV.position) { asE.style.color = wsAV.position==='ABOVE' ? '#00ff88' : wsAV.position==='BELOW' ? '#ff4444' : '#ffffff'; }
+_el('key-struct-event', wsST.event || wsST.trend || '—');
+const seE = document.getElementById('key-struct-event');
+if(seE && (wsST.event||wsST.trend)) { const t = (wsST.event||wsST.trend).toUpperCase(); seE.style.color = t.includes('BULL') ? '#00ff88' : t.includes('BEAR') ? '#ff4444' : '#ffffff'; }
+_el('key-pivot-high', wsST.last_pivot_high ? '$'+Number(wsST.last_pivot_high).toLocaleString() : '—');
+_el('key-pivot-low', wsST.last_pivot_low ? '$'+Number(wsST.last_pivot_low).toLocaleString() : '—');
+_el('key-bid-walls', wsLQ.bid_walls !== undefined ? wsLQ.bid_walls : '—');
+_el('key-ask-walls', wsLQ.ask_walls !== undefined ? wsLQ.ask_walls : '—');
+const eql = wsCtx.equal_levels||{};
+_el('key-liq-targets', eql.eq_highs > 0 ? 'EQH' : eql.eq_lows > 0 ? 'EQL' : 'None');
 
-            // Kelly sizing calculation
-            const cachedStats = window._lastStats || {};
-            const kelly = cachedStats.kelly_pct || 0.05;
-            const bal = window._lastBalance || 10000;
-            const maxRisk = kelly * bal;
+const rvE = document.getElementById('tape-rvol');
+if(rvE) { rvE.textContent = wsVI.rvol ? wsVI.rvol+'x' : '—'; rvE.style.color = wsVI.rvol>=2.0 ? '#00ff88' : wsVI.rvol>=1.2 ? '#ffa500' : '#ffffff'; }
+const vrE = document.getElementById('tape-vol-regime');
+if(vrE) { vrE.textContent = (wsVI.regime||'—').toUpperCase(); vrE.style.color = wsVI.regime==='expansion' ? '#ff6b00' : wsVI.regime==='low' ? '#4488ff' : '#ffffff'; 
+  if(wsCS.has('ATR_EXPANSION_ONSET')) { vrE.textContent += ' ⚡'; vrE.style.color = '#ff6b00'; }
+}
 
-            const metaEl = document.getElementById('executeMeta');
-            metaEl.innerHTML = 'Alert: ' + alertId
-                + '<br>Direction: ' + state.direction
-                + '<br>Live: ' + fmtMoney(state.livePrice, 0)
-                + '<br><br><div style="padding:10px;border:1px solid #ff4d4d;border-radius:8px;background:rgba(255,0,0,0.08);">'
-                + '<span style="color:#ff4d4d;font-weight:bold;font-size:1rem;">MAX RISK: ' + fmtMoney(maxRisk, 2) + '</span><br>'
-                + '<span class="mini" style="color:var(--text-muted);">Kelly: ' + (kelly * 100).toFixed(1) + '% · Balance: ' + fmtMoney(bal, 0) + '</span><br>'
-                + '<span class="mini" style="color:#ff4d4d;">Exceeding this violates your mathematical edge.</span></div>';
+const wsPD=[[['SQUEEZE_FIRE','SQUEEZE_ON'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL','FLOW_TAKER_BULLISH','VOLUME_IMPULSE_BULL'],['SENTIMENT_BEAR','FLOW_TAKER_BEARISH','VOLUME_IMPULSE_BEAR'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH','OI_NEW_LONGS'],['BASIS_BEARISH','OI_NEW_SHORTS'],'OI / Basis'],[['STRUCTURE_BOS_BULL','STRUCTURE_CHOCH_BULL'],['STRUCTURE_BOS_BEAR','STRUCTURE_CHOCH_BEAR'],'Structure'],[['PDL_SWEEP_BULL','EQL_SWEEP_BULL','SESSION_LOW_SWEEP','PDH_RECLAIM_BULL'],['PDH_SWEEP_BEAR','EQH_SWEEP_BEAR','SESSION_HIGH_SWEEP','PDL_BREAK_BEAR'],'Levels'],[['AVWAP_RECLAIM_BULL'],['AVWAP_REJECT_BEAR'],'AVWAP'],[['ABOVE_VALUE'],['BELOW_VALUE'],'VP Status'],[['AUTO_RR_EXCELLENT'],['AUTO_RR_POOR'],'Auto R:R']];
+let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){ic='🟢';co='var(--accent)';wsAl++;}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){ic='🔴';co='#ff4d4d';wsAg++;}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;};const rBr=document.getElementById('radarBar');if(rBr){rBr.style.width=wsPct+'%';rBr.style.background=wsClr;};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}; els.sync.textContent='Synced: '+new Date().toLocaleString(); } catch (_err) {console.error(_err);} }; ws.onclose=()=>{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}; }
 
-            const btn = document.getElementById('confirmExecuteBtn');
-            let n = 3;
-            btn.disabled = true;
-            btn.textContent = 'Confirm (' + n + ')';
-            const t = setInterval(() => {
-                n -= 1;
-                if (n <= 0) {
-                    clearInterval(t);
-                    btn.disabled = false;
-                    btn.textContent = 'Confirm Execute';
-                    btn.onclick = () => closeExecuteModal();
-                } else {
-                    btn.textContent = 'Confirm (' + n + ')';
-                }
-            }, 1000);
-        }
+      function toggleMute() {
+          window._isMuted = !window._isMuted;
+          document.getElementById('muteBtn').textContent = window._isMuted ? '🔇' : '🔊';
+          document.getElementById('muteBtn').classList.toggle('badge-bad', window._isMuted);
+      }
+      function toggleFilter() {
+          window._isAOnly = !window._isAOnly;
+          const btn = document.getElementById('filterBtn');
+          btn.textContent = window._isAOnly ? 'A+ ONLY' : 'ALL';
+          btn.classList.toggle('badge-good', window._isAOnly);
+          // Simple visual filter for the recent signals table
+          const rows = document.querySelectorAll('.matrix-table tbody tr');
+          rows.forEach(r => {
+              if (window._isAOnly) {
+                  const tier = r.cells[3]?.textContent || "";
+                  r.style.display = tier.includes('A+') ? '' : 'none';
+              } else {
+                  r.style.display = '';
+              }
+          });
+      }
 
-        function closeExecuteModal() {
-            const modal = document.getElementById('executeModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        connectWS();
-        updateLivePrice();
+      connectWS();
+      updateLivePrice();
     </script>
 </body>
-
 </html>
+    

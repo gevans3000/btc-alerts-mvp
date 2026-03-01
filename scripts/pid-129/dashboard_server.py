@@ -7,11 +7,16 @@ import threading
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if not (BASE_DIR / "scripts").exists():
     BASE_DIR = Path.cwd()
+
+# Ensure project root is in path for 'collectors' import
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 HOST = "0.0.0.0"
 PORT = 8002
