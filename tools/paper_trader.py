@@ -24,6 +24,9 @@ class Position:
     tp1: float
     opened_at: str
     status: str = "OPEN"
+    confidence: int = 0
+    regime: str = "unknown"
+    session: str = "unknown"
 
 @dataclass
 class ClosedTrade:
@@ -37,6 +40,9 @@ class ClosedTrade:
     pnl_usdt: float
     r_multiple: float
     outcome: str
+    confidence: int = 0
+    regime: str = "unknown"
+    session: str = "unknown"
 
 class Portfolio:
     def __init__(self, path: str = "data/paper_portfolio.json"):
@@ -74,7 +80,7 @@ class Portfolio:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(data, indent=2))
 
-    def on_alert(self, alert_id: str, symbol: str, tf: str, direction: str, price: float, sl: float, tp1: float, tier: str):
+    def on_alert(self, alert_id: str, symbol: str, tf: str, direction: str, price: float, sl: float, tp1: float, tier: str, confidence: int = 0, regime: str = "unknown", session: str = "unknown"):
         if tier != "TRADE":
             return
         
@@ -110,7 +116,10 @@ class Portfolio:
             size_usdt=size_usdt,
             sl=sl,
             tp1=tp1,
-            opened_at=datetime.now(timezone.utc).isoformat()
+            opened_at=datetime.now(timezone.utc).isoformat(),
+            confidence=int(confidence or 0),
+            regime=str(regime or "unknown"),
+            session=str(session or "unknown")
         )
         self.positions.append(pos)
         logger.info(f"Opened {direction} on {symbol} {tf} @ {price}. Size: ${size_usdt:.2f}")
@@ -169,7 +178,10 @@ class Portfolio:
                     exit_at=datetime.now(timezone.utc).isoformat(),
                     pnl_usdt=pnl,
                     r_multiple=round(r_multiple, 2),
-                    outcome=outcome
+                    outcome=outcome,
+                    confidence=int(getattr(p, "confidence", 0) or 0),
+                    regime=str(getattr(p, "regime", "unknown") or "unknown"),
+                    session=str(getattr(p, "session", "unknown") or "unknown")
                 )
                 self.closed_trades.append(ct)
                 self.positions.remove(p)

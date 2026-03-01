@@ -106,13 +106,110 @@ def badge_class_for_direction(direction: str):
     if direction == "SHORT":
         return "badge-bad"
     return "badge-neutral"
+
+
+def _rr_from_alert(alert):
+    rr = alert.get("rr_ratio")
+    if rr is not None:
+        try:
+            return float(rr)
+        except Exception:
+            return 0.0
+    entry = float(alert.get("entry_price") or alert.get("entry") or 0.0)
+    stop = float(alert.get("invalidation") or 0.0)
+    tp1 = float(alert.get("tp1") or 0.0)
+    denom = abs(entry - stop)
+    return (abs(tp1 - entry) / denom) if denom > 0 else 0.0
+
+
+def _alert_age_seconds(alert):
+    ts = parse_dt(alert.get("timestamp"))
+    if not ts:
+        return 0.0
+    return max(0.0, (datetime.now(timezone.utc) - ts.astimezone(timezone.utc)).total_seconds())
+
+
+def _setup_quality_score(latest):
+    one_h = latest.get("1h", {})
+    fifteen = latest.get("15m", {})
+    five = latest.get("5m", {})
+    dirs = {"1h": get_direction(one_h), "15m": get_direction(fifteen), "5m": get_direction(five)}
+    non_neutral = [d for d in dirs.values() if d != "NEUTRAL"]
+    aligned = len(non_neutral) == 3 and len(set(non_neutral)) == 1
+    base = 0
+    if aligned:
+        base += 35
+    elif len(non_neutral) >= 2 and len(set(non_neutral)) == 1:
+        base += 20
+    else:
+        base += 8
+
+    c1 = get_confidence(one_h)
+    c15 = get_confidence(fifteen)
+    c5 = get_confidence(five)
+    base += min(25, (c1 * 0.20 + c15 * 0.15 + c5 * 0.10))
+
+    rr = _rr_from_alert(five)
+    if rr >= 2.0:
+        base += 18
+    elif rr >= 1.2:
+        base += 12
+    elif rr >= 1.0:
+        base += 6
+    else:
+        base -= 6
+
+    blockers = set(get_blockers(five))
+    if any(b in {"HTF_CONFLICT_15M", "HTF_CONFLICT_1H"} for b in blockers):
+        base -= 16
+
+    age_penalty = 0
+    age_s = _alert_age_seconds(five)
+    age_pct = percentile_used(age_s, "5m")
+    if age_pct >= 90:
+        age_penalty = 10
+    elif age_pct >= 70:
+        age_penalty = 5
+    base -= age_penalty
+
+    score = max(0, min(100, int(round(base))))
+    return {
+        "score": score,
+        "rr": rr,
+        "aligned": aligned,
+        "age_pct": age_pct,
+    }
+
+
+def _dynamic_risk_pct(quality_score, portfolio, five_alert):
+    # Base model: 0.25% floor to 1.25% cap
+    risk = 0.25 + (max(0, min(quality_score, 100)) / 100.0)
+
+    # Volatility proxy via stop distance (% of entry). Wider stops => reduce risk.
+    entry = float(five_alert.get("entry_price") or five_alert.get("entry") or 0.0)
+    stop = float(five_alert.get("invalidation") or 0.0)
+    if entry > 0 and stop > 0:
+        dist_pct = abs(entry - stop) / entry
+        if dist_pct > 0.012:
+            risk *= 0.75
+        elif dist_pct < 0.006:
+            risk *= 1.05
+
+    dd = float((portfolio or {}).get("max_drawdown", 0.0))
+    if dd >= 0.12:
+        risk *= 0.5
+    elif dd >= 0.08:
+        risk *= 0.75
+
+    return round(max(0.25, min(1.25, risk)), 2)
 def execution_decision(latest):
+    portfolio = get_portfolio() or {}
     one_h = latest.get("1h", {})
     fifteen = latest.get("15m", {})
     five = latest.get("5m", {})
     reasons = []
     if not one_h or not fifteen or not five:
-        return "WAIT", "warn", ["Missing one or more BTC timeframes (5m/15m/1h)."], 0.0
+        return "WAIT", "warn", ["Missing one or more BTC timeframes (5m/15m/1h)."], 0.0, 0
 
     d1, d15, d5 = get_direction(one_h), get_direction(fifteen), get_direction(five)
     a5 = str(five.get("action") or "SKIP").upper()
@@ -144,20 +241,26 @@ def execution_decision(latest):
     if not (a5 == "TRADE" or (a5 == "WATCH" and c5 >= 70)):
         reasons.append(f"5m trigger is {a5} (confidence {c5}).")
 
-    # EXECUTE only if all 3 non-neutral directions match
+    quality = _setup_quality_score(latest)
+    quality_score = quality["score"]
+    if quality_score < 65:
+        reasons.append(f"Setup quality {quality_score}/100 below execution threshold (65).")
+
+    # EXECUTE only if all 3 non-neutral directions match + quality gate
     all_aligned = len(non_neutral) == 3 and aligned_count == 3
-    decision = "EXECUTE" if all_aligned and not any("conflict" in r.lower() for r in reasons) else "WAIT"
+    decision = "EXECUTE" if all_aligned and quality_score >= 65 and not any("conflict" in r.lower() for r in reasons) else "WAIT"
     tone = "good" if decision == "EXECUTE" else "warn"
 
     risk_pct = 0.0
     if decision == "EXECUTE":
-        if tier5 == "A+": risk_pct = 2.0
-        elif tier5 == "B": risk_pct = 0.5
+        risk_pct = _dynamic_risk_pct(quality_score, portfolio, five)
+        if tier5 == "NO-TRADE":
+            risk_pct = 0.0
 
     if not reasons:
         reasons = ["All timeframes aligned."]
 
-    return decision, tone, reasons, risk_pct
+    return decision, tone, reasons, risk_pct, quality_score
 
 
 def percentile_used(age_seconds, tf):
@@ -165,8 +268,15 @@ def percentile_used(age_seconds, tf):
     return (age_seconds / max_s) * 100 if max_s > 0 else 0
 def render_execution_matrix(alerts):
     latest = latest_btc_by_timeframe(alerts)
-    decision, tone, reasons, risk_pct = execution_decision(latest)
+    decision, tone, reasons, risk_pct, quality_score = execution_decision(latest)
     risk_html = f"<span class='pill badge-good' style='margin-left:12px;'>Suggested Risk: {risk_pct}%</span>" if risk_pct > 0 else ""
+    quality_cls = "badge-good" if quality_score >= 75 else ("badge-warn" if quality_score >= 65 else "badge-bad")
+    quality_html = f"<span class='pill {quality_cls}' style='margin-left:12px;'>Setup Quality: {quality_score}/100</span>"
+    daily_cap_html = ""
+    portfolio = get_portfolio() or {}
+    balance = float(portfolio.get("balance", 10000.0))
+    daily_cap = round(balance * 0.02, 2)
+    daily_cap_html = f"<span class='mini' style='margin-left:8px;'>Daily risk budget cap: ${daily_cap:,.2f}</span>"
     cols = []
     for tf in TARGET_TFS:
         a = latest.get(tf)
@@ -250,7 +360,9 @@ def render_execution_matrix(alerts):
                     <td><strong>Execution Decision</strong></td>
                     <td colspan="3">
                         <span class="pill {tone_class}">{decision}</span>
+                        {quality_html}
                         {risk_html}
+                        {daily_cap_html}
                         <span class="mini" style="margin-left:8px;">{reason_text}</span>
                     </td>
                 </tr>
@@ -278,10 +390,14 @@ def render_edge_scoreboard(portfolio):
         """
     closed = portfolio.get("closed_trades", [])
     grouped = defaultdict(list)
+    segmented = defaultdict(list)
     for t in closed:
         tf = t.get("timeframe")
         if tf in TARGET_TFS:
             grouped[tf].append(t)
+            regime = str(t.get("regime") or "unknown").lower()
+            session = str(t.get("session") or "unknown").lower()
+            segmented[(tf, regime, session)].append(t)
     rows = []
     best_tf = None
     best_score = -10**9
@@ -309,6 +425,28 @@ def render_edge_scoreboard(portfolio):
         )
     focus = best_tf if best_tf else "No qualified timeframe yet"
     focus_tone = "badge-good" if best_tf else "badge-warn"
+    segment_rows = []
+    best_hourly = None
+    best_hourly_score = -10**9
+    min_segment_sample = 8
+    for (tf, regime, session), trades in sorted(segmented.items(), key=lambda x: (tf_sort_key(x[0][0]), x[0][1], x[0][2])):
+        n = len(trades)
+        wins = sum(1 for t in trades if str(t.get("outcome", "")).upper().startswith("WIN"))
+        wr = (wins / n) * 100 if n else 0
+        rs = [float(t.get("r_multiple", 0.0)) for t in trades]
+        avg_r = sum(rs) / n if n else 0
+        med_r = median(rs) if rs else 0.0
+        lose_streak = max_losing_streak(trades)
+        tone = "badge-good" if n >= min_segment_sample and avg_r > 0 else ("badge-warn" if n >= min_segment_sample else "badge-neutral")
+        if tf == "1h" and n >= min_segment_sample and avg_r > best_hourly_score:
+            best_hourly = (regime, session)
+            best_hourly_score = avg_r
+        segment_rows.append(
+            f"<tr><td>{tf}</td><td>{regime}</td><td>{session}</td><td>{n}</td><td>{wr:.1f}%</td>"
+            f"<td><span class='pill {tone}'>{avg_r:.2f}R</span></td><td>{med_r:.2f}R</td><td>{lose_streak}</td></tr>"
+        )
+
+    best_hourly_txt = f"{best_hourly[0]} / {best_hourly[1]}" if best_hourly else "No qualified 1h segment yet"
     return f"""
     <section class="panel">
         <h2>Timeframe Edge Scoreboard</h2>
@@ -320,6 +458,18 @@ def render_edge_scoreboard(portfolio):
             </thead>
             <tbody>
                 {''.join(rows)}
+            </tbody>
+        </table>
+        <div style="margin-top:1rem;margin-bottom:0.5rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span class="pill {'badge-good' if best_hourly else 'badge-warn'}">Best 1h Segment: {best_hourly_txt}</span>
+            <span class="mini">Segment criteria: min {min_segment_sample} trades.</span>
+        </div>
+        <table class="matrix-table">
+            <thead>
+                <tr><th>TF</th><th>Regime</th><th>Session</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Median R</th><th>Max Losing Streak</th></tr>
+            </thead>
+            <tbody>
+                {''.join(segment_rows) if segment_rows else "<tr><td colspan='8' class='mini'>No segmented trade records yet.</td></tr>"}
             </tbody>
         </table>
     </section>
@@ -635,6 +785,92 @@ def render_recent_alerts(alerts):
     </section>
     """
 
+
+def render_calibration_panel(portfolio):
+    if not portfolio:
+        return """
+        <section class="panel">
+            <h2>Confidence Calibration</h2>
+            <p class="mini">No portfolio data available.</p>
+        </section>
+        """
+    bins = [(0, 20), (21, 40), (41, 60), (61, 80), (81, 100)]
+    grouped = {b: [] for b in bins}
+    for t in portfolio.get("closed_trades", []):
+        conf = int(t.get("confidence", 0) or 0)
+        for b in bins:
+            if b[0] <= conf <= b[1]:
+                grouped[b].append(t)
+                break
+
+    rows = []
+    last_wr = None
+    monotonic = True
+    for b in bins:
+        trades = grouped[b]
+        n = len(trades)
+        wins = sum(1 for t in trades if str(t.get("outcome", "")).upper().startswith("WIN"))
+        wr = (wins / n) * 100 if n else 0.0
+        rs = [float(t.get("r_multiple", 0.0)) for t in trades]
+        avg_r = (sum(rs) / n) if n else 0.0
+        if n > 0 and last_wr is not None and wr < last_wr:
+            monotonic = False
+        if n > 0:
+            last_wr = wr
+        tone = "badge-good" if wr >= 55 else ("badge-warn" if wr >= 40 else "badge-bad")
+        rows.append(
+            f"<tr><td>{b[0]}-{b[1]}</td><td>{n}</td><td><span class='pill {tone}'>{wr:.1f}%</span></td><td>{avg_r:.2f}R</td></tr>"
+        )
+
+    return f"""
+    <section class="panel">
+        <h2>Confidence Calibration</h2>
+        <div style="margin-bottom: 0.6rem;">
+            <span class="pill {'badge-good' if monotonic else 'badge-warn'}">{'Calibrated trend OK' if monotonic else 'Calibration drift detected'}</span>
+            <span class="mini" style="margin-left:8px;">Higher confidence bins should trend to better win rate/expectancy.</span>
+        </div>
+        <table class="matrix-table">
+            <thead><tr><th>Confidence Bin</th><th>Trades</th><th>Realized Win Rate</th><th>Avg R</th></tr></thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </section>
+    """
+
+
+def render_no_trade_panel(alerts, portfolio):
+    latest = latest_btc_by_timeframe(alerts)
+    one_h = latest.get("1h", {})
+    fifteen = latest.get("15m", {})
+    five = latest.get("5m", {})
+    quality = _setup_quality_score(latest)
+    rr = _rr_from_alert(five) if five else 0.0
+    c5 = get_confidence(five) if five else 0
+    dir_1h = get_direction(one_h) if one_h else "NEUTRAL"
+    dir_15m = get_direction(fifteen) if fifteen else "NEUTRAL"
+    streak = max_losing_streak((portfolio or {}).get("closed_trades", []))
+    dd = float((portfolio or {}).get("max_drawdown", 0.0))
+    rules = [
+        ("1h/15m direction aligned", dir_1h == dir_15m and dir_1h != "NEUTRAL"),
+        ("5m confidence >= 40", c5 >= 40),
+        ("Planned R:R >= 1.2", rr >= 1.2),
+        ("Setup quality >= 65", quality["score"] >= 65),
+        ("Max losing streak < 4", streak < 4),
+        ("Max drawdown <= 12%", dd <= 0.12),
+    ]
+    locked = any(not ok for _, ok in rules)
+    badge = "TRADE LOCKED" if locked else "TRADE ENABLED"
+    cls = "badge-bad" if locked else "badge-good"
+    rows = "".join(
+        f"<div class='mini' style='color:{'var(--text)' if ok else '#ff4d4d'}'>{'✅' if ok else '❌'} {label}</div>" for label, ok in rules
+    )
+    return f"""
+    <section class="panel">
+        <h2>Do Not Trade Now</h2>
+        <div style="margin-bottom:0.6rem;"><span class="pill {cls}">{badge}</span></div>
+        {rows}
+    </section>
+    """
+
 def generate_html():
     state = get_state()
     portfolio = get_portfolio()
@@ -760,6 +996,8 @@ def generate_html():
     """
     execution_html = render_execution_matrix(alerts)
     edge_html = render_edge_scoreboard(portfolio)
+    calibration_html = render_calibration_panel(portfolio)
+    no_trade_html = render_no_trade_panel(alerts, portfolio)
     lifecycle_html = render_lifecycle_panel(alerts)
     recent_alerts_html = render_recent_alerts(alerts)
     balance = (portfolio or {}).get("balance", 10000)
@@ -891,6 +1129,7 @@ def generate_html():
             <div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div>
         </div>
     </section>
+    {no_trade_html}
     <div class="layout-grid">
         {verdict_html}
         <section class="panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; min-height: 500px;">
@@ -934,6 +1173,7 @@ def generate_html():
                 {p_html}
             </section>
             {edge_html}
+            {calibration_html}
         </div>
         <div>
             {lifecycle_html}

@@ -43,6 +43,10 @@ class BudgetManager:
         "okx": (30, 60.0),
         "freecryptoapi": (100, 60.0), # 100k/month ~= 2.3 calls/min. 100/60 is safe burst.
         "bitunix": (100, 60.0),    # 10 req/sec is high, but we stay conservative.
+        "binance": (60, 60.0),
+        "coinbase": (30, 60.0),
+        "bitstamp": (30, 60.0),
+        "cryptopanic": (10, 60.0),
     }
 
     def __init__(self, path: str = ".budget.json"):

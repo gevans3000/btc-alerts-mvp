@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
@@ -15,6 +16,42 @@ class PriceSnapshot:
     healthy: bool = True
     meta: Dict[str, str] = field(default_factory=dict)
 
+
+
+def _fetch_binance_price(budget: BudgetManager, timeout: float) -> PriceSnapshot:
+    if not budget.can_call("binance"):
+        return PriceSnapshot(0.0, time.time(), source="binance", healthy=False, meta={"provider": "binance"})
+    try:
+        budget.record_call("binance")
+        payload = request_json("https://api.binance.com/api/v3/ticker/price", params={"symbol": "BTCUSDT"}, timeout=timeout)
+        return PriceSnapshot(float(payload.get("price", 0.0)), time.time(), source="binance", meta={"provider": "binance"})
+    except Exception as exc:
+        logging.error(f"Binance price fetch failed: {exc}")
+        return PriceSnapshot(0.0, time.time(), source="binance", healthy=False, meta={"provider": "binance"})
+
+
+def _fetch_coinbase_price(budget: BudgetManager, timeout: float) -> PriceSnapshot:
+    if not budget.can_call("coinbase"):
+        return PriceSnapshot(0.0, time.time(), source="coinbase", healthy=False, meta={"provider": "coinbase"})
+    try:
+        budget.record_call("coinbase")
+        payload = request_json("https://api.exchange.coinbase.com/products/BTC-USD/ticker", timeout=timeout)
+        return PriceSnapshot(float(payload.get("price", 0.0)), time.time(), source="coinbase", meta={"provider": "coinbase"})
+    except Exception as exc:
+        logging.error(f"Coinbase price fetch failed: {exc}")
+        return PriceSnapshot(0.0, time.time(), source="coinbase", healthy=False, meta={"provider": "coinbase"})
+
+
+def _fetch_bitstamp_price(budget: BudgetManager, timeout: float) -> PriceSnapshot:
+    if not budget.can_call("bitstamp"):
+        return PriceSnapshot(0.0, time.time(), source="bitstamp", healthy=False, meta={"provider": "bitstamp"})
+    try:
+        budget.record_call("bitstamp")
+        payload = request_json("https://www.bitstamp.net/api/v2/ticker/btcusd/", timeout=timeout)
+        return PriceSnapshot(float(payload.get("last", 0.0)), time.time(), source="bitstamp", meta={"provider": "bitstamp"})
+    except Exception as exc:
+        logging.error(f"Bitstamp price fetch failed: {exc}")
+        return PriceSnapshot(0.0, time.time(), source="bitstamp", healthy=False, meta={"provider": "bitstamp"})
 
 def fetch_btc_price(budget: BudgetManager, timeout: float = 10.0) -> PriceSnapshot:
     if budget.can_call("kraken"):
@@ -40,21 +77,28 @@ def fetch_btc_price(budget: BudgetManager, timeout: float = 10.0) -> PriceSnapsh
 
     if budget.can_call("freecryptoapi"):
         try:
-            budget.record_call("freecryptoapi")
-            import httpx
-            resp = httpx.get(
-                "https://api.freecryptoapi.com/v1/getData",
-                params={"symbol": "BTC"},
-                headers={"Authorization": "Bearer j5hfwbcodmldf3ec5mvw"},
-                timeout=timeout,
-            )
-            resp.raise_for_status()
-            payload = resp.json()
-            if payload.get("status") == "success" and payload.get("symbols"):
-                price = float(payload["symbols"][0]["last"])
-                return PriceSnapshot(price, time.time(), source="freecryptoapi", meta={"provider": "freecryptoapi"})
+            token = os.getenv("FREECRYPTOAPI_TOKEN", "").strip()
+            if token:
+                budget.record_call("freecryptoapi")
+                import httpx
+                resp = httpx.get(
+                    "https://api.freecryptoapi.com/v1/getData",
+                    params={"symbol": "BTC"},
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=timeout,
+                )
+                resp.raise_for_status()
+                payload = resp.json()
+                if payload.get("status") == "success" and payload.get("symbols"):
+                    price = float(payload["symbols"][0]["last"])
+                    return PriceSnapshot(price, time.time(), source="freecryptoapi", meta={"provider": "freecryptoapi"})
         except Exception as exc:
             logging.error(f"FreeCryptoAPI price fetch failed: {exc}")
+
+    for provider in (_fetch_binance_price, _fetch_coinbase_price, _fetch_bitstamp_price):
+        snap = provider(budget, timeout)
+        if snap.healthy and snap.price > 0:
+            return snap
 
     return PriceSnapshot(0.0, time.time(), source="none", healthy=False, meta={"provider": "none"})
 
@@ -100,16 +144,83 @@ def _fetch_bybit_ohlc(budget: BudgetManager, interval: str, limit: int) -> List[
         return []
 
 
+
+
+def _fetch_binance_ohlc(budget: BudgetManager, interval: str, limit: int) -> List[Candle]:
+    if not budget.can_call("binance"):
+        return []
+    try:
+        budget.record_call("binance")
+        rows = request_json(
+            "https://api.binance.com/api/v3/klines",
+            params={"symbol": "BTCUSDT", "interval": interval, "limit": limit},
+            timeout=10,
+        )
+        return [
+            Candle(str(int(r[0]) // 1000), float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[5]))
+            for r in rows
+        ][-limit:]
+    except Exception as exc:
+        logging.error(f"Binance candle fetch failed for {interval}: {exc}")
+        return []
+
+
+def _fetch_coinbase_ohlc(budget: BudgetManager, granularity: int, limit: int) -> List[Candle]:
+    if not budget.can_call("coinbase"):
+        return []
+    try:
+        budget.record_call("coinbase")
+        rows = request_json(
+            "https://api.exchange.coinbase.com/products/BTC-USD/candles",
+            params={"granularity": granularity},
+            timeout=10,
+        )
+        rows = sorted(rows, key=lambda r: r[0])[-limit:]
+        return [Candle(str(int(r[0])), float(r[3]), float(r[2]), float(r[1]), float(r[4]), float(r[5])) for r in rows]
+    except Exception as exc:
+        logging.error(f"Coinbase candle fetch failed for {granularity}s: {exc}")
+        return []
+
+
+def _fetch_bitstamp_ohlc(budget: BudgetManager, step: int, limit: int) -> List[Candle]:
+    if not budget.can_call("bitstamp"):
+        return []
+    try:
+        budget.record_call("bitstamp")
+        payload = request_json(
+            "https://www.bitstamp.net/api/v2/ohlc/btcusd/",
+            params={"step": step, "limit": limit},
+            timeout=10,
+        )
+        rows = payload.get("data", {}).get("ohlc", [])
+        return [
+            Candle(str(r["timestamp"]), float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r.get("volume", 0.0)))
+            for r in rows
+        ][-limit:]
+    except Exception as exc:
+        logging.error(f"Bitstamp candle fetch failed for {step}s: {exc}")
+        return []
+
+
 def fetch_btc_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
-    frames = {"5m": (5, "5"), "15m": (15, "15"), "1h": (60, "60")}
+    frames = {
+        "5m": {"kraken": 5, "bybit": "5", "binance": "5m", "coinbase": 300, "bitstamp": 300},
+        "15m": {"kraken": 15, "bybit": "15", "binance": "15m", "coinbase": 900, "bitstamp": 900},
+        "1h": {"kraken": 60, "bybit": "60", "binance": "1h", "coinbase": 3600, "bitstamp": 3600},
+    }
     out = {}
-    for label, (kraken_i, bybit_i) in frames.items():
-        if out: time.sleep(1.0) # Throttle between timeframes
-        candles = _fetch_kraken_ohlc(budget, interval=kraken_i, limit=limit)
+    for label, m in frames.items():
+        if out:
+            time.sleep(1.0)
+        candles = _fetch_kraken_ohlc(budget, interval=m["kraken"], limit=limit)
         if not candles:
-            candles = _fetch_bybit_ohlc(budget, interval=bybit_i, limit=limit)
-        
-        # FreeCryptoAPI OHLC is Pro only, but we could add more providers here later.
+            candles = _fetch_bybit_ohlc(budget, interval=m["bybit"], limit=limit)
+        if not candles:
+            candles = _fetch_binance_ohlc(budget, interval=m["binance"], limit=limit)
+        if not candles:
+            candles = _fetch_coinbase_ohlc(budget, granularity=m["coinbase"], limit=limit)
+        if not candles:
+            candles = _fetch_bitstamp_ohlc(budget, step=m["bitstamp"], limit=limit)
         out[label] = candles
     return out
 
