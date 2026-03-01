@@ -391,7 +391,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         
         # Generate reporting artifacts
         os.system(f"{sys.executable} scripts/pid-129/generate_scorecard.py")
-        os.system(f"{sys.executable} scripts/pid-129/generate_dashboard.py")
+        # os.system(f"{sys.executable} scripts/pid-129/generate_dashboard.py")
     except Exception as e:
         logger.error(f"Error during loop house-keeping: {e}")
 
