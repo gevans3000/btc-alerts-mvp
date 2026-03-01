@@ -1,7 +1,7 @@
 # Phase Checkups — Missing / Incomplete Items from Phases 10-26
 
 > **Status:** WORKING DOCUMENT  
-> **Last Updated:** 2026-03-02  
+> **Last Updated:** 2026-03-01  
 > **Purpose:** Track items from past phases that were documented but not fully implemented
 
 ---
@@ -10,11 +10,11 @@
 
 | # | Issue | Phase Reference | Status | Impact |
 |---|-------|-----------------|--------|--------|
-| 1 | **min_rr NOT enforced in engine.py** | Phase 20:133-134 | ❌ NOT IMPLEMENTED | Trades execute with 0.67-0.82 R:R despite min_rr thresholds (1.35/1.25/1.15) |
-| 2 | **Kelly % not displayed on Live Tape** | Phase 25:24, 331-360 | ⚠️ PARTIAL | Calculated in dashboard_server.py but not shown in Live Tape grid |
-| 3 | **Circuit breaker shows in data but not prominent on dashboard** | Phase 26:78+ | ⚠️ PARTIAL | `circuit_breaker` in WS payload but no large "DO NOT TRADE" banner |
-| 4 | **Session edge stats not displayed** | Phase 25:27 | ❌ NOT IMPLEMENTED | Session data collected but no per-session win rate shown |
-| 5 | **Regime-specific win rates not shown** | Phase 25/26 | ❌ NOT IMPLEMENTED | Can't filter by regime (trend/range/chop) performance |
+| 1 | **min_rr enforcement in engine.py** | Phase 20:133-134 | ✅ IMPLEMENTED | Trades below timeframe `min_rr` are now blocked before final signal publish |
+| 2 | **Kelly % on Live Tape** | Phase 25:24, 331-360 | ✅ IMPLEMENTED | `kelly_pct` now shown in Live Tape grid as live-updating Kelly % |
+| 3 | **Circuit breaker dashboard prominence** | Phase 26:78+ | ✅ IMPLEMENTED | Added large banner + execute button lock while circuit breaker is active |
+| 4 | **Session edge stats** | Phase 25:27 | ✅ IMPLEMENTED (API) | Added per-session win-rate stats in `_portfolio_stats()` payload (`session_stats`) |
+| 5 | **Regime-specific win rates** | Phase 25/26 | ✅ IMPLEMENTED (API) | Added per-regime win-rate stats in `_portfolio_stats()` payload (`regime_stats`) |
 
 ---
 
@@ -147,17 +147,11 @@ All fixes marked as done in phase doc:
 | Probe diagnostics (FIX 2) | ✅ | Tooltips added |
 | Recent Signals panel (FIX 3) | ✅ | Last 10 alerts table |
 | System accuracy badge (FIX 4) | ✅ | Edge (last N) shown |
-| **min_rr enforcement** | ❌ | **CRITICAL: Defined in config.py but NOT enforced in engine.py** |
+| **min_rr enforcement** | ✅ | Enforced in `engine.py`; signals below timeframe threshold are blocked |
 
-### Phase 20 Known Issue
-- The `min_rr` values are in `config.py`:
-  ```python
-  "5m":  {"min_rr": 1.35, ...}
-  "15m": {"min_rr": 1.25, ...}
-  "1h":  {"min_rr": 1.15, ...}
-  ```
-- But `engine.py` never checks `rr_ratio < min_rr` before allowing trades
-- Result: Trades execute at 0.67-0.82 R:R despite thresholds
+### Phase 20 Resolution
+- `engine.py` now checks computed `rr_ratio` against `TIMEFRAME_RULES[timeframe]["min_rr"]` before final publish.
+- Alerts breaching threshold are marked `NO-TRADE` / `SKIP` with a blocker reason.
 
 ---
 
@@ -197,7 +191,7 @@ All fixes marked as done in phase doc:
 | Auto-pilot muting | ✅ | Regime-based recipe suppression |
 | Kelly calculation | ✅ | In _portfolio_stats() |
 | Kelly display in Execute Modal | ✅ | Phase 25:360 shows Kelly in modal |
-| Kelly NOT shown on Live Tape | ❌ | kelly_pct calculated but not in Live Tape grid |
+| Kelly on Live Tape | ✅ | Added `live-kelly` tile bound to `data.stats.kelly_pct` in WS handler |
 | Session data in alerts | ✅ | `session` field in alerts |
 | Regime data in alerts | ✅ | `regime` field in alerts |
 
@@ -209,12 +203,12 @@ All fixes marked as done in phase doc:
 |------|--------|-------|
 | Circuit breaker calculation | ✅ | DD > 8% or streak <= -4 |
 | Circuit breaker in WS payload | ✅ | `circuit_breaker` key present |
-| **Circuit breaker NOT prominently displayed** | ❌ | No large "STOP TRADING" banner |
+| **Circuit breaker prominence** | ✅ | Added large red lockout banner + execution button lock when active |
 | Data age tracking | ✅ | `data_age_seconds` in payload |
 
 ---
 
-## Quick Wins to Implement
+## Quick Wins Implemented
 
 ### 1. Enforce min_rr (HIGHEST PRIORITY)
 **File:** `engine.py` - Add around line 470-480
