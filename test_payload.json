@@ -1,6 +1,6 @@
 {
   "flows": {
-    "taker_ratio": 1.0
+    "taker_ratio": 1.4
   },
   "derivatives": {
     "healthy": false,

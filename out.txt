@@ -1,0 +1,46 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.7, pytest-9.0.2, pluggy-1.6.0 -- c:\Users\lovel\trading\btc-alerts-mvp\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\lovel\trading\btc-alerts-mvp
+plugins: anyio-4.12.1
+collecting ... collected 37 items
+
+tests/test_confluence.py::test_strong_bullish PASSED                     [  2%]
+tests/test_confluence.py::test_mixed_weak PASSED                         [  5%]
+tests/test_confluence.py::test_no_signals PASSED                         [  8%]
+tests/test_liquidity.py::test_support PASSED                             [ 10%]
+tests/test_liquidity.py::test_resistance PASSED                          [ 13%]
+tests/test_liquidity.py::test_none PASSED                                [ 16%]
+tests/test_liquidity.py::test_unhealthy PASSED                           [ 18%]
+tests/test_macro_correlation.py::test_dxy_falling PASSED                 [ 21%]
+tests/test_macro_correlation.py::test_dxy_rising PASSED                  [ 24%]
+tests/test_macro_correlation.py::test_no_data PASSED                     [ 27%]
+tests/test_macro_correlation.py::test_gold_rising PASSED                 [ 29%]
+tests/test_performance_loop.py::test_portfolio_on_alert PASSED           [ 32%]
+tests/test_performance_loop.py::test_portfolio_update_win PASSED         [ 35%]
+tests/test_performance_loop.py::test_portfolio_update_loss PASSED        [ 37%]
+tests/test_performance_loop.py::test_max_positions PASSED                [ 40%]
+tests/test_phase27_vetoes.py::test_macro_veto_long PASSED                [ 43%]
+tests/test_phase27_vetoes.py::test_flow_veto_long PASSED                 [ 45%]
+tests/test_phase27_vetoes.py::test_chop_filter PASSED                    [ 48%]
+tests/test_preconditions.py::test_alert_score_has_context_field PASSED   [ 51%]
+tests/test_preconditions.py::test_intelligence_bundle_instantiates_with_none PASSED [ 54%]
+tests/test_preconditions.py::test_compute_score_works_with_intel_none PASSED [ 56%]
+tests/test_preconditions.py::test_budget_manager_allows_yahoo_calls PASSED [ 59%]
+tests/test_preconditions.py::test_intelligence_flags_contain_expected_keys_and_are_booleans PASSED [ 62%]
+tests/test_sentiment.py::test_analyze_sentiment_empty_news PASSED        [ 64%]
+tests/test_sentiment.py::test_analyze_sentiment_positive_news PASSED     [ 67%]
+tests/test_sentiment.py::test_analyze_sentiment_negative_news PASSED     [ 70%]
+tests/test_sentiment.py::test_analyze_sentiment_mixed_news PASSED        [ 72%]
+tests/test_sentiment.py::test_analyze_sentiment_neutral_news PASSED      [ 75%]
+tests/test_sentiment.py::test_analyze_sentiment_with_crypto_lexicon PASSED [ 78%]
+tests/test_sentiment.py::test_vader_missing PASSED                       [ 81%]
+tests/test_squeeze.py::test_squeeze_on PASSED                            [ 83%]
+tests/test_squeeze.py::test_squeeze_fire PASSED                          [ 86%]
+tests/test_squeeze.py::test_squeeze_none PASSED                          [ 89%]
+tests/test_squeeze.py::test_short_candles PASSED                         [ 91%]
+tests/test_volume_profile.py::test_poc_near PASSED                       [ 94%]
+tests/test_volume_profile.py::test_poc_far PASSED                        [ 97%]
+tests/test_volume_profile.py::test_short PASSED                          [100%]
+
+============================= 37 passed in 0.21s ==============================
