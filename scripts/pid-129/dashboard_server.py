@@ -86,6 +86,43 @@ def _portfolio_stats(portfolio):
     }
 
 
+
+
+def _latest_btc_context(alerts):
+    for alert in reversed(alerts):
+        if alert.get("symbol") == "BTC":
+            dt = alert.get("decision_trace") or {}
+            ctx = dt.get("context") if isinstance(dt, dict) else {}
+            if isinstance(ctx, dict):
+                return ctx
+    return {}
+
+
+def _extract_flows(alerts):
+    ctx = _latest_btc_context(alerts)
+    liq = ctx.get("liquidity", {}) if isinstance(ctx, dict) else {}
+    sentiment = ctx.get("sentiment", {}) if isinstance(ctx, dict) else {}
+    taker = sentiment.get("taker_ratio")
+    return {
+        "taker_ratio": float(taker) if isinstance(taker, (int, float)) else 0.0,
+        "long_short_ratio": 0.0,
+        "crowding_score": float(liq.get("crowding_score", 0.0)) if isinstance(liq, dict) else 0.0,
+        "source": "alert_context",
+    }
+
+
+def _extract_derivatives(alerts):
+    ctx = _latest_btc_context(alerts)
+    sentiment = ctx.get("sentiment", {}) if isinstance(ctx, dict) else {}
+    macro = ctx.get("macro_correlation", {}) if isinstance(ctx, dict) else {}
+    return {
+        "funding_rate": float(sentiment.get("funding_rate", 0.0)) if isinstance(sentiment, dict) else 0.0,
+        "oi_change_pct": float(sentiment.get("oi_change_pct", 0.0)) if isinstance(sentiment, dict) else 0.0,
+        "basis_pct": float(sentiment.get("basis_pct", 0.0)) if isinstance(sentiment, dict) else 0.0,
+        "macro_pts": float(macro.get("pts", 0.0)) if isinstance(macro, dict) else 0.0,
+        "source": "alert_context",
+    }
+
 def _estimate_spread(alerts):
     """Extract real spread from orderbook data in latest alert, or estimate from price data."""
     # Try to get a realistic spread from orderbook liquidity context
@@ -146,6 +183,8 @@ def get_dashboard_data():
             },
             "portfolio": portfolio,
             "alerts": alerts,
+            "flows": _extract_flows(alerts),
+            "derivatives": _extract_derivatives(alerts),
             "stats": stats,
             "logs": f"Heartbeat {datetime.now().strftime('%H:%M:%S')}",
         }
