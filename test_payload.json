@@ -1,0 +1,12 @@
+{
+  "flows": {
+    "taker_ratio": 1.0
+  },
+  "derivatives": {
+    "funding_rate": 1.87494069742e-05,
+    "basis_pct": -0.053209377405453694,
+    "oi_change_pct": -0.03922926361526705,
+    "source": "okx",
+    "healthy": true
+  }
+}
