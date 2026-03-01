@@ -1,7 +1,7 @@
 # Phase Checkups — Missing / Incomplete Items from Phases 10-26
 
 > **Status:** WORKING DOCUMENT  
-> **Last Updated:** 2026-03-01  
+> **Last Updated:** 2026-03-02  
 > **Purpose:** Track items from past phases that were documented but not fully implemented
 
 ---
@@ -161,27 +161,31 @@ All fixes marked as done in phase doc:
 
 ---
 
-## Phase 21 — Status Unknown
+## Phase 21 — ✅ DONE
 
-> Not reviewed in detail yet
-
----
-
-## Phase 22 — Status Unknown
-
-> Not reviewed in detail yet
+- Phase 21 doc marks complete (Premium UX/UI polish) ✅
+- No open profitability carry-over identified from this phase ✅
 
 ---
 
-## Phase 23 — Status Unknown
+## Phase 22 — ✅ DONE
 
-> Not reviewed in detail yet
+- Phase 22 doc marks complete (recipes + confluence rubric) ✅
+- No open profitability carry-over identified from this phase ✅
 
 ---
 
-## Phase 24 — Status Unknown
+## Phase 23 — ✅ DONE
 
-> Not reviewed in detail yet
+- Phase 23 doc marks complete (recipe-aware execution + MTF confirmation) ✅
+- No open profitability carry-over identified from this phase ✅
+
+---
+
+## Phase 24 — ✅ DONE
+
+- Phase 24 doc marks complete (backend rewrite + watcher/API/analytics/commands) ✅
+- No open profitability carry-over identified from this phase ✅
 
 ---
 
@@ -229,7 +233,7 @@ if rr < cfg.get("min_rr", 1.2):
 <div class="stat-card"><div class="stat-label">Kelly %</div><div id="live-kelly" class="live-value">--</div></div>
 ```
 
-Then update JS to populate from `window._lastStats.kelly_pct`.
+Then update WS handler to populate from `data.stats.kelly_pct`.
 
 ### 3. Add Large "WAIT" Indicator
 **File:** `generate_dashboard.py` - Add prominent banner when:
@@ -246,6 +250,31 @@ Calculate win rate per session (asia/london/ny/weekend) from closed trades.
 **File:** `dashboard_server.py` - Add to _portfolio_stats()
 
 Calculate win rate per regime (trend/range/chop) from closed trades.
+
+---
+
+
+## Parallel Merge Plan (Independent Workstreams)
+
+> Goal: each stream can be implemented and merged independently with minimal conflict risk.
+
+1. **Stream A — Engine R:R Gate** (`engine.py`)
+   - Enforce `min_rr` blocker before tier/action finalization.
+2. **Stream B — Dashboard Safety Signals** (`generate_dashboard.py`)
+   - Add Live Tape Kelly tile + prominent circuit-breaker banner/execute lock.
+3. **Stream C — Edge Attribution Analytics** (`dashboard_server.py`, optional small dashboard panel)
+   - Add `session_stats` and `regime_stats` into `_portfolio_stats()` for performance filtering.
+
+Merge order: **A → C → B** (backend schema first, UI binding last).
+
+---
+
+## What Most Improves Higher-Probability Trades (Priority)
+
+1. **Hard-block low R:R trades** (min_rr enforcement) — immediate expectancy protection.
+2. **Prominent circuit-breaker UI lockout** — prevents revenge trades during drawdown/streak stress.
+3. **Session/regime win-rate visibility** — enables selective deployment only where edge is proven.
+4. **Live Kelly on tape** — keeps sizing consistent with current edge quality.
 
 ---
 
