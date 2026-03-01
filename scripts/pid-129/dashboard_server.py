@@ -14,11 +14,23 @@ if not (BASE_DIR / "scripts").exists():
     BASE_DIR = Path.cwd()
 
 HOST = "0.0.0.0"
-PORT = 8000
+PORT = 8002
 DASHBOARD_PATH = BASE_DIR / "dashboard.html"
 ALERTS_PATH = BASE_DIR / "logs" / "pid-129-alerts.jsonl"
 PORTFOLIO_PATH = BASE_DIR / "data" / "paper_portfolio.json"
 OVERRIDES_PATH = BASE_DIR / "data" / "dashboard_overrides.json"
+
+_LAST_CONTEXT = {}  # Last-known intelligence context (anti-flicker)
+_LAST_REBUILD = 0.0
+
+try:
+    from collectors.price import fetch_btc_price
+    from collectors.flows import fetch_flow_context
+    from collectors.derivatives import fetch_derivatives_context
+    _HAS_COLLECTORS = True
+except ImportError:
+    _HAS_COLLECTORS = False
+    print("Warning: Could not import collectors. Derivatives/Price alpha may be missing.")
 
 # Module-level shared state
 _STATE_LOCK = threading.Lock()
@@ -288,6 +300,7 @@ def _estimate_spread(alerts):
 
 
 def get_dashboard_data():
+    global _LAST_CONTEXT
     try:
         # Load all recent alerts for calculations, but only send limited summaries to WS
         all_recent_alerts = _load_alerts(limit=50)
@@ -346,23 +359,72 @@ def get_dashboard_data():
                     pass
             alerts = valid_alerts
         
+
         portfolio = _safe_json(PORTFOLIO_PATH, {"balance": 10000, "positions": [], "closed_trades": [], "max_drawdown": 0})
+
+        # ── Phase 26: Stale Alert Hardening ──
+        last_alert_time = 0.0
+        if all_recent_alerts:
+            try:
+                ts_str = all_recent_alerts[-1].get("timestamp", "")
+                if ts_str:
+                    ts_clean = ts_str.split(".")[0].replace("Z", "").replace("T", " ")
+                    dt_last = datetime.strptime(ts_clean, "%Y-%m-%d %H:%M:%S")
+                    last_alert_time = dt_last.replace(tzinfo=timezone.utc).timestamp()
+            except Exception:
+                pass
+
+        now_ts = datetime.now(timezone.utc).timestamp()
+        alerts_stale = (now_ts - last_alert_time > 120) or not all_recent_alerts
+        data_age_seconds = now_ts - last_alert_time if last_alert_time > 0 else 9999
+
         mid = _latest_price(all_recent_alerts)
+        taker_ratio = 1.0
+
+        if not alerts_stale:
+            for a in reversed(all_recent_alerts):
+                codes = (a.get("decision_trace") or {}).get("codes", [])
+                if "FLOW_TAKER_BULLISH" in codes:
+                    taker_ratio = 1.4
+                    break
+                elif "FLOW_TAKER_BEARISH" in codes:
+                    taker_ratio = 0.6
+                    break
+
+        budget = {"remaining": 8}
+        if alerts_stale and _HAS_COLLECTORS:
+            try:
+                price_snap = fetch_btc_price(budget)
+                if price_snap.healthy and price_snap.price > 0:
+                    mid = price_snap.price
+                flow_snap = fetch_flow_context(budget)
+                if flow_snap.healthy:
+                    taker_ratio = flow_snap.taker_buy_vol_ratio
+            except Exception:
+                pass
+
         spread = _estimate_spread(all_recent_alerts) if mid else 0.0
 
-        # ── Phase 25: Order Flow BS-Filter ──
-        # Extract taker_ratio from latest alert's flow data or decision_trace
-        taker_ratio = 1.0
-        for a in reversed(all_recent_alerts):
-            dt_ctx = (a.get("decision_trace") or {}).get("context", {})
-            # Check for flow codes that indicate taker direction
-            codes = (a.get("decision_trace") or {}).get("codes", [])
-            if "FLOW_TAKER_BULLISH" in codes:
-                taker_ratio = 1.4
-                break
-            elif "FLOW_TAKER_BEARISH" in codes:
-                taker_ratio = 0.6
-                break
+        # ── Phase 26: Derivatives context ──
+        derivatives = {"healthy": False, "source": "none"}
+        if _HAS_COLLECTORS:
+            try:
+                deriv_ctx = fetch_derivatives_context(budget)
+                derivatives = {
+                    "funding_rate": deriv_ctx.funding_rate,
+                    "oi_change_24h": deriv_ctx.oi_change_24h,
+                    "basis_annualized": deriv_ctx.basis_annualized,
+                    "source": deriv_ctx.source,
+                    "healthy": deriv_ctx.healthy
+                }
+            except Exception:
+                derivatives = {"healthy": False, "source": "error"}
+
+        # Update cached context for anti-flicker
+        if all_recent_alerts:
+            latest_ctx = (all_recent_alerts[-1].get("decision_trace") or {}).get("context", {})
+            if latest_ctx:
+                _LAST_CONTEXT.update(latest_ctx)
 
         bs_filter = "CLEAR"
         bs_severity = 0  # 0=clear, 1=caution, 2=danger
@@ -417,6 +479,10 @@ def get_dashboard_data():
             },
             "bs_filter": bs_filter,
             "bs_severity": bs_severity,
+            "flows": {"taker_ratio": round(taker_ratio, 2)},
+            "derivatives": derivatives,
+            "cached_context": _LAST_CONTEXT,
+            "data_age_seconds": round(data_age_seconds, 0),
             "circuit_breaker": circuit_breaker,
             "logs": f"Heartbeat {datetime.now().strftime('%H:%M:%S')}",
         }
@@ -428,6 +494,7 @@ def get_dashboard_data():
 
 
 def _watcher_loop():
+    global _LAST_REBUILD
     """Background thread: polls file mtimes every 1s, rebuilds cache only on change."""
     global _CACHED_DATA, _LAST_ALERT_MTIME, _LAST_PORTFOLIO_MTIME
     while True:
@@ -450,10 +517,13 @@ def _watcher_loop():
                 # Not using mt for overrides currently, just checking every loop or on other changes
                 # But let's just refresh if anything changed
             
-            if changed or not _CACHED_DATA:
+            now = time.time()
+            if changed or not _CACHED_DATA or (now - _LAST_REBUILD > 10):
+
                 new_data = get_dashboard_data()
                 with _STATE_LOCK:
                     _CACHED_DATA = new_data
+                _LAST_REBUILD = now
         except Exception as e:
             print(f"Watcher error: {e}")
         time.sleep(1)
@@ -479,6 +549,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._handle_websocket()
         elif self.path.startswith("/api/alert/"):
             self._serve_alert_detail()
+        elif self.path == "/api/dashboard":
+            with _STATE_LOCK:
+                self._json_response(_CACHED_DATA)
+            return
         elif self.path == "/api/alerts":
             self._serve_alerts_full()
         elif self.path == "/api/command":
