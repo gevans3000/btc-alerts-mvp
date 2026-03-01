@@ -271,6 +271,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                     flows=flows,
                     macro=macro,
                     intel=intel,
+                    candles_4h=btc_tf.get("4h", []),
                 )
                 alerts.append(computed_alert)
                 a_logger.log_cycle("BTC", tf, computed_alert.confidence, computed_alert.action)
@@ -300,6 +301,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                     DerivativesSnapshot(0.0, 0.0, 0.0, healthy=False, source="none", meta={"provider": "none"}), # No derivatives for SPX proxy
                     FlowSnapshot(1.0, 1.0, 0.0, healthy=False, source="none", meta={"provider": "none"}), # No flows for SPX proxy
                     macro, # Macro context is relevant for SPX
+                    candles_4h=spx_tf.get("4h", []),
                 )
                 alerts.append(computed_alert)
                 a_logger.log_cycle("SPX_PROXY", tf, computed_alert.confidence, computed_alert.action)

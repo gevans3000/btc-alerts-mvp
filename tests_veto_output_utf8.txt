@@ -1,0 +1,12 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.7, pytest-9.0.2, pluggy-1.6.0 -- c:\Users\lovel\trading\btc-alerts-mvp\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\lovel\trading\btc-alerts-mvp
+plugins: anyio-4.12.1
+collecting ... collected 3 items
+
+tests/test_phase27_vetoes.py::test_macro_veto_long PASSED                [ 33%]
+tests/test_phase27_vetoes.py::test_flow_veto_long PASSED                 [ 66%]
+tests/test_phase27_vetoes.py::test_chop_filter PASSED                    [100%]
+
+============================== 3 passed in 0.09s ==============================

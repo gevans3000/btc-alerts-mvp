@@ -21,6 +21,7 @@ from utils import (
     ema as ema_calc,
     volume_delta,
     swing_levels,
+    bollinger_bands,
 )
 from intelligence.market_context import (
     _session_label,
@@ -119,6 +120,7 @@ def compute_score(
     flows: FlowSnapshot,
     macro: Dict[str, List[Candle]],
     intel: Optional[IntelligenceBundle] = None,
+    candles_4h: Optional[List[Candle]] = None,
 ) -> AlertScore:
     tf_cfg = TIMEFRAME_RULES.get(timeframe, TIMEFRAME_RULES["5m"])
     reasons, codes, degraded, blockers = [], [], [], []
@@ -441,6 +443,36 @@ def compute_score(
 
     trace["rubric"] = {"score": rubric_score, "details": rubric_details}
     
+    # --- Phase 27: Strict Vetoes (Ruthless Accuracy) ---
+    is_ltf = timeframe in ["5m", "15m"]
+    last_price = price.price if symbol == "BTC" else candles[-1].close
+    
+    # 1. Macro Veto (The Absolute Gate)
+    if is_ltf and candles_4h and len(candles_4h) >= 30:
+        bias_4h = _trend_bias(candles_4h)
+        bias_1h = _trend_bias(candles_1h)
+        if direction == "LONG" and bias_1h < 0 and bias_4h < 0:
+            blockers.append("Macro Bearish Veto (1h+4h)")
+        elif direction == "SHORT" and bias_1h > 0 and bias_4h > 0:
+            blockers.append("Macro Bullish Veto (1h+4h)")
+
+    # 2. Order Flow Veto (Delta Alignment)
+    if flows and flows.healthy:
+        if direction == "LONG" and flows.taker_ratio < 0.85:
+            blockers.append("Flow Bearish Veto (Taker Ratio)")
+        elif direction == "SHORT" and flows.taker_ratio > 1.15:
+            blockers.append("Flow Bullish Veto (Taker Ratio)")
+
+    # 3. Volatility & Range Rejection (Chop Filter)
+    if regime_name in ["chop", "vol_chop"]:
+        # Only allow 1.5 SD expansion or mean reversion from extremes
+        bb = bollinger_bands([c.close for c in candles], 20, 1.5)
+        if bb:
+            upper, mid, lower, _ = bb
+            if lower < last_price < upper:
+                # Inside the value area during chop = high risk of fakeout
+                blockers.append("Chop Zone Veto (Price in Range)")
+
     # Final Action/Tier Decision
     tier, action = _tier_and_action(int(abs(total_score)), blockers, timeframe, rubric_score)
 
