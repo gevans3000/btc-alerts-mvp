@@ -1,7 +1,7 @@
 # BTC Alerts MVP — Phase Roadmap for AI Agents
 
 **Project:** PID-129 — EMBER Autonomous Trading Intelligence
-**Current State:** v27.0 Precision & Hardening
+**Current State:** v28.0 Execution Integration (Starting)
 **Last Updated:** 2026-02-28
 
 ---
@@ -154,27 +154,27 @@
 ---
 
 ## Phase 27: Strict Signal Filtration & Vetoes ✅ DONE
-- ✅ **Macro Veto (The Absolute Gate)**: Strict 1h/4h consensus alignment enforced.
-- ✅ **Order Flow Veto (Delta Alignment)**: Aggressive Taker Ratio filter.
-- ✅ **Volatility & Range Rejection**: Bollinger Band "Chop Zone" protection.
-- ✅ **MTF Data Plumbing**: Integrated 4H data stream into core engine.
+- ✅ Macro Veto (1H/4H Alignment)
+- ✅ Order Flow Veto (Taker Ratio Alignment)
+- ✅ Volatility & Range Rejection (Chop Filter)
+- ✅ MTF Data Plumbing (4H Integration)
 
 ---
 
 ## 🚀 Future Roadmap: The Path to the "God Button" Dashboard
 *The ultimate objective is a singular, perfectly calibrated Bitcoin futures dashboard where a single click yields a mathematically verified, high-confidence LONG or SHORT play.*
 
-### Phase 28: Machine Learning Signal Filtration 📅 PLANNED
-- **Objective:** Eliminate "noise" signals triggered by choppy, non-trending markets.
-- **Tasks:** Train a lightweight Random Forest classifier on historical alerts to filter out setups with a historical win rate below 60%.
+### Phase 28: Live Institutional Execution Integration � NEXT
+- **Objective:** Transition from dashboard suggestions to robust, zero-click live broker trading pipeline.
+- **Tasks:** Build `executor.py` (CCXT), implement adaptive slippage defense, and connect Operator Toggle for LIVE execution.
 
-### Phase 29: Deep Order Flow & Delta Aggregation 📅 PLANNED
-- **Objective:** Price action is not enough; we need to see the actual buying/selling pressure.
-- **Tasks:** Integrate real-time Cumulative Volume Delta (CVD) and order book imbalance directly into the scoring logic.
+### Phase 29: Continuous Machine Learning Self-Correction 📅 PLANNED
+- **Objective:** AI learns from live PnL outputs to tune confluence parameters every 24h.
+- **Tasks:** Build PnL Ingestor, `night_tuner.py` for nocturnal rebalancing, and macro-event suppression gates.
 
-### Phase 30: Exchange Liquidation Heatmaps 📅 PLANNED
-- **Objective:** Trade *with* the market makers by targeting areas of high leverage.
-- **Tasks:** Pull liquidation levels from APIs and overlay them on the UI.
+### Phase 30: Absolute Autonomy (v1.0 Production) 📅 PLANNED
+- **Objective:** Finalize "EMBER Swarm" into a distributed, containerized (Docker) multi-agent system.
+- **Tasks:** Microservice refactoring, Dockerization, and implementation of the Sentinel Watchdog.
 
 ### Phase 31: Institutional "Smart Money" Tracking 📅 PLANNED
 - **Objective:** Follow the whales.
