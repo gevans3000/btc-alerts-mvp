@@ -30,5 +30,9 @@
 - **Objective:** Mathematical proof of the "God Button".
 - **Tasks:** Run the system hands-free for 30 days. Log every single signal. The phase is only "DONE" when the logged win rate exceeds 68% and the Profit Factor is > 2.0.
 
+### Phase 41: The Daily Valve (1D Whale Bias) 📅 PLANNED
+- **Objective:** Prevent trading against the ultimate institutional momentum.
+- **Tasks:** Integrate a 1-Day (1D) timeframe collector. Update the `compute_score` logic to enforce a "Whale Veto"—if the Daily trend is deep red, all 5m Longs are automatically capped at Tier B (WATCH) or skipped, regardless of LTF confluence.
+
 ---
-_v40.0 | EMBER Collective | The Path to Unfair Advantage_
+_v41.0 | EMBER Collective | Absolute Market Awareness_
