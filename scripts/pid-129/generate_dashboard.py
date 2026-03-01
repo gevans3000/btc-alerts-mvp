@@ -1126,8 +1126,13 @@ def generate_html():
             <div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div>
             <div class="stat-card"><div class="stat-label">Win Rate (7d)</div><div id="live-winrate" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">Avg R (7d)</div><div id="live-pf" class="live-value">--</div></div>
+            <div class="stat-card"><div class="stat-label">Kelly %</div><div id="live-kelly" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">Risk Gate</div><div id="live-gate" class="live-value">--</div></div>
         </div>
+    </section>
+    <section id="circuit-breaker-banner" class="panel" style="display:none;border:2px solid #ff4d4d;background:rgba(255,77,77,0.15);">
+        <h2 style="margin:0;color:#ff4d4d;">🛑 DO NOT TRADE — CIRCUIT BREAKER ACTIVE</h2>
+        <p id="circuit-breaker-reason" style="margin:.5rem 0 0;color:#ffd2d2;">Risk controls triggered.</p>
     </section>
     {no_trade_html}
     <div class="layout-grid">
@@ -1197,7 +1202,7 @@ def generate_html():
     </dialog>
     <script>
       let state = {{livePrice:0,spread:0,inTrade:{'true' if bool(portfolio and portfolio.get('positions')) else 'false'},entryPrice:{vctx['entry']},tp1Price:{vctx['tp1']},stopPrice:{vctx['stop']},direction:"{vctx['direction']}"}};
-      const els = {{badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),gate:document.getElementById('live-gate')}};
+      const els = {{badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),kelly:document.getElementById('live-kelly'),gate:document.getElementById('live-gate'),cbanner:document.getElementById('circuit-breaker-banner'),creason:document.getElementById('circuit-breaker-reason'),execBtn:document.getElementById('executeBtn')}};
       function fmtMoney(n,d=0) {{ return Number.isFinite(n) ? '$' + n.toLocaleString(undefined,{{minimumFractionDigits:d,maximumFractionDigits:d}}) : '--'; }}
       function deriveConfluence(alerts) {{ const t=['5m','15m','1h'],m=Object.create(null); for (const a of (alerts||[])) if (a.symbol==='BTC' && t.includes(a.timeframe)) m[a.timeframe]=a; const p=t.map(tf=>m[tf]).filter(Boolean); if (p.length<3) return 'Partial'; const d=p.map(x=>String(x.direction||'NEUTRAL').toUpperCase()); return d.every(x=>x===d[0]&&x!=='NEUTRAL') ? d[0] + ' aligned' : 'Mixed'; }}
       function updateLivePrice() {{
@@ -1235,7 +1240,16 @@ def generate_html():
       }}
       function closeExecuteModal() {{ const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }}
       function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
-      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2);
+      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); if (els.kelly) els.kelly.textContent=(Number(st.kelly_pct||0)*100).toFixed(2)+'%';
+const cb=data.circuit_breaker||{{}};
+if (cb.active) {{
+  if (els.cbanner) els.cbanner.style.display='block';
+  if (els.creason) els.creason.textContent=cb.reason || 'Risk controls triggered.';
+  if (els.execBtn) {{ els.execBtn.disabled = true; els.execBtn.textContent = 'LOCKED: CIRCUIT BREAKER'; els.execBtn.style.opacity = '0.6'; els.execBtn.style.cursor = 'not-allowed'; }}
+}} else {{
+  if (els.cbanner) els.cbanner.style.display='none';
+  if (els.execBtn) {{ els.execBtn.disabled = false; }}
+}}
 const btcAlerts = (data.alerts||[]).filter(a=>a.symbol==='BTC');
 const wsLatest=btcAlerts.slice(-1)[0]||{{}};
 const wsDir=String(wsLatest.direction||state.direction).toUpperCase();

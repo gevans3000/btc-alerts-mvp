@@ -214,6 +214,33 @@ def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
     for tf, rs in tf_performance.items():
         tf_stats[tf] = _calc_subset(rs)
 
+    # Session and Regime edge attribution (via alert metadata lookup)
+    session_performance = {}
+    regime_performance = {}
+    if alerts:
+        alert_meta = {}
+        for a in alerts:
+            aid = a.get("alert_id") or a.get("id")
+            if aid is not None:
+                alert_meta[aid] = {
+                    "session": str(a.get("session") or "UNKNOWN").lower(),
+                    "regime": str(a.get("regime") or "UNKNOWN").lower(),
+                }
+
+        for t in closed:
+            aid = t.get("alert_id")
+            meta = alert_meta.get(aid, {})
+            r = t.get("r_multiple", 0)
+
+            session = meta.get("session", "unknown")
+            regime = meta.get("regime", "unknown")
+
+            session_performance.setdefault(session, []).append(r)
+            regime_performance.setdefault(regime, []).append(r)
+
+    session_stats = {name: _calc_subset(rs) for name, rs in session_performance.items()}
+    regime_stats = {name: _calc_subset(rs) for name, rs in regime_performance.items()}
+
     # Kelly Criterion
     # Kelly % = W - [(1 - W) / R]
     # W = win probability (decimal)
@@ -268,6 +295,8 @@ def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
         "short_stats": short_stats,
         "recipe_stats": recipe_stats,
         "tf_stats": tf_stats,
+        "session_stats": session_stats,
+        "regime_stats": regime_stats,
         "kelly_pct": kelly_pct,
         "open_upnl": round(open_upnl, 2),
         "drawdown_pct": drawdown_pct

@@ -516,6 +516,12 @@ def compute_score(
         reward = abs(tp1 - last_price)
         rr = reward / risk if risk > 0 else 0.0
 
+    min_rr = tf_cfg.get("min_rr", 1.2)
+    if rr < min_rr:
+        blockers.append(f"R:R {rr:.2f} below {min_rr:.2f} threshold")
+        tier = "NO-TRADE"
+        action = "SKIP"
+
     trace["codes"] = list(set(codes))
     trace["degraded"] = degraded
     trace["blockers"] = blockers
