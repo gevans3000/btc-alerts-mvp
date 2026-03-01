@@ -332,6 +332,143 @@ def _estimate_spread(alerts):
     return 1.0
 
 
+def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, overrides, spread, taker_ratio):
+    """Find highest-quality trade candidate and return execution readiness checks."""
+    candidates = []
+    now = time.time()
+    min_score = int(overrides.get("min_score", 65) or 65)
+
+    for a in alerts:
+        direction = str(a.get("direction") or "").upper()
+        if direction not in ("LONG", "SHORT"):
+            continue
+        confidence = float(a.get("confidence") or 0)
+        rr = a.get("rr_ratio")
+        try:
+            rr = float(rr)
+        except Exception:
+            rr = 0.0
+        ts = a.get("timestamp")
+        age_s = 999999
+        if ts:
+            try:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                age_s = max(0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds())
+            except Exception:
+                pass
+
+        recipe = a.get("recipe_name") or _match_recipe(a.get("alert_id") or a.get("id"), alerts)
+        muted_until = (overrides.get("muted_recipes", {}) or {}).get(recipe, 0)
+        if muted_until and muted_until > now:
+            continue
+
+        expectancy_hint = (confidence / 100.0) * max(0.0, rr)
+        candidates.append(
+            {
+                "alert": a,
+                "confidence": confidence,
+                "rr_ratio": rr,
+                "age_seconds": age_s,
+                "expectancy_hint": round(expectancy_hint, 3),
+                "recipe": recipe,
+                "passes_confidence": confidence >= min_score,
+                "passes_rr": rr >= 1.2,
+                "passes_freshness": age_s <= 600,
+            }
+        )
+
+    candidates.sort(
+        key=lambda c: (
+            c["passes_confidence"],
+            c["passes_rr"],
+            c["passes_freshness"],
+            c["expectancy_hint"],
+            c["confidence"],
+        ),
+        reverse=True,
+    )
+
+    best = candidates[0] if candidates else None
+    checks = [
+        {
+            "name": "Circuit Breaker",
+            "ok": not bool(circuit_breaker.get("active")),
+            "detail": circuit_breaker.get("reason") or "Portfolio risk state clear",
+        },
+        {
+            "name": "Data Freshness",
+            "ok": float(data_age_seconds or 0) <= 60,
+            "detail": f"Dashboard data age {float(data_age_seconds or 0):.0f}s",
+        },
+        {
+            "name": "Execution Spread",
+            "ok": float(spread or 0) <= 8.0,
+            "detail": f"Estimated spread ${float(spread or 0):.2f}",
+        },
+        {
+            "name": "Orderflow Bias",
+            "ok": 0.7 <= float(taker_ratio or 1.0) <= 1.5,
+            "detail": f"Taker ratio {float(taker_ratio or 1.0):.2f}",
+        },
+        {
+            "name": "Candidate Available",
+            "ok": best is not None,
+            "detail": "Found qualifying BTC setup" if best else "No trade candidate with current filters",
+        },
+    ]
+
+    if best:
+        checks.extend(
+            [
+                {
+                    "name": "Confidence Threshold",
+                    "ok": best["passes_confidence"],
+                    "detail": f"{best['confidence']:.0f} vs min {min_score}",
+                },
+                {
+                    "name": "Risk/Reward",
+                    "ok": best["passes_rr"],
+                    "detail": f"R:R {best['rr_ratio']:.2f} (needs >= 1.20)",
+                },
+                {
+                    "name": "Signal Freshness",
+                    "ok": best["passes_freshness"],
+                    "detail": f"Signal age {best['age_seconds']:.0f}s",
+                },
+            ]
+        )
+
+    ready = all(c["ok"] for c in checks)
+
+    out_best = None
+    if best:
+        a = best["alert"]
+        out_best = {
+            "id": a.get("alert_id") or a.get("id"),
+            "symbol": a.get("symbol"),
+            "timeframe": a.get("timeframe"),
+            "direction": a.get("direction"),
+            "confidence": best["confidence"],
+            "rr_ratio": best["rr_ratio"],
+            "price": a.get("price") or a.get("entry_price"),
+            "entry_zone": a.get("entry_zone"),
+            "invalidation": a.get("invalidation"),
+            "tp1": a.get("tp1"),
+            "recipe": best["recipe"],
+            "expectancy_hint": best["expectancy_hint"],
+        }
+
+    return {
+        "ready": ready,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "checks": checks,
+        "best_trade": out_best,
+        "candidate_count": len(candidates),
+        "min_score": min_score,
+        "message": "Profit lock armed: best candidate is ready" if ready else "Profit lock blocked: review failed checks",
+    }
+
+
 
 def get_dashboard_data():
     global _LAST_CONTEXT
@@ -518,6 +655,15 @@ def get_dashboard_data():
             "cached_context": _LAST_CONTEXT,
             "data_age_seconds": round(data_age_seconds, 0),
             "circuit_breaker": circuit_breaker,
+            "profit_preflight": _compute_profit_preflight(
+                alerts=alerts,
+                stats=stats,
+                circuit_breaker=circuit_breaker,
+                data_age_seconds=data_age_seconds,
+                overrides=overrides,
+                spread=spread,
+                taker_ratio=taker_ratio,
+            ),
             "logs": f"Heartbeat {datetime.now().strftime('%H:%M:%S')}",
         }
     except Exception as e:
@@ -667,6 +813,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 _OVERRIDES = {}
                 _save_overrides()
                 self._json_response({"status": "success", "message": "All overrides cleared"})
+
+            elif action == "run_profit_preflight":
+                with _STATE_LOCK:
+                    payload = _CACHED_DATA.copy() if isinstance(_CACHED_DATA, dict) else {}
+                preflight = payload.get("profit_preflight")
+                if not preflight:
+                    payload = get_dashboard_data()
+                    preflight = payload.get("profit_preflight", {})
+                self._json_response({"status": "success", "profit_preflight": preflight})
             
             else:
                 self.send_error(400, f"Unknown action: {action}")
