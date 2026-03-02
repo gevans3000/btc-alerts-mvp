@@ -106,7 +106,7 @@
         </div>
         <div class="status">
             <span id="connection-badge" class="badge-live">Live Feed: Connecting</span>
-            <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: 2026-03-02 10:04:43</p>
+            <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: 2026-03-02 16:45:53</p>
         </div>
     </header>
     <section class="panel">
@@ -135,10 +135,37 @@
     <section class="panel">
         <h2>Do Not Trade Now</h2>
         <div style="margin-bottom:0.6rem;"><span class="pill badge-bad">TRADE LOCKED</span></div>
-        <div class='mini' style='color:var(--text)'>✅ 1h/15m direction aligned</div><div class='mini' style='color:var(--text)'>✅ 5m confidence >= 40</div><div class='mini' style='color:#ff4d4d'>❌ Planned R:R >= 1.2</div><div class='mini' style='color:#ff4d4d'>❌ Setup quality >= 65</div><div class='mini' style='color:var(--text)'>✅ Max losing streak < 4</div><div class='mini' style='color:var(--text)'>✅ Max drawdown <= 12%</div>
+        <div class='mini' style='color:#ff4d4d'>❌ 1h/15m direction aligned</div><div class='mini' style='color:#ff4d4d'>❌ 5m confidence >= 40</div><div class='mini' style='color:#ff4d4d'>❌ Planned R:R >= 1.2</div><div class='mini' style='color:#ff4d4d'>❌ Setup quality >= 65</div><div class='mini' style='color:var(--text)'>✅ Max losing streak < 4</div><div class='mini' style='color:var(--text)'>✅ Max drawdown <= 12%</div>
     </section>
     
     <div class="layout-grid">
+        
+    <section class='panel'>
+      <h2 style='margin:0 0 .7rem 0;'>Best Long vs Best Short (Right Now)</h2>
+      <div class='mini' style='margin-bottom:.7rem;'>Operator Decision: <span id='operator-decision' class='pill badge-neutral'>WAIT</span></div>
+      <div id='trap-risk' class='mini' style='margin-bottom:.7rem;color:#ffd700;'>Trap Risk: —</div>
+      <div style='display:grid;grid-template-columns:1fr 1fr;gap:.8rem;'>
+        <div style='border:1px solid var(--border);border-radius:10px;padding:.7rem;background:rgba(255,255,255,.02);'>
+          <div style='display:flex;justify-content:space-between;align-items:center;'><span id='best-long-direction' class='pill badge-good'>LONG</span><span id='best-long-gate' class='pill badge-neutral'>—</span></div>
+          <div class='mini'>Conf: <span id='best-long-confidence'>—</span> | R:R <span id='best-long-rr'>—</span> | Age <span id='best-long-age'>—</span></div>
+          <div class='mini'>Entry <span id='best-long-entry'>—</span> | Stop <span id='best-long-stop'>—</span></div>
+          <div class='mini'>TP1 <span id='best-long-tp1'>—</span> | TP2 <span id='best-long-tp2'>—</span></div>
+          <div class='mini'>EV hint: <span id='best-long-ev'>—</span> | <span id='best-long-recipe'>—</span> <span id='best-long-timeframe'>—</span></div>
+          <div id='best-long-codes' style='display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;'></div>
+          <div id='best-long-blockers' class='mini' style='margin-top:6px;color:#ff7a7a;'>—</div>
+        </div>
+        <div style='border:1px solid var(--border);border-radius:10px;padding:.7rem;background:rgba(255,255,255,.02);'>
+          <div style='display:flex;justify-content:space-between;align-items:center;'><span id='best-short-direction' class='pill badge-bad'>SHORT</span><span id='best-short-gate' class='pill badge-neutral'>—</span></div>
+          <div class='mini'>Conf: <span id='best-short-confidence'>—</span> | R:R <span id='best-short-rr'>—</span> | Age <span id='best-short-age'>—</span></div>
+          <div class='mini'>Entry <span id='best-short-entry'>—</span> | Stop <span id='best-short-stop'>—</span></div>
+          <div class='mini'>TP1 <span id='best-short-tp1'>—</span> | TP2 <span id='best-short-tp2'>—</span></div>
+          <div class='mini'>EV hint: <span id='best-short-ev'>—</span> | <span id='best-short-recipe'>—</span> <span id='best-short-timeframe'>—</span></div>
+          <div id='best-short-codes' style='display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;'></div>
+          <div id='best-short-blockers' class='mini' style='margin-top:6px;color:#ff7a7a;'>—</div>
+        </div>
+      </div>
+    </section>
+    
         
     <section class='panel'>
       <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;'>
@@ -148,13 +175,13 @@
           <button id='filterBtn' class='pill badge-neutral' onclick='toggleFilter()' style='margin:0;cursor:pointer;'>ALL</button>
         </div>
       </div>
-      <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill badge-good'>LONG</span></div>
-      <div class='mini' style='margin-bottom:8px;'>Edge (last 20): <span class='pill badge-bad'>20% (4W)</span></div>
+      <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill badge-neutral'>NEUTRAL</span></div>
+      <div class='mini' style='margin-bottom:8px;'>Edge (last 0): <span class='pill badge-bad'>0% (0W)</span></div>
       <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
         <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
       </div>
-      <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div><span class='pill badge-neutral'>FLOW_TAKER_BULLISH</span><span class='pill badge-neutral'>HTF_ALIGNED</span></div>
+      <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div><span class='mini'>No active reason codes.</span></div>
       <div id='keyLevelsCard' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div class='mini' style='margin-bottom:6px;'>Key Levels</div>
         <div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;font-family:JetBrains Mono,monospace;font-size:.78rem;'>
@@ -175,11 +202,11 @@
       <div id='radarCard' style='background:rgba(255,255,255,.03);border:1px solid #ff4d4d;border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;'><span class='mini'>Confluence Radar</span><span id='radarScore' class='pill' style='border:1px solid #ff4d4d;color:#ff4d4d;'>0/15 WEAK</span></div>
         <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;overflow:hidden;'><div id='radarBar' style='height:100%;width:0%;background:#ff4d4d;transition:width 0.4s ease;'></div></div>
-        <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'><div class='mini' title='Squeeze=off'>⚫ <span style='color:var(--text-muted)'>Squeeze</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Squeeze=off)</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Trend (HTF)</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Momentum</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title='Needs: ML_CONFIDENCE_BOOST or ML_SKEPTICISM'>⚫ <span style='color:var(--text-muted)'>ML Model</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: ML_CONFIDENCE_BOOST or ML_SKEPTICISM)</span></div><div class='mini' title='Needs: FUNDING_EXTREME_LOW or FUNDING_LOW or FUNDING_EXTREME_HIGH'>⚫ <span style='color:var(--text-muted)'>Funding</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: FUNDING_EXTREME_LOW or FUNDING_LOW or FUNDING_EXTREME_HIGH)</span></div><div class='mini' title='Needs: DXY_FALLING_BULLISH or DXY_RISING_BEARISH'>⚫ <span style='color:var(--text-muted)'>DXY Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: DXY_FALLING_BULLISH or DXY_RISING_BEARISH)</span></div><div class='mini' title='Needs: GOLD_RISING_BULLISH or GOLD_FALLING_BEARISH'>⚫ <span style='color:var(--text-muted)'>Gold Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: GOLD_RISING_BULLISH or GOLD_FALLING_BEARISH)</span></div><div class='mini' title='Needs: FG_EXTREME_FEAR or FG_FEAR or FG_EXTREME_GREED'>⚫ <span style='color:var(--text-muted)'>Fear & Greed</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: FG_EXTREME_FEAR or FG_FEAR or FG_EXTREME_GREED)</span></div><div class='mini' title='Needs: BID_WALL_SUPPORT or ASK_WALL_RESISTANCE'>⚫ <span style='color:var(--text-muted)'>Order Book</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: BID_WALL_SUPPORT or ASK_WALL_RESISTANCE)</span></div><div class='mini' title='Needs: OI_SURGE_MAJOR or OI_SURGE_MINOR or BASIS_BULLISH'>⚫ <span style='color:var(--text-muted)'>OI / Basis</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: OI_SURGE_MAJOR or OI_SURGE_MINOR or BASIS_BULLISH)</span></div><div class='mini' title='Trend=neutral, no BOS/CHoCH'>⚫ <span style='color:var(--text-muted)'>Structure</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Trend=neutral, no BOS/CHoCH)</span></div><div class='mini' title='No level data'>⚫ <span style='color:var(--text-muted)'>Levels</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No level data)</span></div><div class='mini' title='No AVWAP data'>⚫ <span style='color:var(--text-muted)'>AVWAP</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No AVWAP data)</span></div><div class='mini' title='No VP data in trace'>⚫ <span style='color:var(--text-muted)'>VP Status</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No VP data in trace)</span></div><div class='mini' title='No auto R:R computed'>⚫ <span style='color:var(--text-muted)'>Auto R:R</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No auto R:R computed)</span></div></div>
+        <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'><div class='mini' title='Squeeze=off'>⚫ <span style='color:var(--text-muted)'>Squeeze</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Squeeze=off)</span></div><div class='mini' title='Needs: HTF_ALIGNED or HTF_COUNTER'>⚫ <span style='color:var(--text-muted)'>Trend (HTF)</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: HTF_ALIGNED or HTF_COUNTER)</span></div><div class='mini' title='Needs: SENTIMENT_BULL or FLOW_TAKER_BULLISH or VOLUME_IMPULSE_BULL'>⚫ <span style='color:var(--text-muted)'>Momentum</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: SENTIMENT_BULL or FLOW_TAKER_BULLISH or VOLUME_IMPULSE_BULL)</span></div><div class='mini' title='Needs: ML_CONFIDENCE_BOOST or ML_SKEPTICISM'>⚫ <span style='color:var(--text-muted)'>ML Model</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: ML_CONFIDENCE_BOOST or ML_SKEPTICISM)</span></div><div class='mini' title='Needs: FUNDING_EXTREME_LOW or FUNDING_LOW or FUNDING_EXTREME_HIGH'>⚫ <span style='color:var(--text-muted)'>Funding</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: FUNDING_EXTREME_LOW or FUNDING_LOW or FUNDING_EXTREME_HIGH)</span></div><div class='mini' title='Needs: DXY_FALLING_BULLISH or DXY_RISING_BEARISH'>⚫ <span style='color:var(--text-muted)'>DXY Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: DXY_FALLING_BULLISH or DXY_RISING_BEARISH)</span></div><div class='mini' title='Needs: GOLD_RISING_BULLISH or GOLD_FALLING_BEARISH'>⚫ <span style='color:var(--text-muted)'>Gold Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: GOLD_RISING_BULLISH or GOLD_FALLING_BEARISH)</span></div><div class='mini' title='Needs: FG_EXTREME_FEAR or FG_FEAR or FG_EXTREME_GREED'>⚫ <span style='color:var(--text-muted)'>Fear & Greed</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: FG_EXTREME_FEAR or FG_FEAR or FG_EXTREME_GREED)</span></div><div class='mini' title='Needs: BID_WALL_SUPPORT or ASK_WALL_RESISTANCE'>⚫ <span style='color:var(--text-muted)'>Order Book</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: BID_WALL_SUPPORT or ASK_WALL_RESISTANCE)</span></div><div class='mini' title='Needs: OI_SURGE_MAJOR or OI_SURGE_MINOR or BASIS_BULLISH'>⚫ <span style='color:var(--text-muted)'>OI / Basis</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: OI_SURGE_MAJOR or OI_SURGE_MINOR or BASIS_BULLISH)</span></div><div class='mini' title='Trend=neutral, no BOS/CHoCH'>⚫ <span style='color:var(--text-muted)'>Structure</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Trend=neutral, no BOS/CHoCH)</span></div><div class='mini' title='No level data'>⚫ <span style='color:var(--text-muted)'>Levels</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No level data)</span></div><div class='mini' title='No AVWAP data'>⚫ <span style='color:var(--text-muted)'>AVWAP</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No AVWAP data)</span></div><div class='mini' title='No VP data in trace'>⚫ <span style='color:var(--text-muted)'>VP Status</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No VP data in trace)</span></div><div class='mini' title='No auto R:R computed'>⚫ <span style='color:var(--text-muted)'>Auto R:R</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No auto R:R computed)</span></div></div>
         <div style='margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.4rem;font-size:.7rem;font-family:JetBrains Mono,monospace;color:var(--text-muted);'>Net: <span id='radarNet' style='color:var(--accent);font-weight:700;'>+0</span> &nbsp;🟢 0 &nbsp;🔴 0 &nbsp;⚫ 15</div>
       </div>
-      <div style='background:rgba(0,255,204,0.05);border:1px solid var(--accent);border-radius:12px;padding:1rem;margin-bottom:1rem;'><div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span class='pill' style='border:1px solid var(--accent);color:var(--accent);'>GREEN</span></div><div class='mini' style='color:var(--text)'>✅ TF Alignment</div><div class='mini' style='color:var(--text)'>✅ ML Conviction</div><div class='mini' style='color:var(--text)'>✅ R:R >= 1.2</div><div class='mini' style='color:var(--text)'>✅ Max DD <= 12%</div><div class='mini' style='color:var(--text)'>✅ No HTF conflict</div></div>
-      <button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;' onclick="requestExecute('latest-btc')">1-CLICK EXECUTE</button>
+      <div style='background:rgba(255,215,0,0.08);border:1px solid #ffd700;border-radius:12px;padding:1rem;margin-bottom:1rem;'><div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span class='pill' style='border:1px solid #ffd700;color:#ffd700;'>AMBER</span></div><div class='mini' style='color:var(--text)'>✅ TF Alignment</div><div class='mini' style='color:#ff4d4d'>❌ ML Conviction</div><div class='mini' style='color:#ff4d4d'>❌ R:R >= 1.2</div><div class='mini' style='color:var(--text)'>✅ Max DD <= 12%</div><div class='mini' style='color:var(--text)'>✅ No HTF conflict</div></div>
+      
     </section>
     <div id='executeModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;'>
       <div style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;max-width:360px;width:90%;'><h3 style='margin-bottom:.6rem;'>Confirm Execute</h3><div id='executeMeta' class='mini'></div><div style='margin-top:1rem;display:flex;gap:.5rem;justify-content:flex-end;'><button class='pill badge-neutral' onclick='closeExecuteModal()'>Cancel</button><button id='confirmExecuteBtn' class='pill badge-good' disabled>Confirm (3)</button></div></div>
@@ -227,53 +254,29 @@
             </thead>
             <tbody>
                 <tr><td><strong>Alignment View</strong></td>
-        <td>
-            <div class="pill-wrap">
-                <span class="pill badge-good">LONG</span>
-                <span class="pill badge-warn">B</span>
-                <span class="pill badge-neutral">100/100</span>
-                
-            </div>
+            <td>
+                <div class="cell-main">No data</div>
+                <div class="mini">Awaiting alert log for timeframe.</div>
+            </td>
             
-            <div class="mini">Regime: range · Session: weekend</div>
-            <div class="mini">Entry: $66,111 · Stop: $65,734 · TP1: $66,363 · R:R 0.67</div>
-            <div class="mini">Blockers: None</div>
-        </td>
-        
-        <td>
-            <div class="pill-wrap">
-                <span class="pill badge-good">LONG</span>
-                <span class="pill badge-neutral">NO-TRADE</span>
-                <span class="pill badge-neutral">92/100</span>
-                
-            </div>
+            <td>
+                <div class="cell-main">No data</div>
+                <div class="mini">Awaiting alert log for timeframe.</div>
+            </td>
             
-            <div class="mini">Regime: - · Session: -</div>
-            <div class="mini">Entry: $67,000 · Stop: $66,600 · TP1: $67,720 · R:R 1.80</div>
-            <div class="mini">Blockers: None</div>
-        </td>
-        
-        <td>
-            <div class="pill-wrap">
-                <span class="pill badge-good">LONG</span>
-                <span class="pill badge-warn">B</span>
-                <span class="pill badge-neutral">23/100</span>
-                
-            </div>
-            
-            <div class="mini">Regime: range · Session: weekend</div>
-            <div class="mini">Entry: $67,172 · Stop: $66,201 · TP1: $67,820 · R:R 0.67</div>
-            <div class="mini">Blockers: None</div>
-        </td>
-        </tr>
+            <td>
+                <div class="cell-main">No data</div>
+                <div class="mini">Awaiting alert log for timeframe.</div>
+            </td>
+            </tr>
                 <tr>
                     <td><strong>Execution Decision</strong></td>
                     <td colspan="3">
                         <span class="pill badge-warn">WAIT</span>
-                        <span class='pill badge-bad' style='margin-left:12px;'>Setup Quality: 44/100</span>
+                        <span class='pill badge-bad' style='margin-left:12px;'>Setup Quality: 0/100</span>
                         
                         <span class='mini' style='margin-left:8px;'>Daily risk budget cap: $200.00</span>
-                        <span class="mini" style="margin-left:8px;">• Setup quality 44/100 below execution threshold (65).</span>
+                        <span class="mini" style="margin-left:8px;">• Missing one or more BTC timeframes (5m/15m/1h).</span>
                     </td>
                 </tr>
             </tbody>
@@ -302,119 +305,17 @@
         </div>
         <div>
             
-    <section class="panel">
-        <h2>Active Trade Lifecycle</h2>
-        <table class="matrix-table">
-            <thead>
-                <tr><th>TF</th><th>Direction</th><th>Age</th><th>Time Used</th><th>Planned R:R</th><th>Blockers</th><th>Management Priority</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>5m</td><td>LONG</td><td>22.1h</td><td>552%</td><td>0.67</td><td>None</td><td><span class='pill badge-bad'>Late setup · Low R:R</span></td></tr><tr><td>1h</td><td>LONG</td><td>38.7h</td><td>81%</td><td>0.82</td><td>None</td><td><span class='pill badge-bad'>Late setup · Low R:R</span></td></tr><tr><td>1h</td><td>SHORT</td><td>38.7h</td><td>81%</td><td>0.82</td><td>None</td><td><span class='pill badge-bad'>Late setup · Low R:R</span></td></tr><tr><td>1h</td><td>SHORT</td><td>38.6h</td><td>80%</td><td>0.82</td><td>None</td><td><span class='pill badge-bad'>Late setup · Low R:R</span></td></tr><tr><td>1h</td><td>LONG</td><td>37.0h</td><td>77%</td><td>0.82</td><td>None</td><td><span class='pill badge-warn'>Aging setup · Low R:R</span></td></tr><tr><td>15m</td><td>LONG</td><td>21.3h</td><td>178%</td><td>1.80</td><td>None</td><td><span class='pill badge-warn'>Late setup</span></td></tr><tr><td>1h</td><td>LONG</td><td>25.1h</td><td>52%</td><td>0.67</td><td>None</td><td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td></tr><tr><td>1h</td><td>LONG</td><td>24.9h</td><td>52%</td><td>0.67</td><td>None</td><td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td></tr><tr><td>1h</td><td>LONG</td><td>24.8h</td><td>52%</td><td>0.67</td><td>None</td><td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td></tr><tr><td>1h</td><td>LONG</td><td>24.4h</td><td>51%</td><td>0.67</td><td>None</td><td><span class='pill badge-warn'>Fresh setup · Low R:R</span></td></tr>
-            </tbody>
-        </table>
-    </section>
-    
+        <section class="panel">
+            <h2>Active Trade Lifecycle</h2>
+            <p class="mini">No unresolved BTC alerts found.</p>
+        </section>
+        
             
-    <section class="panel">
-        <h2>📡 Recent Signals (Last 10)</h2>
-        <table class="matrix-table">
-            <thead>
-                <tr><th>TF</th><th>Dir</th><th>Conf</th><th>Tier</th><th>Codes</th><th>Age</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-        <tr>
-            <td>15m</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>92</td>
-            <td><span class="pill badge-neutral">-</span></td>
-            <td>2</td>
-            <td>21.3h</td>
-            <td><span class="pill badge-warn">OPEN</span></td>
-        </tr>
-        <tr>
-            <td>5m</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>100</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>25</td>
-            <td>22.1h</td>
-            <td><span class="pill badge-warn">OPEN</span></td>
-        </tr>
-        <tr>
-            <td>5m</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>86</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>16</td>
-            <td>22.4h</td>
-            <td><span class="pill badge-bad">LOSS</span></td>
-        </tr>
-        <tr>
-            <td>5m</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>72</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>18</td>
-            <td>22.5h</td>
-            <td><span class="pill badge-bad">LOSS</span></td>
-        </tr>
-        <tr>
-            <td>15m</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>75</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>25</td>
-            <td>22.9h</td>
-            <td><span class="pill badge-bad">LOSS</span></td>
-        </tr>
-        <tr>
-            <td>15m</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>61</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>24</td>
-            <td>23.0h</td>
-            <td><span class="pill badge-bad">LOSS</span></td>
-        </tr>
-        <tr>
-            <td>15m</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>79</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>21</td>
-            <td>23.1h</td>
-            <td><span class="pill badge-bad">LOSS</span></td>
-        </tr>
-        <tr>
-            <td>1h</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>23</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>17</td>
-            <td>23.2h</td>
-            <td><span class="pill badge-bad">LOSS</span></td>
-        </tr>
-        <tr>
-            <td>15m</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>37</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>20</td>
-            <td>23.2h</td>
-            <td><span class="pill badge-bad">LOSS</span></td>
-        </tr>
-        <tr>
-            <td>1h</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>79</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>18</td>
-            <td>23.3h</td>
-            <td><span class="pill badge-bad">LOSS</span></td>
-        </tr></tbody>
-        </table>
-    </section>
-    
+        <section class="panel">
+            <h2>📡 Recent Signals</h2>
+            <p class="mini" style="padding:16px;">No BTC alerts logged yet. Waiting for first engine cycle to complete.</p>
+        </section>
+        
         </div>
     </div>
     <section>
@@ -427,7 +328,7 @@
                 </div>
                 <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 09:45</p>
+                    <p>Last Signal: 14:45</p>
                     <p>TP1 Hit: ❌</p>
                 </div>
             </div>
@@ -439,7 +340,7 @@
                 </div>
                 <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 09:45</p>
+                    <p>Last Signal: 14:45</p>
                     <p>TP1 Hit: ❌</p>
                 </div>
             </div>
@@ -451,7 +352,7 @@
                 </div>
                 <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 09:00</p>
+                    <p>Last Signal: 14:00</p>
                     <p>TP1 Hit: ❌</p>
                 </div>
             </div>
@@ -459,53 +360,7 @@
     </section>
     <section class="scorecard-section">
         <h2>Intelligence Report</h2>
-        <pre># PID-129 BTC Alerts Performance Scorecard
-
-**Generated:** 2026-03-02 15:04:43 UTC
-
-## Signal Summary (Last 7 Days)
-
-- **Total Alerts:** 96
-- **Directional Split:** 66 LONG / 30 SHORT
-- **High Confidence (>=70):** 36
-
-## Trading Performance (Paper)
-
-- **Resolved Trades:** 79
-- **Win Rate:** 45.6%
-- **Total P&L (R):** -7.43R
-- **Average R per Trade:** -0.09R
-- **Outcomes:** {'WIN_TP2': 17, 'LOSS': 41, 'WIN_TP1': 19, 'TIMEOUT': 2}
-
-## Strategy Breakdown
-
-- **TREND_CONTINUATION**: 66 alerts
-- **NONE**: 15 alerts
-- **MEAN_REVERSION**: 9 alerts
-- **VOLATILITY_EXPANSION**: 5 alerts
-- **UNKNOWN**: 1 alerts
-
-## Recent Alerts (Last 10)
-
-| Time | Direction | Strategy | Confidence | Outcome |
-|:---|:---|:---|:---|:---|
-| 2026-03-01 15:45 | LONG | TREND_CONTINUATION | 79 | LOSS |
-| 2026-03-01 15:53 | LONG | TREND_CONTINUATION | 37 | LOSS |
-| 2026-03-01 15:53 | LONG | TREND_CONTINUATION | 23 | LOSS |
-| 2026-03-01 16:00 | LONG | TREND_CONTINUATION | 79 | LOSS |
-| 2026-03-01 16:05 | LONG | TREND_CONTINUATION | 61 | LOSS |
-| 2026-03-01 16:10 | LONG | TREND_CONTINUATION | 75 | LOSS |
-| 2026-03-01 16:35 | LONG | TREND_CONTINUATION | 72 | LOSS |
-| 2026-03-01 16:40 | LONG | TREND_CONTINUATION | 86 | LOSS |
-| 2026-03-01 17:00 | LONG | MEAN_REVERSION | 100 | PENDING |
-| 2026-03-01 17:45 | LONG | None | 92 | PENDING |
-
-## System Health (Audit Log - Last 24h)
-
-- **Cycles Completed:** 81
-- **Peak Confidence Seen:** 100
-- **Status:** Bot Active & Scanning
-</pre>
+        <pre>No scorecard found yet.</pre>
     </section>
     <footer style="margin-top: 2rem; text-align: center; color: var(--text-muted); padding-bottom: 2rem;">
         &copy; 2026 EMBER Loop | BTC Alerts MVP
@@ -515,7 +370,7 @@
       <div style="display:flex;gap:.5rem;margin-top:1rem;"><button id="cancelExec" class="pill badge-neutral" style="border:0;cursor:pointer;">Cancel</button><button id="confirmExec" class="pill badge-good" style="border:0;cursor:pointer;" disabled>Confirm</button></div>
     </dialog>
     <script>
-      let state = {livePrice:0,spread:0,inTrade:false,entryPrice:67000.0,tp1Price:67720.0,stopPrice:66600.0,direction:"LONG"};
+      let state = {livePrice:0,spread:0,inTrade:false,entryPrice:0.0,tp1Price:0.0,stopPrice:0.0,direction:"NEUTRAL"};
       const els = {badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),kelly:document.getElementById('live-kelly'),gate:document.getElementById('live-gate'),cbanner:document.getElementById('circuit-breaker-banner'),creason:document.getElementById('circuit-breaker-reason'),execBtn:document.getElementById('executeBtn')};
       function fmtMoney(n,d=0) { return Number.isFinite(n) ? '$' + n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}) : '--'; }
       function deriveConfluence(alerts) { const t=['5m','15m','1h'],m=Object.create(null); for (const a of (alerts||[])) if (a.symbol==='BTC' && t.includes(a.timeframe)) m[a.timeframe]=a; const p=t.map(tf=>m[tf]).filter(Boolean); if (p.length<3) return 'Partial'; const d=p.map(x=>String(x.direction||'NEUTRAL').toUpperCase()); return d.every(x=>x===d[0]&&x!=='NEUTRAL') ? d[0] + ' aligned' : 'Mixed'; }
@@ -554,7 +409,50 @@
       }
       function closeExecuteModal() { const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }
       function requestExecute(alertId) { const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{n-=1; if(n<=0){clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();} else {btn.textContent='Confirm ('+n+')';}},1000); }
+      function _pillClass(g) {
+        const v=String(g||'').toUpperCase();
+        if(v==='GREEN') return 'badge-good';
+        if(v==='AMBER') return 'badge-warn';
+        if(v==='RED') return 'badge-bad';
+        return 'badge-neutral';
+      }
+      function _set(id,val) { const e=document.getElementById(id); if(e) e.textContent = (val===undefined||val===null||val==='') ? '—' : String(val); }
+      function updateCandidateCard(prefix, c) {
+        if(!c) {
+          ['confidence','rr','age','entry','stop','tp1','tp2','ev','recipe','timeframe','blockers'].forEach(k=>_set(prefix+'-'+k,'—'));
+          const codeEl=document.getElementById(prefix+'-codes'); if(codeEl) codeEl.innerHTML='';
+          const g=document.getElementById(prefix+'-gate'); if(g) { g.textContent='RED'; g.className='pill badge-bad'; }
+          return;
+        }
+        _set(prefix+'-confidence', Number(c.confidence||0).toFixed(0));
+        _set(prefix+'-rr', Number(c.rr_ratio||0).toFixed(2));
+        const age=Number(c.age_seconds||0); _set(prefix+'-age', age>=60 ? (age/60).toFixed(1)+'m' : age.toFixed(0)+'s');
+        _set(prefix+'-entry', c.entry_zone||'—'); _set(prefix+'-stop', c.invalidation||'—'); _set(prefix+'-tp1', c.tp1||'—'); _set(prefix+'-tp2', c.tp2||'—');
+        _set(prefix+'-ev', Number(c.expectancy_hint||0).toFixed(3)); _set(prefix+'-recipe', c.recipe||'—'); _set(prefix+'-timeframe', c.timeframe||'');
+        const gEl=document.getElementById(prefix+'-gate'); if(gEl) { gEl.textContent=(c.gate_status||'—').toUpperCase(); gEl.className='pill '+_pillClass(c.gate_status); }
+        const b=[...(c.blockers||[]),...(c.cautions||[])].slice(0,5); _set(prefix+'-blockers', b.length?b.join(' • '):'None');
+        const codeEl=document.getElementById(prefix+'-codes');
+        if(codeEl) codeEl.innerHTML=((c.reason_codes||[]).slice(0,5)).map(x=>"<span class='pill badge-neutral'>"+x+"</span>").join('');
+      }
       function connectWS() { const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}; ws.onmessage=(ev)=>{ try { const data=JSON.parse(ev.data); const ob=data.orderbook||{}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); if (els.kelly) els.kelly.textContent=(Number(st.kelly_pct||0)*100).toFixed(2)+'%';
+const pf=data.profit_preflight||{};
+updateCandidateCard('best-long', pf.best_long_candidate||null);
+updateCandidateCard('best-short', pf.best_short_candidate||null);
+_set('operator-decision', pf.operator_decision||'WAIT');
+const od=document.getElementById('operator-decision');
+if(od) { const t=String(pf.operator_decision||'WAIT'); od.className='pill '+(t.includes('LONG')?'badge-good':t.includes('SHORT')?'badge-bad':'badge-neutral'); }
+_set('trap-risk', pf.trap_risk_message||'Trap Risk: —');
+if (els.execBtn) {
+  const op=String(pf.operator_decision||'WAIT');
+  const longGate=((pf.best_long_candidate||{}).gate_status||'').toUpperCase();
+  const shortGate=((pf.best_short_candidate||{}).gate_status||'').toUpperCase();
+  const gate = op.includes('LONG') ? longGate : (op.includes('SHORT') ? shortGate : 'RED');
+  els.execBtn.disabled = op==='WAIT' || gate==='RED';
+  els.execBtn.textContent = op==='WAIT' ? 'WAIT — GATE BLOCKED' : ('1-CLICK '+op);
+  els.execBtn.style.opacity = els.execBtn.disabled ? '0.7' : '1.0';
+  els.execBtn.style.cursor = els.execBtn.disabled ? 'not-allowed' : 'pointer';
+  els.execBtn.style.background = gate==='GREEN' ? '' : (gate==='AMBER' ? '#996f00' : '#7a1f1f');
+}
 const cb=data.circuit_breaker||{};
 if (cb.active) {
   if (els.cbanner) els.cbanner.style.display='block';

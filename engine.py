@@ -473,9 +473,6 @@ def compute_score(
                 # Inside the value area during chop = high risk of fakeout
                 blockers.append("Chop Zone Veto (Price in Range)")
 
-    # Final Action/Tier Decision
-    tier, action = _tier_and_action(int(abs(total_score)), blockers, timeframe, rubric_score)
-
     # Exit levels
     last_price = price.price if symbol == "BTC" else candles[-1].close
     local_atr = atr(candles, 14) or (last_price * 0.02)
@@ -519,8 +516,9 @@ def compute_score(
     min_rr = tf_cfg.get("min_rr", 1.2)
     if rr < min_rr:
         blockers.append(f"R:R {rr:.2f} below {min_rr:.2f} threshold")
-        tier = "NO-TRADE"
-        action = "SKIP"
+
+    # Final Action/Tier Decision (after hard R:R gate)
+    tier, action = _tier_and_action(int(abs(total_score)), blockers, timeframe, rubric_score)
 
     trace["codes"] = list(set(codes))
     trace["degraded"] = degraded

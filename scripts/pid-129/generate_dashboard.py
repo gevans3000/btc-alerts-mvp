@@ -948,6 +948,33 @@ def generate_html():
         label = "⚠️ EXECUTE (HIGH RISK)" if vctx["gate"] == "RED" else "1-CLICK EXECUTE"
         bg = "background:#ff4d4d;" if vctx["gate"] == "RED" else ""
         execute_html = f"<button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;{bg}' onclick=\"requestExecute('latest-btc')\">{label}</button>"
+    playbook_html = """
+    <section class='panel'>
+      <h2 style='margin:0 0 .7rem 0;'>Best Long vs Best Short (Right Now)</h2>
+      <div class='mini' style='margin-bottom:.7rem;'>Operator Decision: <span id='operator-decision' class='pill badge-neutral'>WAIT</span></div>
+      <div id='trap-risk' class='mini' style='margin-bottom:.7rem;color:#ffd700;'>Trap Risk: —</div>
+      <div style='display:grid;grid-template-columns:1fr 1fr;gap:.8rem;'>
+        <div style='border:1px solid var(--border);border-radius:10px;padding:.7rem;background:rgba(255,255,255,.02);'>
+          <div style='display:flex;justify-content:space-between;align-items:center;'><span id='best-long-direction' class='pill badge-good'>LONG</span><span id='best-long-gate' class='pill badge-neutral'>—</span></div>
+          <div class='mini'>Conf: <span id='best-long-confidence'>—</span> | R:R <span id='best-long-rr'>—</span> | Age <span id='best-long-age'>—</span></div>
+          <div class='mini'>Entry <span id='best-long-entry'>—</span> | Stop <span id='best-long-stop'>—</span></div>
+          <div class='mini'>TP1 <span id='best-long-tp1'>—</span> | TP2 <span id='best-long-tp2'>—</span></div>
+          <div class='mini'>EV hint: <span id='best-long-ev'>—</span> | <span id='best-long-recipe'>—</span> <span id='best-long-timeframe'>—</span></div>
+          <div id='best-long-codes' style='display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;'></div>
+          <div id='best-long-blockers' class='mini' style='margin-top:6px;color:#ff7a7a;'>—</div>
+        </div>
+        <div style='border:1px solid var(--border);border-radius:10px;padding:.7rem;background:rgba(255,255,255,.02);'>
+          <div style='display:flex;justify-content:space-between;align-items:center;'><span id='best-short-direction' class='pill badge-bad'>SHORT</span><span id='best-short-gate' class='pill badge-neutral'>—</span></div>
+          <div class='mini'>Conf: <span id='best-short-confidence'>—</span> | R:R <span id='best-short-rr'>—</span> | Age <span id='best-short-age'>—</span></div>
+          <div class='mini'>Entry <span id='best-short-entry'>—</span> | Stop <span id='best-short-stop'>—</span></div>
+          <div class='mini'>TP1 <span id='best-short-tp1'>—</span> | TP2 <span id='best-short-tp2'>—</span></div>
+          <div class='mini'>EV hint: <span id='best-short-ev'>—</span> | <span id='best-short-recipe'>—</span> <span id='best-short-timeframe'>—</span></div>
+          <div id='best-short-codes' style='display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;'></div>
+          <div id='best-short-blockers' class='mini' style='margin-top:6px;color:#ff7a7a;'>—</div>
+        </div>
+      </div>
+    </section>
+    """
     verdict_html = f"""
     <section class='panel'>
       <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;'>
@@ -1136,6 +1163,7 @@ def generate_html():
     </section>
     {no_trade_html}
     <div class="layout-grid">
+        {playbook_html}
         {verdict_html}
         <section class="panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; min-height: 500px;">
             <div style="padding: 1.2rem; padding-bottom: 0;">
@@ -1240,7 +1268,50 @@ def generate_html():
       }}
       function closeExecuteModal() {{ const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }}
       function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
+      function _pillClass(g) {{
+        const v=String(g||'').toUpperCase();
+        if(v==='GREEN') return 'badge-good';
+        if(v==='AMBER') return 'badge-warn';
+        if(v==='RED') return 'badge-bad';
+        return 'badge-neutral';
+      }}
+      function _set(id,val) {{ const e=document.getElementById(id); if(e) e.textContent = (val===undefined||val===null||val==='') ? '—' : String(val); }}
+      function updateCandidateCard(prefix, c) {{
+        if(!c) {{
+          ['confidence','rr','age','entry','stop','tp1','tp2','ev','recipe','timeframe','blockers'].forEach(k=>_set(prefix+'-'+k,'—'));
+          const codeEl=document.getElementById(prefix+'-codes'); if(codeEl) codeEl.innerHTML='';
+          const g=document.getElementById(prefix+'-gate'); if(g) {{ g.textContent='RED'; g.className='pill badge-bad'; }}
+          return;
+        }}
+        _set(prefix+'-confidence', Number(c.confidence||0).toFixed(0));
+        _set(prefix+'-rr', Number(c.rr_ratio||0).toFixed(2));
+        const age=Number(c.age_seconds||0); _set(prefix+'-age', age>=60 ? (age/60).toFixed(1)+'m' : age.toFixed(0)+'s');
+        _set(prefix+'-entry', c.entry_zone||'—'); _set(prefix+'-stop', c.invalidation||'—'); _set(prefix+'-tp1', c.tp1||'—'); _set(prefix+'-tp2', c.tp2||'—');
+        _set(prefix+'-ev', Number(c.expectancy_hint||0).toFixed(3)); _set(prefix+'-recipe', c.recipe||'—'); _set(prefix+'-timeframe', c.timeframe||'');
+        const gEl=document.getElementById(prefix+'-gate'); if(gEl) {{ gEl.textContent=(c.gate_status||'—').toUpperCase(); gEl.className='pill '+_pillClass(c.gate_status); }}
+        const b=[...(c.blockers||[]),...(c.cautions||[])].slice(0,5); _set(prefix+'-blockers', b.length?b.join(' • '):'None');
+        const codeEl=document.getElementById(prefix+'-codes');
+        if(codeEl) codeEl.innerHTML=((c.reason_codes||[]).slice(0,5)).map(x=>"<span class='pill badge-neutral'>"+x+"</span>").join('');
+      }}
       function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); if (els.kelly) els.kelly.textContent=(Number(st.kelly_pct||0)*100).toFixed(2)+'%';
+const pf=data.profit_preflight||{{}};
+updateCandidateCard('best-long', pf.best_long_candidate||null);
+updateCandidateCard('best-short', pf.best_short_candidate||null);
+_set('operator-decision', pf.operator_decision||'WAIT');
+const od=document.getElementById('operator-decision');
+if(od) {{ const t=String(pf.operator_decision||'WAIT'); od.className='pill '+(t.includes('LONG')?'badge-good':t.includes('SHORT')?'badge-bad':'badge-neutral'); }}
+_set('trap-risk', pf.trap_risk_message||'Trap Risk: —');
+if (els.execBtn) {{
+  const op=String(pf.operator_decision||'WAIT');
+  const longGate=((pf.best_long_candidate||{{}}).gate_status||'').toUpperCase();
+  const shortGate=((pf.best_short_candidate||{{}}).gate_status||'').toUpperCase();
+  const gate = op.includes('LONG') ? longGate : (op.includes('SHORT') ? shortGate : 'RED');
+  els.execBtn.disabled = op==='WAIT' || gate==='RED';
+  els.execBtn.textContent = op==='WAIT' ? 'WAIT — GATE BLOCKED' : ('1-CLICK '+op);
+  els.execBtn.style.opacity = els.execBtn.disabled ? '0.7' : '1.0';
+  els.execBtn.style.cursor = els.execBtn.disabled ? 'not-allowed' : 'pointer';
+  els.execBtn.style.background = gate==='GREEN' ? '' : (gate==='AMBER' ? '#996f00' : '#7a1f1f');
+}}
 const cb=data.circuit_breaker||{{}};
 if (cb.active) {{
   if (els.cbanner) els.cbanner.style.display='block';
