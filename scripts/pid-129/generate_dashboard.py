@@ -947,7 +947,7 @@ def generate_html():
     if vctx["direction"] in {"LONG", "SHORT"}:
         label = "⚠️ EXECUTE (HIGH RISK)" if vctx["gate"] == "RED" else "1-CLICK EXECUTE"
         bg = "background:#ff4d4d;" if vctx["gate"] == "RED" else ""
-        execute_html = f"<button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;{bg}' onclick=\"requestExecute('latest-btc')\">{label}</button>"
+        execute_html = f"<button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;width:100%;{bg}' onclick=\"requestExecute('latest-btc')\">{label}</button>"
     playbook_html = """
     <section class='panel'>
       <h2 style='margin:0 0 .7rem 0;'>Best Long vs Best Short (Right Now)</h2>
@@ -989,6 +989,7 @@ def generate_html():
       <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
         <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
+        <div id="bs-filter-display" class="mini" style="margin-top:8px;padding:6px 10px;border-radius:8px;font-weight:700;font-size:0.78rem;text-align:center;transition:all 0.3s ease;"></div>
       </div>
       <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div>{signals_html}</div>
       <div id='keyLevelsCard' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
@@ -1148,6 +1149,14 @@ def generate_html():
             <div class="stat-card"><div class="stat-label">Vol Regime</div><div id="tape-vol-regime" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">OI Regime</div><div id="tape-oi-regime" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">Taker Ratio</div><div id="tape-taker" class="live-value">—</div></div>
+            <div class="stat-card" style="border:1px solid rgba(112,0,255,0.3); background:rgba(112,0,255,0.05);">
+                <div class="stat-label">Funding / Basis</div>
+                <div id="tape-funding" class="live-value" style="color:#b580ff;">—</div>
+            </div>
+            <div class="stat-card" style="border:1px solid rgba(112,0,255,0.3); background:rgba(112,0,255,0.05);">
+                <div class="stat-label">OI Delta (5m)</div>
+                <div id="tape-oi-delta" class="live-value" style="color:#b580ff;">—</div>
+            </div>
             <div class="stat-card"><div class="stat-label">DXY Macro</div><div id="tape-dxy" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">Sentiment</div><div id="tape-sentiment" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">${balance:,.2f}</div></div>
@@ -1196,6 +1205,16 @@ def generate_html():
               </script>
             </div>
             <!-- TradingView Widget END -->
+        </section>
+        <section class="panel" style="padding: 1.2rem;">
+            <h2 style="margin: 0 0 0.8rem 0;">Execution Copilot</h2>
+            <div id="copilot-container" style="display:flex;align-items:center;gap:1rem;">
+                <div id="copilot-action-btn" class="pill badge-neutral" style="font-size:1.1rem;padding:10px 18px;white-space:nowrap;min-width:180px;text-align:center;">STANDBY</div>
+                <div>
+                    <div id="copilot-msg" class="mini" style="color:var(--text-muted);">No active positions</div>
+                    <div id="copilot-detail" class="mini" style="color:var(--text-muted);margin-top:4px;font-family:JetBrains Mono,monospace;font-size:0.75rem;"></div>
+                </div>
+            </div>
         </section>
     </div>
     {execution_html}
@@ -1267,7 +1286,34 @@ def generate_html():
         }}
       }}
       function closeExecuteModal() {{ const m=document.getElementById('executeModal'); if(m) m.style.display='none'; }}
-      function requestExecute(alertId) {{ const modal=document.getElementById('executeModal'); if(!modal) return; modal.style.display='flex'; document.getElementById('executeMeta').innerHTML='Alert: '+alertId+'<br>Direction: '+state.direction+'<br>Live: '+fmtMoney(state.livePrice,0); const btn=document.getElementById('confirmExecuteBtn'); let n=3; btn.disabled=true; btn.textContent='Confirm ('+n+')'; const t=setInterval(()=>{{n-=1; if(n<=0){{clearInterval(t); btn.disabled=false; btn.textContent='Confirm Execute'; btn.onclick=()=>closeExecuteModal();}} else {{btn.textContent='Confirm ('+n+')';}}}},1000); }}
+      function requestExecute(alertId) {{
+          const modal = document.getElementById('executeModal');
+          if (!modal) return;
+          modal.style.display = 'flex';
+          const cachedStats = window._lastStats || {{}};
+          const kelly = cachedStats.kelly_pct || 0.05;
+          const bal = window._lastBalance || 10000;
+          const maxRisk = kelly * bal;
+          const metaEl = document.getElementById('executeMeta');
+          metaEl.innerHTML = 'Alert: ' + alertId
+              + '<br>Direction: ' + state.direction
+              + '<br>Live: ' + fmtMoney(state.livePrice, 0)
+              + '<br><br><div style="padding:10px;border:1px solid #ff4d4d;border-radius:8px;background:rgba(255,0,0,0.08);">'
+              + '<span style="color:#ff4d4d;font-weight:bold;font-size:1rem;">MAX RISK: ' + fmtMoney(maxRisk, 2) + '</span><br>'
+              + '<span class="mini" style="color:var(--text-muted);">Kelly: ' + (kelly * 100).toFixed(1) + '% · Balance: ' + fmtMoney(bal, 0) + '</span><br>'
+              + '<span class="mini" style="color:#ff4d4d;">Exceeding this violates your mathematical edge.</span></div>';
+          const btn = document.getElementById('confirmExecuteBtn');
+          let n = 3; btn.disabled = true; btn.textContent = 'Confirm (' + n + ')';
+          const t = setInterval(() => {{
+              n -= 1;
+              if (n <= 0) {{
+                  clearInterval(t);
+                  btn.disabled = false;
+                  btn.textContent = 'Confirm Execute';
+                  btn.onclick = () => closeExecuteModal();
+              }} else {{ btn.textContent = 'Confirm (' + n + ')'; }}
+          }}, 1000);
+      }}
       function _pillClass(g) {{
         const v=String(g||'').toUpperCase();
         if(v==='GREEN') return 'badge-good';
@@ -1293,7 +1339,7 @@ def generate_html():
         const codeEl=document.getElementById(prefix+'-codes');
         if(codeEl) codeEl.innerHTML=((c.reason_codes||[]).slice(0,5)).map(x=>"<span class='pill badge-neutral'>"+x+"</span>").join('');
       }}
-      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); if (els.kelly) els.kelly.textContent=(Number(st.kelly_pct||0)*100).toFixed(2)+'%';
+      function connectWS() {{ const p=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws'; const ws=new WebSocket(p); ws.onopen=()=>{{els.badge.textContent='Live Feed: Online';els.badge.classList.remove('badge-stale');}}; ws.onmessage=(ev)=>{{ try {{ const data=JSON.parse(ev.data); const ob=data.orderbook||{{}}; state.livePrice=Number(ob.mid||0); state.spread=Number(ob.spread||0); updateLivePrice(); els.mid.textContent=fmtMoney(state.livePrice,2); els.spread.textContent=state.spread.toFixed(2); const po=data.portfolio||{{}}; els.balance.textContent=fmtMoney(Number(po.balance||0),2); const st=data.stats||{{}}; window._lastStats = st; window._lastBalance = Number(po.balance || 0); els.winrate.textContent=Number(st.win_rate||0).toFixed(2)+'%'; els.pf.textContent=Number(st.profit_factor||0).toFixed(2); if (els.kelly) els.kelly.textContent=(Number(st.kelly_pct||0)*100).toFixed(2)+'%';
 const pf=data.profit_preflight||{{}};
 updateCandidateCard('best-long', pf.best_long_candidate||null);
 updateCandidateCard('best-short', pf.best_short_candidate||null);
@@ -1301,6 +1347,27 @@ _set('operator-decision', pf.operator_decision||'WAIT');
 const od=document.getElementById('operator-decision');
 if(od) {{ const t=String(pf.operator_decision||'WAIT'); od.className='pill '+(t.includes('LONG')?'badge-good':t.includes('SHORT')?'badge-bad':'badge-neutral'); }}
 _set('trap-risk', pf.trap_risk_message||'Trap Risk: —');
+
+// ── Phase 25: Overrides + Auto-Pilot Indicator ──
+state.overrides = data.overrides || {{}};
+const fBtn = document.getElementById('filterBtn');
+const ap = data.auto_pilot || {{}};
+if (fBtn) {{
+    if (ap.active) {{
+        fBtn.textContent = '🤖 AUTO (' + (ap.auto_muted || []).length + ' muted)';
+        fBtn.className = 'pill badge-warn';
+        fBtn.title = 'Auto-pilot muting: ' + (ap.auto_muted || []).join(', ') + ' | Regime: ' + (ap.regime || 'normal');
+    }} else if (state.overrides.min_score) {{
+        fBtn.textContent = 'FLOOR: ' + state.overrides.min_score;
+        fBtn.className = 'pill badge-good';
+        fBtn.title = '';
+    }} else {{
+        fBtn.textContent = 'ALL';
+        fBtn.className = 'pill badge-neutral';
+        fBtn.title = '';
+    }}
+}}
+
 if (els.execBtn) {{
   const op=String(pf.operator_decision||'WAIT');
   const longGate=((pf.best_long_candidate||{{}}).gate_status||'').toUpperCase();
@@ -1312,19 +1379,41 @@ if (els.execBtn) {{
   els.execBtn.style.cursor = els.execBtn.disabled ? 'not-allowed' : 'pointer';
   els.execBtn.style.background = gate==='GREEN' ? '' : (gate==='AMBER' ? '#996f00' : '#7a1f1f');
 }}
-const cb=data.circuit_breaker||{{}};
-if (cb.active) {{
-  if (els.cbanner) els.cbanner.style.display='block';
-  if (els.creason) els.creason.textContent=cb.reason || 'Risk controls triggered.';
-  if (els.execBtn) {{ els.execBtn.disabled = true; els.execBtn.textContent = 'LOCKED: CIRCUIT BREAKER'; els.execBtn.style.opacity = '0.6'; els.execBtn.style.cursor = 'not-allowed'; }}
-}} else {{
-  if (els.cbanner) els.cbanner.style.display='none';
-  if (els.execBtn) {{ els.execBtn.disabled = false; }}
-}}
 const btcAlerts = (data.alerts||[]).filter(a=>a.symbol==='BTC');
 const wsLatest=btcAlerts.slice(-1)[0]||{{}};
 const wsDir=String(wsLatest.direction||state.direction).toUpperCase();
 const wsTier=String(wsLatest.tier||"").toUpperCase();
+
+const cb = data.circuit_breaker || {{}};
+if (cb.active) {{
+    if (els.cbanner) els.cbanner.style.display='block';
+    if (els.creason) els.creason.textContent=cb.reason || 'Risk controls triggered.';
+    if (els.execBtn) {{ 
+        els.execBtn.disabled = true; 
+        els.execBtn.textContent = '⛔ CIRCUIT BREAKER (' + (cb.reason || 'high risk') + ')'; 
+        els.execBtn.style.opacity = '0.5'; 
+        els.execBtn.style.cursor = 'not-allowed'; 
+    }}
+}} else {{
+    if (els.cbanner) els.cbanner.style.display='none';
+    if (els.execBtn) {{ 
+        els.execBtn.disabled = false;
+        els.execBtn.style.opacity = '1';
+        els.execBtn.style.cursor = 'pointer';
+        // ── Phase 26 Task 4.1: Restore the original label based on latest alert tier ──
+        const tier = wsTier || 'NO-TRADE';
+        if (tier === 'A+') {{
+            els.execBtn.textContent = '🟢 EXECUTE';
+            els.execBtn.style.background = '#00cc88';
+        }} else if (tier === 'B') {{
+            els.execBtn.textContent = '🟡 EXECUTE (WATCH)';
+            els.execBtn.style.background = '#cc8800';
+        }} else {{
+            els.execBtn.textContent = '⚠️ EXECUTE (HIGH RISK)';
+            els.execBtn.style.background = '#ff4d4d';
+        }}
+    }}
+}}
 if (wsTier === "A+" && wsLatest.timestamp && wsLatest.timestamp !== window._lastPlayedAlertTs) {{
     window._lastPlayedAlertTs = wsLatest.timestamp;
     if (!window._isMuted) {{
@@ -1338,7 +1427,10 @@ if (wsTier === "A+" && wsLatest.timestamp && wsLatest.timestamp !== window._last
     }}
 }}
 const wsCS=new Set(((wsLatest.decision_trace||{{}}).codes)||[]);
-const wsCtx = ((wsLatest.decision_trace||{{}}).context)||{{}};
+const alertCtx = ((wsLatest.decision_trace||{{}}).context)||{{}};
+const cachedCtx = data.cached_context||{{}};
+// ── Phase 26 Gap 1 Fix: Merge live alert context, fall back to cached ──
+const wsCtx = Object.assign({{}}, cachedCtx, alertCtx);
 const wsSL = wsCtx.session_levels||{{}};
 const wsVP = wsCtx.volume_profile||{{}};
 const wsAV = wsCtx.avwap||{{}};
@@ -1355,6 +1447,33 @@ _el('tape-dxy', (wsMC.dxy || '—').toUpperCase());
 _el('tape-sentiment', wsSN.score ? wsSN.score.toFixed(2) : '—');
 const taker = (data.flows||{{}}).taker_ratio;
 _el('tape-taker', taker ? taker.toFixed(2) : '—');
+
+// ── Phase 26 Task 7.2: Smart Money UI ──
+const wsDeriv = wsCtx.derivatives || {{}};
+const fundRate = wsDeriv.funding_rate;
+const basis = wsDeriv.basis_pct;
+const oiDelta = wsDeriv.oi_change_pct;
+
+const fundEl = document.getElementById('tape-funding');
+if (fundEl) {{
+    if (fundRate !== undefined && basis !== undefined) {{
+        const fStr = (fundRate * 100).toFixed(4) + '%';
+        const bStr = basis > 0 ? '+' + basis.toFixed(2) + '%' : basis.toFixed(2) + '%';
+        fundEl.textContent = fStr + ' | ' + bStr;
+        if (fundRate > 0.0001) fundEl.style.color = '#ff4d4d';
+        else if (fundRate < -0.0001) fundEl.style.color = '#00ffcc';
+        else fundEl.style.color = '#b580ff';
+    }} else {{ fundEl.textContent = '—'; }}
+}}
+const oiEl = document.getElementById('tape-oi-delta');
+if (oiEl) {{
+    if (oiDelta !== undefined) {{
+        oiEl.textContent = (oiDelta > 0 ? '+' : '') + oiDelta.toFixed(2) + '%';
+        if (oiDelta > 1.5) oiEl.style.color = '#00ffcc';
+        else if (oiDelta < -1.5) oiEl.style.color = '#ff4d4d';
+        else oiEl.style.color = '#b580ff';
+    }} else {{ oiEl.textContent = '—'; }}
+}}
 
 _el('key-pdh', wsSL.pdh ? '$'+Number(wsSL.pdh).toLocaleString() : '—');
 _el('key-pdl', wsSL.pdl ? '$'+Number(wsSL.pdl).toLocaleString() : '—');
@@ -1383,7 +1502,104 @@ if(vrE) {{ vrE.textContent = (wsVI.regime||'—').toUpperCase(); vrE.style.color
 }}
 
 const wsPD=[[['SQUEEZE_FIRE','SQUEEZE_ON'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL','FLOW_TAKER_BULLISH','VOLUME_IMPULSE_BULL'],['SENTIMENT_BEAR','FLOW_TAKER_BEARISH','VOLUME_IMPULSE_BEAR'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH','OI_NEW_LONGS'],['BASIS_BEARISH','OI_NEW_SHORTS'],'OI / Basis'],[['STRUCTURE_BOS_BULL','STRUCTURE_CHOCH_BULL'],['STRUCTURE_BOS_BEAR','STRUCTURE_CHOCH_BEAR'],'Structure'],[['PDL_SWEEP_BULL','EQL_SWEEP_BULL','SESSION_LOW_SWEEP','PDH_RECLAIM_BULL'],['PDH_SWEEP_BEAR','EQH_SWEEP_BEAR','SESSION_HIGH_SWEEP','PDL_BREAK_BEAR'],'Levels'],[['AVWAP_RECLAIM_BULL'],['AVWAP_REJECT_BEAR'],'AVWAP'],[['ABOVE_VALUE'],['BELOW_VALUE'],'VP Status'],[['AUTO_RR_EXCELLENT'],['AUTO_RR_POOR'],'Auto R:R']];
-let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}}; els.sync.textContent='Synced: '+new Date().toLocaleString(); }} catch (_err) {{console.error(_err);}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
+let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}}; 
+
+// ── Phase 26 Task 6.2: Data Freshness Warning ──
+const dataAge = data.data_age_seconds || 0;
+const syncEl = els.sync;
+if (syncEl) {{
+    if (dataAge > 300) {{
+        syncEl.textContent = '⚠️ DATA STALE (' + Math.round(dataAge / 60) + 'm old)';
+        syncEl.style.color = '#ff4d4d';
+    }} else if (dataAge > 120) {{
+        syncEl.textContent = 'Synced: ' + new Date().toLocaleString() + ' (⏳ ' + Math.round(dataAge) + 's ago)';
+        syncEl.style.color = '#ffa500';
+    }} else {{
+        syncEl.textContent = 'Synced: ' + new Date().toLocaleString();
+        syncEl.style.color = 'var(--text-muted)';
+    }}
+}}
+
+// ── Phase 25: BS-Filter Warning ──
+const bsEl = document.getElementById('bs-filter-display');
+if (bsEl) {{
+    const bsText = data.bs_filter || 'CLEAR';
+    const bsSev = data.bs_severity || 0;
+    if (bsSev === 0) {{
+        bsEl.textContent = '✅ ORDER FLOW CLEAR';
+        bsEl.style.background = 'rgba(0,255,204,0.06)';
+        bsEl.style.color = 'var(--accent)';
+        bsEl.style.border = '1px solid rgba(0,255,204,0.2)';
+    }} else {{
+        bsEl.textContent = bsText;
+        if (bsSev >= 2) {{
+            bsEl.style.background = 'rgba(255,77,77,0.15)';
+            bsEl.style.color = '#ff4d4d';
+            bsEl.style.border = '1px solid rgba(255,77,77,0.4)';
+        }} else {{
+            bsEl.style.background = 'rgba(255,165,0,0.1)';
+            bsEl.style.color = '#ffa500';
+            bsEl.style.border = '1px solid rgba(255,165,0,0.3)';
+        }}
+    }}
+}}
+
+// ── Phase 25: Execution Copilot ──
+const cpAction = document.getElementById('copilot-action-btn');
+const cpMsg = document.getElementById('copilot-msg');
+const cpDetail = document.getElementById('copilot-detail');
+if (cpAction && cpMsg) {{
+    let cpText = 'STANDBY';
+    let cpMessage = 'No active positions — monitoring.';
+    let cpClass = 'pill badge-neutral';
+    let cpExtra = '';
+    const positions = (po.positions || []);
+    if (positions.length > 0 && state.livePrice > 0) {{
+        const pos = positions[0];
+        const entry = Number(pos.entry_price) || 0;
+        const dir = pos.direction || 'LONG';
+        const sz = Number(pos.size_usdt) || 0;
+        if (entry > 0 && sz > 0 && isFinite(entry)) {{
+            const pnlPct = dir === 'LONG'
+                ? ((state.livePrice - entry) / entry) * 100
+                : ((entry - state.livePrice) / entry) * 100;
+            const pnlDollar = (pnlPct / 100) * sz;
+            cpExtra = dir + ' @ ' + fmtMoney(entry,0) + ' | PnL: ' + (pnlDollar >= 0 ? '+' : '') + '$' + Math.abs(pnlDollar).toFixed(0) + ' (' + pnlPct.toFixed(2) + '%)';
+            if (pnlPct > 1.5) {{
+                cpText = '💰 TAKE 50% + TRAIL';
+                cpMessage = 'Massive run detected (+' + pnlPct.toFixed(2) + '%). Take partial profit and trail stop to breakeven.';
+                cpClass = 'pill badge-good';
+                cpAction.style.animation = 'breathePulse 1.5s infinite ease-in-out';
+            }} else if (pnlPct > 0.75) {{
+                cpText = '🔒 MOVE STOP → BE';
+                cpMessage = 'Momentum intact (+' + pnlPct.toFixed(2) + '%). Trail stop to breakeven — risk-free trade.';
+                cpClass = 'pill badge-good';
+                cpAction.style.animation = '';
+            }} else if (pnlPct > 0.0) {{
+                cpText = '✊ HOLD';
+                cpMessage = 'Position active at ' + fmtMoney(entry,0) + '. Let edge play out.';
+                cpClass = 'pill badge-warn';
+                cpAction.style.animation = '';
+            }} else if (pnlPct > -0.75) {{
+                cpText = '⚠️ PATIENCE';
+                cpMessage = 'Minor heat (' + pnlPct.toFixed(2) + '%). Still within normal noise range.';
+                cpClass = 'pill badge-warn';
+                cpAction.style.animation = '';
+            }} else {{
+                cpText = '🚨 CUT LOSSES';
+                cpMessage = 'Trade invalidated (' + pnlPct.toFixed(2) + '%). Market-close to protect capital.';
+                cpClass = 'pill badge-bad';
+                cpAction.style.animation = 'breathePulse 1s infinite ease-in-out';
+            }}
+        }}
+    }}
+    cpAction.textContent = cpText;
+    cpAction.className = cpClass;
+    cpMsg.textContent = cpMessage;
+    if (cpDetail) cpDetail.textContent = cpExtra;
+}}
+
+}} catch (_err) {{console.error(_err);}} }}; ws.onclose=()=>{{els.badge.textContent='Live Feed: Reconnecting';els.badge.classList.add('badge-stale');setTimeout(connectWS,1500);}}; }}
 
       function toggleMute() {{
           window._isMuted = !window._isMuted;

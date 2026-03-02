@@ -132,7 +132,11 @@ def _load_alerts(limit=50):
             for line in lines:
                 if not line.strip(): continue
                 try:
-                    rows.append(json.loads(line))
+                    row = json.loads(line)
+                    # ── Phase 26 Gap 3: Filter junk alerts ──
+                    if row.get("strategy") in (None, "TEST", "SYNTHETIC"):
+                        continue
+                    rows.append(row)
                 except: continue
             return rows[-limit:]
     except Exception as e:
@@ -155,6 +159,21 @@ def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
     Calculate comprehensive trading analytics from paper portfolio.
     """
     closed = portfolio.get("closed_trades", []) if isinstance(portfolio, dict) else []
+    
+    # ── Phase 26 Gap 2 Fix: Fall back to JSONL outcomes if portfolio file is empty ──
+    if not closed and alerts:
+        for a in alerts:
+            outcome = a.get("outcome")
+            r = a.get("r_multiple")
+            if outcome in ("WIN_TP1", "WIN_TP2", "LOSS", "TIMEOUT") and isinstance(r, (int, float)):
+                closed.append({
+                    "r_multiple": r,
+                    "direction": a.get("direction", "NEUTRAL"),
+                    "alert_id": a.get("alert_id") or a.get("id"),
+                    "outcome": outcome,
+                    "timeframe": a.get("timeframe", "UNKNOWN")
+                })
+
     r_values = [t.get("r_multiple") for t in closed if isinstance(t.get("r_multiple"), (int, float))]
     
     wins = [r for r in r_values if r > 0]
@@ -752,11 +771,43 @@ def get_dashboard_data():
             except Exception:
                 derivatives = {"funding_rate": 0.0, "oi_change_pct": 0.0, "basis_pct": 0.0, "healthy": False, "source": "error"}
 
-        # Update cached context for anti-flicker
-        if all_recent_alerts:
-            latest_ctx = (all_recent_alerts[-1].get("decision_trace") or {}).get("context", {})
-            if latest_ctx:
-                _LAST_CONTEXT.update(latest_ctx)
+        # ── Phase 26: Cache the richest decision_trace.context for display ──
+        global _LAST_CONTEXT
+        for a in reversed(all_recent_alerts):
+            ctx = (a.get("decision_trace") or {}).get("context", {})
+            if ctx and len(ctx) > len(_LAST_CONTEXT):
+                _LAST_CONTEXT = ctx
+                break
+
+        # ── Phase 25: Extract vol regime from the latest alert's decision trace ──
+        vol_regime = "normal"
+        for a in reversed(all_recent_alerts):
+            dt_ctx = (a.get("decision_trace") or {}).get("context", {})
+            vi = dt_ctx.get("volume_impulse", {})
+            if isinstance(vi, dict) and vi.get("regime"):
+                vol_regime = vi["regime"].lower()
+                break
+
+        # ── Phase 25: Auto-pilot dynamic muting ──
+        auto_muted_recipes = {}
+        now = time.time()
+        auto_expiry = now + 120  # Auto-mutes last 2 minutes
+
+        if vol_regime == "expansion":
+            for name in ("HTF_REVERSAL",):
+                auto_muted_recipes[name] = auto_expiry
+        elif vol_regime == "low":
+            for name in ("BOS_CONTINUATION", "VOL_EXPANSION"):
+                auto_muted_recipes[name] = auto_expiry
+
+        overrides = _load_overrides().copy()
+        if auto_muted_recipes:
+            merged_muted = overrides.get("muted_recipes", {}).copy()
+            for recipe_name, auto_exp in auto_muted_recipes.items():
+                existing_exp = merged_muted.get(recipe_name, 0)
+                if auto_exp > existing_exp:
+                    merged_muted[recipe_name] = auto_exp
+            overrides["muted_recipes"] = merged_muted
 
         bs_filter = "CLEAR"
         bs_severity = 0  # 0=clear, 1=caution, 2=danger
