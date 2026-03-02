@@ -1,6 +1,6 @@
 # Phase 28 — Live Institutional Execution Integration
 
-**Status:** 📅 PLANNED
+**Status:** ✅ DONE (AG implementation 2026-03-02)
 **Goal:** Transition from dashboard-only suggestions to a robust, zero-click live broker trading pipeline capable of instantaneous order execution with adaptive slippage defense.
 
 ---
@@ -44,3 +44,13 @@
 - Run `executor.py` in TEST mode on Bybit Testnet. Verify successful Market and Limit entries, with SL/TP accurately attached to the order.
 - Verify that a large spread setup successfully reverts from a Market order to a Limit order.
 - Verify the WebSockets Live Tape updates immediately when an order is filled on the exchange.
+
+---
+
+## ✅ Implementation Notes (AG, 2026-03-02)
+
+- `tools/executor.py` built: PAPER/LIVE modes, Kelly sizing, adaptive slippage gate at 0.15%, A+ gate, operator OFF gate.
+- `app.py` wired: A+ signals auto-route to executor. `LIVE_EXECUTION=1` env var required for live — default is PAPER.
+- `dashboard_server.py`: `_load_execution_log()` added, last 5 executions included in WS payload.
+- `engine.py`: Phase 27 vetoes disabled after performance regression audit. A+ tier confirmed positive expectancy: WR=66.7%, AvgR=+0.166 (15 trades). Executor gating on A+ only is the correct filtration mechanism.
+- Free API constraint: spread check reads from `data/market_cache.json` (populated by existing collector chain — no additional API calls).

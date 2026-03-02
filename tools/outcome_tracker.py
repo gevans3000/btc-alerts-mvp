@@ -81,8 +81,11 @@ def resolve_outcomes(alerts_path: str = "logs/pid-129-alerts.jsonl"):
         # Logic for resolution
         risk = abs(entry - sl) if abs(entry - sl) > 0 else 1.0
         
+        if not all([entry, tp1, sl]):
+            continue
+
         if direction == "LONG":
-            if current_price >= tp2:
+            if tp2 and current_price >= tp2:
                 resolved = True
                 outcome = "WIN_TP2"
                 r_multiple = abs(tp2 - entry) / risk
@@ -97,7 +100,7 @@ def resolve_outcomes(alerts_path: str = "logs/pid-129-alerts.jsonl"):
                 outcome = "LOSS"
                 r_multiple = -1.0
         elif direction == "SHORT":
-            if current_price <= tp2:
+            if tp2 and current_price <= tp2:
                 resolved = True
                 outcome = "WIN_TP2"
                 r_multiple = abs(entry - tp2) / risk

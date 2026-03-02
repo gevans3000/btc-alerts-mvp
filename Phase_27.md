@@ -1,7 +1,14 @@
 # Phase 27 — Strict Signal Filtration & Vetoes
 
-**Status:** ✅ DONE
-**Goal:** Implement strict multi-timeframe vetoes, order flow alignment gates, and volatility "Chop Zone" protection to maximize signal accuracy. 
+**Status:** ⚠️ REGRESSION — Vetoes disabled after live data audit
+**Goal:** Implement strict multi-timeframe vetoes, order flow alignment gates, and volatility "Chop Zone" protection to maximize signal accuracy.
+
+**Post-implementation audit (2026-03-02):**
+- Pre-veto performance (49 trades): WR=59.2%, AvgR=+0.170, TotalR=+8.33 ✅
+- Post-veto performance (30 trades): WR=26.7%, AvgR=-0.525, TotalR=-15.76 ❌
+- Vetoes were too aggressive — killed winning signals, not losing ones
+- **Resolution:** Vetoes disabled in `engine.py`. Key finding: A+ tier alone has WR=66.7%, AvgR=+0.166 (positive expectancy). B tier is the drag (-9.92R total). The fix is not veto tuning — it is **executor gating on A+ only**, which Phase 28 implements.
+- Veto rework deferred to Phase 29 (ML self-correction) with proper backtesting.
 
 ---
 

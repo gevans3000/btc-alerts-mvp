@@ -161,32 +161,20 @@
 
 ---
 
-## 🚀 Future Roadmap: The Path to the "God Button" Dashboard
-*The ultimate objective is a singular, perfectly calibrated Bitcoin futures dashboard where a single click yields a mathematically verified, high-confidence LONG or SHORT play.*
+## Phase 28: "God Button" Completion — FINAL PHASE
+*A singular, perfectly calibrated Bitcoin futures dashboard where a single click yields a mathematically verified, high-confidence LONG or SHORT play.*
 
-### Phase 28: Live Institutional Execution Integration � NEXT
-- **Objective:** Transition from dashboard suggestions to robust, zero-click live broker trading pipeline.
-- **Tasks:** Build `executor.py` (CCXT), implement adaptive slippage defense, and connect Operator Toggle for LIVE execution.
-
-### Phase 29: Continuous Machine Learning Self-Correction 📅 PLANNED
-- **Objective:** AI learns from live PnL outputs to tune confluence parameters every 24h.
-- **Tasks:** Build PnL Ingestor, `night_tuner.py` for nocturnal rebalancing, and macro-event suppression gates.
-
-### Phase 30: Absolute Autonomy (v1.0 Production) 📅 PLANNED
-- **Objective:** Finalize "EMBER Swarm" into a distributed, containerized (Docker) multi-agent system.
-- **Tasks:** Microservice refactoring, Dockerization, and implementation of the Sentinel Watchdog.
-
-### Phase 31: Institutional "Smart Money" Tracking 📅 PLANNED
-- **Objective:** Follow the whales.
-- **Tasks:** Monitor large on-chain Bitcoin movements to exchange derivative wallets.
-
-### Phase 32: Options Market "Max Pain" Integration 📅 PLANNED
-- **Objective:** Anticipate options expiry volatility.
-- **Tasks:** Pull Deribit options data to calculate the "Max Pain" price point.
-
-### Phase 33: NLP Sentiment & Macro-Economic Safety Gate 📅 PLANNED
-- **Objective:** Prevent the system from buying right before high-impact news.
-- **Tasks:** NLP scraping of major economic calendars and X (Twitter) sentiment.
+- **Already done (prior work):**
+  - ✅ `tools/executor.py` — paper + live execution via ccxt
+  - ✅ `app.py` auto-executes A+ alerts
+  - ✅ Dashboard shows execution log via WebSocket
+- **Remaining (4 bugs + 1 feature):**
+  - [ ] Fix R:R math (uses TP1 instead of TP2)
+  - [ ] Relax recipe detection conditions (HTF_REVERSAL / BOS_CONTINUATION / VOL_EXPANSION)
+  - [ ] Filter SPX_PROXY from dashboard stats
+  - [ ] Wire execute button end-to-end (JS fetch + server endpoint)
+  - [ ] Add Bitunix broker support via `TRADE_BROKER` env var
+- **Execution prompt:** `Phase_28_Execution_Prompt.md`
 
 ---
-_v33.0 | EMBER Collective | Signal Accuracy Reached_
+_v28.0 FINAL | EMBER | No phases beyond 28._

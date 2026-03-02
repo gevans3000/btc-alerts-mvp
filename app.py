@@ -32,6 +32,7 @@ from collectors.orderbook import fetch_orderbook
 from engine import AlertScore, compute_score
 from tools.outcome_tracker import resolve_outcomes
 from tools.paper_trader import Portfolio as PaperPortfolio
+from tools.executor import execute_trade
 
 load_dotenv()
 
@@ -371,6 +372,22 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
                 regime=str(ctx.get("regime") or alert.regime or "unknown"),
                 session=str(ctx.get("session") or "unknown")
             )
+
+        # ── Phase 28: Auto-execute A+ signals ──
+        if alert_id and alert.tier == "A+":
+            exec_mode = "LIVE" if os.getenv("LIVE_EXECUTION", "0") == "1" else "PAPER"
+            alert_dict = {
+                "id": alert_id,
+                "direction": alert.direction,
+                "entry_price": alert.entry_price if hasattr(alert, 'entry_price') else current_price_for_state,
+                "invalidation": alert.invalidation,
+                "tp1": alert.tp1,
+                "confidence": alert.confidence,
+                "tier": alert.tier,
+                "timeframe": alert.timeframe,
+            }
+            result = execute_trade(alert_dict, mode=exec_mode)
+            logger.info(f"[EXECUTOR] {result['status']} | {result.get('reason','')}")
 
     health = {
         "btc_price": btc_price.healthy if btc_price else False,

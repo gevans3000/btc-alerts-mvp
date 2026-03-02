@@ -198,9 +198,10 @@ def _recipe_htf_reversal(
     avwap_bull = "AVWAP_RECLAIM_BULL" in avwap.get("codes", [])
     avwap_bear = "AVWAP_REJECT_BEAR" in avwap.get("codes", [])
 
-    # Compose legs
-    long_signal = has_bull_struct and sweep_bull and avwap_bull
-    short_signal = has_bear_struct and sweep_bear and avwap_bear
+    # Compose legs: require structure + at least ONE of (sweep, avwap)
+    # Previously required all 3 — too strict, fired <1% of candles
+    long_signal = has_bull_struct and (sweep_bull or avwap_bull)
+    short_signal = has_bear_struct and (sweep_bear or avwap_bear)
 
     if not (long_signal or short_signal):
         return None
@@ -210,11 +211,11 @@ def _recipe_htf_reversal(
     # Pattern extreme: the swept level (EQL for LONG, EQH for SHORT)
     if direction == "LONG":
         eq_lows = sweeps.get("equal_lows", [])
-        pattern_extreme = min(eq_lows) if eq_lows else (price - atr_val)
+        pattern_extreme = min(eq_lows) if (isinstance(eq_lows, list) and eq_lows) else (price - atr_val)
         opposite_liq = struct.get("last_pivot_high", price + 2 * atr_val) or (price + 2 * atr_val)
     else:
         eq_highs = sweeps.get("equal_highs", [])
-        pattern_extreme = max(eq_highs) if eq_highs else (price + atr_val)
+        pattern_extreme = max(eq_highs) if (isinstance(eq_highs, list) and eq_highs) else (price + atr_val)
         opposite_liq = struct.get("last_pivot_low", price - 2 * atr_val) or (price - 2 * atr_val)
 
     impulse = abs(last.high - last.low)
@@ -278,12 +279,12 @@ def _recipe_bos_continuation(
         if not retest_level:
             return None
         # Price must be within 0.5× ATR of the retest level from above
-        if not (retest_level - 0.5 * atr_val <= price <= retest_level + 0.5 * atr_val):
+        if not (retest_level - 1.0 * atr_val <= price <= retest_level + 1.0 * atr_val):
             return None
-        # Rejection wick: bullish → lower wick >= 60% of candle range
+        # Rejection wick: bullish → lower wick >= 30% of candle range
         c_range = last.high - last.low
         lower_wick = last.open - last.low if last.open > last.low else last.close - last.low
-        if c_range > 0 and (lower_wick / c_range) < 0.40:
+        if c_range > 0 and (lower_wick / c_range) < 0.30:
             return None
         pattern_extreme = retest_level
         opposite_liq = struct.get("last_pivot_high", price + 2 * atr_val) or (price + 2 * atr_val)
@@ -291,11 +292,11 @@ def _recipe_bos_continuation(
         retest_level = struct.get("last_pivot_low", price + atr_val)
         if not retest_level:
             return None
-        if not (retest_level - 0.5 * atr_val <= price <= retest_level + 0.5 * atr_val):
+        if not (retest_level - 1.0 * atr_val <= price <= retest_level + 1.0 * atr_val):
             return None
         c_range = last.high - last.low
         upper_wick = last.high - last.open if last.open < last.high else last.high - last.close
-        if c_range > 0 and (upper_wick / c_range) < 0.40:
+        if c_range > 0 and (upper_wick / c_range) < 0.30:
             return None
         pattern_extreme = retest_level
         opposite_liq = struct.get("last_pivot_low", price - 2 * atr_val) or (price - 2 * atr_val)
@@ -350,7 +351,7 @@ def _recipe_vol_expansion(
     """
     # BB width percentile check
     bb_pct = _bb_width_percentile(candles)
-    if bb_pct >= 15.0:
+    if bb_pct >= 25.0:
         return None
 
     # Squeeze state enriches the signal (FIRE or ON strengthens conviction)
@@ -382,11 +383,11 @@ def _recipe_vol_expansion(
 
     if direction == "LONG":
         eq_lows = sweeps.get("equal_lows", [])
-        pattern_extreme = min(eq_lows) if eq_lows else (price - atr_val)
+        pattern_extreme = min(eq_lows) if (isinstance(eq_lows, list) and eq_lows) else (price - atr_val)
         opposite_liq = struct.get("last_pivot_high", price + 3 * atr_val) or (price + 3 * atr_val)
     else:
         eq_highs = sweeps.get("equal_highs", [])
-        pattern_extreme = max(eq_highs) if eq_highs else (price + atr_val)
+        pattern_extreme = max(eq_highs) if (isinstance(eq_highs, list) and eq_highs) else (price + atr_val)
         opposite_liq = struct.get("last_pivot_low", price - 3 * atr_val) or (price - 3 * atr_val)
 
     # VOL_EXPANSION targets are wider — use 2× RR for TP1

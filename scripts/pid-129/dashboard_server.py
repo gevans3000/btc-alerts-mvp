@@ -73,6 +73,22 @@ def _save_overrides():
     OVERRIDES_PATH.write_text(json.dumps(_OVERRIDES, indent=2), encoding="utf-8")
 
 
+def _load_execution_log():
+    exec_log = []
+    exec_path = Path("logs/execution_log.jsonl")
+    if exec_path.exists():
+        try:
+            lines = exec_path.read_text(encoding="utf-8").splitlines()
+            for l in reversed(lines[-5:]):
+                try:
+                    exec_log.append(json.loads(l))
+                except:
+                    pass
+        except Exception:
+            pass
+    return exec_log
+
+
 def _match_recipe(alert_id, alerts):
     """Find the recipe name from the alerts JSONL for a given alert_id."""
     for a in alerts:
@@ -135,6 +151,8 @@ def _load_alerts(limit=50):
                     row = json.loads(line)
                     # ── Phase 26 Gap 3: Filter junk alerts ──
                     if row.get("strategy") in (None, "TEST", "SYNTHETIC"):
+                        continue
+                    if row.get("symbol") in ("SPX", "SPX_PROXY"):
                         continue
                     rows.append(row)
                 except: continue
@@ -879,6 +897,7 @@ def get_dashboard_data():
                 flows=flows,
                 derivatives=derivatives,
             ),
+            "execution_log": _load_execution_log(),
             "logs": f"Heartbeat {datetime.now().strftime('%H:%M:%S')}",
         }
     except Exception as e:
@@ -1028,6 +1047,31 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 _OVERRIDES = {}
                 _save_overrides()
                 self._json_response({"status": "success", "message": "All overrides cleared"})
+
+            elif action == "execute_trade":
+                from tools.executor import execute_trade
+
+                alerts = _load_alerts(limit=10)
+                target = None
+                for a in reversed(alerts):
+                    if a.get("tier") == "A+" and a.get("symbol", "BTC") != "SPX_PROXY":
+                        target = a
+                        break
+
+                if not target:
+                    self._json_response({"status": "error", "error": "No A+ alert available to execute"})
+                    return
+
+                mode = "LIVE" if os.environ.get("LIVE_EXECUTION", "0") == "1" else "PAPER"
+                result = execute_trade(target, mode=mode)
+                self._json_response({
+                    "status": "success",
+                    "trade_status": result["status"],
+                    "order_id": result.get("order_id", ""),
+                    "fill_price": result.get("fill_price", 0),
+                    "reason": result.get("reason", ""),
+                    "mode": mode
+                })
 
             elif action == "run_profit_preflight":
                 with _STATE_LOCK:
