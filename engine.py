@@ -442,6 +442,7 @@ def compute_score(
         rubric_details["volatility"] = True
 
     trace["rubric"] = {"score": rubric_score, "details": rubric_details}
+    trace["confluence_score"] = rubric_score
     
     # --- Phase 27: Strict Vetoes (Ruthless Accuracy) ---
     is_ltf = timeframe in ["5m", "15m"]

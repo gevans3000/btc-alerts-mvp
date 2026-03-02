@@ -667,11 +667,32 @@ def get_dashboard_data():
             except Exception:
                 pass
 
+        # ── Engine heartbeat: decouple "engine alive" from "tradeable alert generated" ──
+        # data/last_cycle.json is written by app.py on every run() call, even when
+        # all signals are NO-TRADE.  Using it for alerts_stale means the Risk Gate
+        # stays green in quiet markets where no signals meet the trade threshold.
+        last_cycle_time = 0.0
+        try:
+            hb = _safe_json(BASE_DIR / "data" / "last_cycle.json", {})
+            hb_ts = hb.get("timestamp", "")
+            if hb_ts:
+                hb_clean = hb_ts.split(".")[0].replace("Z", "").replace("T", " ")
+                last_cycle_time = datetime.strptime(hb_clean, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
+        except Exception:
+            pass
+
         now_ts = datetime.now(timezone.utc).timestamp()
-        alerts_stale = (now_ts - last_alert_time > 120) or not all_recent_alerts
+        # Liveness is based on engine heartbeat; fall back to last alert when no heartbeat yet.
+        engine_time = last_cycle_time if last_cycle_time > 0 else last_alert_time
+        alerts_stale = (now_ts - engine_time > 120) or (engine_time == 0)
+        # data_age_seconds still reflects last tradeable alert age (useful context for operator).
         data_age_seconds = now_ts - last_alert_time if last_alert_time > 0 else 9999
 
         mid = _latest_price(all_recent_alerts)
+        # Prefer the heartbeat price (written every cycle by app.py) over a stale alert price.
+        hb_price = hb.get("btc_price") if isinstance(hb, dict) else None
+        if hb_price and hb_price > 0:
+            mid = hb_price
         taker_ratio = 1.0
 
         if not alerts_stale:
@@ -687,6 +708,8 @@ def get_dashboard_data():
         budget = {"remaining": 8}
         if alerts_stale and _HAS_COLLECTORS:
             try:
+                from collectors.base import BudgetManager
+                budget = BudgetManager()
                 price_snap = fetch_btc_price(budget)
                 if price_snap.healthy and price_snap.price > 0:
                     mid = price_snap.price

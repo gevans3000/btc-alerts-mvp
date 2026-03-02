@@ -367,7 +367,7 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
             portfolio.on_alert(
                 alert_id, alert.symbol, alert.timeframe, alert.direction, 
                 current_price_for_state, alert.invalidation, alert.tp1, alert.action,
-                confidence=int(alert.confidence_score or 0),
+                confidence=int(alert.confidence or 0),
                 regime=str(ctx.get("regime") or alert.regime or "unknown"),
                 session=str(ctx.get("session") or "unknown")
             )
@@ -407,6 +407,23 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         "alerts_generated": len(alerts),
         "btc_price_healthy": btc_price.healthy if btc_price else False,
     })
+
+    # Write engine heartbeat so the dashboard can distinguish "engine alive, no signals"
+    # from "engine dead / data truly stale".
+    try:
+        from datetime import datetime, timezone as _tz
+        heartbeat = {
+            "timestamp": datetime.now(_tz.utc).isoformat(),
+            "btc_price": round(btc_price.price, 2) if btc_price and btc_price.healthy else None,
+            "btc_price_healthy": btc_price.healthy if btc_price else False,
+            "alerts_generated": len(alerts),
+            "alerts_sent": sum(1 for a in alerts if a.action != "SKIP"),
+            "cycle_duration_s": round(cycle_elapsed, 2),
+        }
+        Path("data").mkdir(exist_ok=True)
+        Path("data/last_cycle.json").write_text(json.dumps(heartbeat))
+    except Exception as exc:
+        logger.warning(f"Failed to write cycle heartbeat: {exc}")
 
 
 

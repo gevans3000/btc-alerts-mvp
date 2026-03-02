@@ -1,304 +1,212 @@
-# Phase Checkups — Missing / Incomplete Items from Phases 10-26
+# Phase Checkups — Implementation Instructions (Phases 10–27)
 
-> **Status:** WORKING DOCUMENT  
-> **Last Updated:** 2026-03-02  
-> **Purpose:** Track items from past phases that were documented but not fully implemented
-
----
-
-## CRITICAL: Items That Affect Profitability Directly
-
-| # | Issue | Phase Reference | Status | Impact |
-|---|-------|-----------------|--------|--------|
-| 1 | **min_rr enforcement in engine.py** | Phase 20:133-134 | ✅ IMPLEMENTED | Trades below timeframe `min_rr` are now blocked before final signal publish |
-| 2 | **Kelly % on Live Tape** | Phase 25:24, 331-360 | ✅ IMPLEMENTED | `kelly_pct` now shown in Live Tape grid as live-updating Kelly % |
-| 3 | **Circuit breaker dashboard prominence** | Phase 26:78+ | ✅ IMPLEMENTED | Added large banner + execute button lock while circuit breaker is active |
-| 4 | **Session edge stats** | Phase 25:27 | ✅ IMPLEMENTED (API) | Added per-session win-rate stats in `_portfolio_stats()` payload (`session_stats`) |
-| 5 | **Regime-specific win rates** | Phase 25/26 | ✅ IMPLEMENTED (API) | Added per-regime win-rate stats in `_portfolio_stats()` payload (`regime_stats`) |
+> **Purpose:** Tell an implementing agent exactly what is broken or missing and how to fix it.
+> **Scope:** Phases 10–27 only. Do not go beyond Phase 27.
+> **Last Audited:** 2026-03-02 (full codebase read, every fix below is confirmed against actual code)
 
 ---
 
-## Phase 10 — ✅ DONE
+## STATUS OVERVIEW
 
-- Live BTC Price ✅
-- Risk Gate (Trade Safety) ✅
-- Equity Curve ✅
-- Confluence Heatmap ✅
-- Regime Detection ✅
-- Execution Modal ✅
+| Phase Range | Status |
+|-------------|--------|
+| Phases 10–26 | ✅ All items confirmed implemented. No action required. |
+| Phase 27 | ⚠️ 3 confirmed gaps. Instructions below. |
 
 ---
 
-## Phase 11 — ✅ DONE
+## PHASE 27 — 3 ITEMS TO FIX
 
-- Dead function removed ✅
-- against_count tracked ✅
-- Radar IDs added ✅
-- WebSocket dynamic update ✅
-- Net score display ✅
+### FIX 1 — CRITICAL: `alert.confidence_score` AttributeError in `app.py`
 
----
+**What is broken:**
+`app.py` line 370 references `alert.confidence_score` on an `AlertScore` object. The `AlertScore` dataclass (`intelligence/__init__.py:21`) only has a field named `confidence`, not `confidence_score`. Every time a non-NEUTRAL alert fires and is passed to `portfolio.on_alert()`, this raises `AttributeError: 'AlertScore' object has no attribute 'confidence_score'`, silently caught by the outer try/except, and the portfolio trade is never recorded.
 
-## Phase 12 — ✅ DONE
+**File:** `app.py`
 
-- trace["codes"] fix ✅
-- Code mappings (HTF, FG, Derivatives, ML) ✅
-- Live Orderbook ✅
-
----
-
-## Phase 13 — ✅ DONE
-
-- r_multiple field fix ✅
-- Wall threshold 5.0→2.0 ✅
-- ML threshold 35→20 ✅
-- SQUEEZE_ON mapped ✅
-- JSONL fields (action, rr_ratio, etc) ✅
-- Execution Matrix entry/stop/TP ✅
-
----
-
-## Phase 14 — ✅ DONE (All items implemented)
-
-- Spread estimation ✅
-- Momentum threshold 0.3→0.15 ✅
-- Orderbook limit 50→200 ✅
-- Funding thresholds fixed ✅
-- OI/Basis thresholds lowered ✅
-- Context fallback ✅
-- Flow codes added ✅
-- POC proximity 0.5%→1.5% ✅
-
----
-
-## Phase 15 — ✅ DONE
-
-- Provider fallback chain ✅
-- Budget limits updated ✅
-- OKX derivatives fallback ✅
-- OKX orderbook fallback ✅
-- OKX flows fallback ✅
-- Yahoo delays ✅
-
----
-
-## Phase 16 — ✅ DONE
-
-- TIMEFRAME_RULES dict fix ✅
-- fetch_orderbook(budget_manager) ✅
-- Fallback constructors fixed ✅
-- SHORT confidence abs() ✅
-- Duplicate build_verdict_context removed ✅
-- WS payload size reduced ✅
-- Spread estimate 0.00002→0.00004 ✅
-- Streak on zero fix ✅
-- Risk Gate logic fix ✅
-
----
-
-## Phase 17 — ✅ DONE
-
-New intelligence modules created:
-- intelligence/structure.py ✅
-- intelligence/session_levels.py ✅
-- intelligence/sweeps.py ✅
-- intelligence/anchored_vwap.py ✅
-- intelligence/volume_impulse.py ✅
-- intelligence/oi_classifier.py ✅
-- intelligence/auto_rr.py ✅
-- Volume profile LVN enhancement ✅
-- Engine wiring ✅
-- Radar probe updates ✅
-
----
-
-## Phase 18 — ✅ DONE (All items documented)
-
-- Context fields expanded ✅
-- Volume impulse polarity split ✅
-- Key Levels panel ✅
-- RVol + Vol Regime cells ✅
-- Lifecycle limit to 10 ✅
-- 15 Radar Probes ✅
-- Confidence/Tier gating ✅
-- Dashboard live data ✅
-- Position size calculator ✅
-- Lower confidence thresholds ✅
-- Institutional Context Sentinel ✅
-
----
-
-## Phase 19 — ✅ DONE (All 14 fixes documented)
-
-All fixes marked as done in phase doc:
-- FIX 12: Score normalization (SCORE_MULTIPLIER) ✅
-- FIX 10: A+ tier guard ✅
-- FIX 13: Graduated Execution Decision ✅
-- FIX 14: Auto-close stale NEUTRAL trades ✅
-- FIX 1-9, 11: Probe fixes ✅
-
----
-
-## Phase 20 — ⚠️ PARTIALLY DONE
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Score calibration (FIX 1) | ✅ | SCORE_MULTIPLIER = 7.0 in engine.py |
-| Probe diagnostics (FIX 2) | ✅ | Tooltips added |
-| Recent Signals panel (FIX 3) | ✅ | Last 10 alerts table |
-| System accuracy badge (FIX 4) | ✅ | Edge (last N) shown |
-| **min_rr enforcement** | ✅ | Enforced in `engine.py`; signals below timeframe threshold are blocked |
-
-### Phase 20 Resolution
-- `engine.py` now checks computed `rr_ratio` against `TIMEFRAME_RULES[timeframe]["min_rr"]` before final publish.
-- Alerts breaching threshold are marked `NO-TRADE` / `SKIP` with a blocker reason.
-
----
-
-## Phase 21 — ✅ DONE
-
-- Phase 21 doc marks complete (Premium UX/UI polish) ✅
-- No open profitability carry-over identified from this phase ✅
-
----
-
-## Phase 22 — ✅ DONE
-
-- Phase 22 doc marks complete (recipes + confluence rubric) ✅
-- No open profitability carry-over identified from this phase ✅
-
----
-
-## Phase 23 — ✅ DONE
-
-- Phase 23 doc marks complete (recipe-aware execution + MTF confirmation) ✅
-- No open profitability carry-over identified from this phase ✅
-
----
-
-## Phase 24 — ✅ DONE
-
-- Phase 24 doc marks complete (backend rewrite + watcher/API/analytics/commands) ✅
-- No open profitability carry-over identified from this phase ✅
-
----
-
-## Phase 25 — ⚠️ PARTIAL
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Vol regime extraction | ✅ | In dashboard_server.py |
-| Auto-pilot muting | ✅ | Regime-based recipe suppression |
-| Kelly calculation | ✅ | In _portfolio_stats() |
-| Kelly display in Execute Modal | ✅ | Phase 25:360 shows Kelly in modal |
-| Kelly on Live Tape | ✅ | Added `live-kelly` tile bound to `data.stats.kelly_pct` in WS handler |
-| Session data in alerts | ✅ | `session` field in alerts |
-| Regime data in alerts | ✅ | `regime` field in alerts |
-
----
-
-## Phase 26 — ⚠️ PARTIAL
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Circuit breaker calculation | ✅ | DD > 8% or streak <= -4 |
-| Circuit breaker in WS payload | ✅ | `circuit_breaker` key present |
-| **Circuit breaker prominence** | ✅ | Added large red lockout banner + execution button lock when active |
-| Data age tracking | ✅ | `data_age_seconds` in payload |
-
----
-
-## Quick Wins Implemented
-
-### 1. Enforce min_rr (HIGHEST PRIORITY)
-**File:** `engine.py` - Add around line 470-480
-
+**Find this exact line (around line 370):**
 ```python
-# After blockers are collected, before _tier_and_action call:
-cfg = TIMEFRAME_RULES.get(timeframe, TIMEFRAME_RULES["5m"])
-if rr < cfg.get("min_rr", 1.2):
-    blockers.append(f"R:R {rr:.2f} below {cfg['min_rr']} threshold")
+                confidence=int(alert.confidence_score or 0),
 ```
 
-### 2. Add Kelly % to Live Tape
-**File:** `generate_dashboard.py` - Add to live-grid section
-
+**Replace it with:**
 ```python
-<div class="stat-card"><div class="stat-label">Kelly %</div><div id="live-kelly" class="live-value">--</div></div>
+                confidence=int(alert.confidence or 0),
 ```
 
-Then update WS handler to populate from `data.stats.kelly_pct`.
-
-### 3. Add Large "WAIT" Indicator
-**File:** `generate_dashboard.py` - Add prominent banner when:
-- Confluence < 4 signals OR
-- R:R < 1.2 OR  
-- Circuit breaker active
-
-### 4. Add Session Win Rates
-**File:** `dashboard_server.py` - Add to _portfolio_stats()
-
-Calculate win rate per session (asia/london/ny/weekend) from closed trades.
-
-### 5. Add Regime Win Rates
-**File:** `dashboard_server.py` - Add to _portfolio_stats()
-
-Calculate win rate per regime (trend/range/chop) from closed trades.
+**Verify:**
+```bash
+python -c "
+from intelligence import AlertScore
+a = AlertScore.__new__(AlertScore)
+a.confidence = 72
+print(int(a.confidence or 0))  # must print 72
+print('PASS')
+"
+python app.py --once
+# Should run with no AttributeError in logs
+```
 
 ---
 
+### FIX 2 — HIGH: 4h candles never fetched, Macro Veto silently disabled
 
-## Parallel Merge Plan (Independent Workstreams)
+**What is broken:**
+`engine.py` has a Phase 27 macro veto that checks 4h trend bias before allowing a 5m/15m signal (engine.py ~line 451):
+```python
+if is_ltf and candles_4h and len(candles_4h) >= 30:
+    bias_4h = _trend_bias(candles_4h)
+```
+But `collectors/price.py:fetch_btc_multi_timeframe_candles()` only defines timeframes `5m`, `15m`, `1h` in its `frames` dict (lines 206–210). So `btc_tf.get("4h", [])` in `app.py:274` is always an empty list. The macro veto's 4h guard fires immediately and the veto is **completely skipped every run**.
 
-> Goal: each stream can be implemented and merged independently with minimal conflict risk.
+**File:** `collectors/price.py`
 
-1. **Stream A — Engine R:R Gate** (`engine.py`)
-   - Enforce `min_rr` blocker before tier/action finalization.
-2. **Stream B — Dashboard Safety Signals** (`generate_dashboard.py`)
-   - Add Live Tape Kelly tile + prominent circuit-breaker banner/execute lock.
-3. **Stream C — Edge Attribution Analytics** (`dashboard_server.py`, optional small dashboard panel)
-   - Add `session_stats` and `regime_stats` into `_portfolio_stats()` for performance filtering.
+**Find this exact block (lines 205–210):**
+```python
+def fetch_btc_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
+    frames = {
+        "5m": {"kraken": 5, "bybit": "5", "binance": "5m", "coinbase": 300, "bitstamp": 300},
+        "15m": {"kraken": 15, "bybit": "15", "binance": "15m", "coinbase": 900, "bitstamp": 900},
+        "1h": {"kraken": 60, "bybit": "60", "binance": "1h", "coinbase": 3600, "bitstamp": 3600},
+    }
+```
 
-Merge order: **A → C → B** (backend schema first, UI binding last).
+**Replace it with (add the `"4h"` entry):**
+```python
+def fetch_btc_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -> Dict[str, List[Candle]]:
+    frames = {
+        "5m": {"kraken": 5, "bybit": "5", "binance": "5m", "coinbase": 300, "bitstamp": 300},
+        "15m": {"kraken": 15, "bybit": "15", "binance": "15m", "coinbase": 900, "bitstamp": 900},
+        "1h": {"kraken": 60, "bybit": "60", "binance": "1h", "coinbase": 3600, "bitstamp": 3600},
+        "4h": {"kraken": 240, "bybit": "240", "binance": "4h", "coinbase": 14400, "bitstamp": 14400},
+    }
+```
+
+Do not change anything else in the function. The rest of the loop already handles the new key automatically.
+
+**Verify:**
+```bash
+python -c "
+from collectors.price import fetch_btc_multi_timeframe_candles
+from collectors.base import BudgetManager
+bm = BudgetManager()
+tf = fetch_btc_multi_timeframe_candles(bm, limit=35)
+assert '4h' in tf, 'FAIL: 4h key missing'
+assert len(tf['4h']) >= 30, f'FAIL: only {len(tf[\"4h\"])} 4h candles'
+print(f'4h candles: {len(tf[\"4h\"])}  PASS')
+"
+```
 
 ---
 
-## What Most Improves Higher-Probability Trades (Priority)
+### FIX 3 — MEDIUM: `confluence_score` missing from `decision_trace`
 
-1. **Hard-block low R:R trades** (min_rr enforcement) — immediate expectancy protection.
-2. **Prominent circuit-breaker UI lockout** — prevents revenge trades during drawdown/streak stress.
-3. **Session/regime win-rate visibility** — enables selective deployment only where edge is proven.
-4. **Live Kelly on tape** — keeps sizing consistent with current edge quality.
+**What is broken:**
+Phase 27 requires the signal engine to produce a `confluence_score` key inside the `decision_trace` JSON (Phase_27.md verification checklist). Currently the rubric score lives at `decision_trace["rubric"]["score"]` but there is no top-level `decision_trace["confluence_score"]`. The JSONL logs and any downstream consumer reading `decision_trace.confluence_score` will get `None`.
+
+**File:** `engine.py`
+
+**Find this exact line (around line 444):**
+```python
+    trace["rubric"] = {"score": rubric_score, "details": rubric_details}
+```
+
+**Insert one line immediately after it:**
+```python
+    trace["rubric"] = {"score": rubric_score, "details": rubric_details}
+    trace["confluence_score"] = rubric_score
+```
+
+Do not modify `rubric_score`, `rubric_details`, or anything else in that block.
+
+**Verify:**
+```bash
+python app.py --once
+python -c "
+import json
+lines = open('logs/pid-129-alerts.jsonl').read().strip().splitlines()
+a = json.loads(lines[-1])
+cs = (a.get('decision_trace') or {}).get('confluence_score')
+print(f'confluence_score = {cs}')
+assert cs is not None, 'FAIL: confluence_score missing'
+print('PASS')
+"
+```
 
 ---
 
-## Testing Commands
+## FULL VERIFICATION (run after all 3 fixes)
 
-```powershell
-# Test engine imports
-python -c "from engine import compute_score; print('Engine OK')"
+```bash
+# 1. Engine and config import cleanly
+python -c "from engine import compute_score; from config import validate_config; validate_config(); print('Imports OK')"
 
-# Test dashboard generation
-python scripts/pid-129/generate_dashboard.py
-
-# Test one cycle
+# 2. One full cycle with no errors
 python app.py --once
 
-# Check recent alerts for R:R
-python -c "import json; lines=open('logs/pid-129-alerts.jsonl').read().strip().splitlines(); a=json.loads(lines[-1]); print(f'RR: {a.get(\"rr_ratio\")}, Direction: {a.get(\"direction\")}')"
+# 3. Check last alert for all required fields
+python -c "
+import json
+a = json.loads(open('logs/pid-129-alerts.jsonl').readlines()[-1])
+tr = a.get('decision_trace', {})
+checks = {
+    'confidence':       a.get('confidence'),
+    'tier':             a.get('tier'),
+    'direction':        a.get('direction'),
+    'rr_ratio':         a.get('rr_ratio'),
+    'confluence_score': tr.get('confluence_score'),
+    'rubric':           tr.get('rubric'),
+    'blockers':         tr.get('blockers'),
+}
+for k, v in checks.items():
+    status = 'OK' if v is not None else 'MISSING'
+    print(f'  {k:<20} {status}  ({v})')
+"
 
-# Check min_rr config
-python -c "from config import TIMEFRAME_RULES; print(TIMEFRAME_RULES)"
+# 4. Dashboard server starts without error
+python scripts/pid-129/dashboard_server.py &
+# Open http://localhost:8000 — should show live BTC price, no red errors
 ```
-
-## Phase 27 — ✅ DONE
-
-- Strict Signal Filtration & Vetoes ✅
-- API Fallback Rotation Pipeline (Binance → CoinGecko → CryptoCompare) ✅
-- Signal Confluence Upgrade (Delta/CVD scoring) ✅
-- Low-Footprint Execution (caching) ✅
-- Confluence Score in decision_trace JSON ✅
 
 ---
 
-*This document will be updated as we review more phases and implement fixes.*
+## DASHBOARD HEALTH CHECKLIST
+
+The dashboard at `http://localhost:8000` should show all of the following. If any are broken, check the WebSocket payload from `dashboard_server.py:get_dashboard_data()`.
+
+| Panel / Element | Expected | Server Key |
+|----------------|----------|------------|
+| Live BTC price | Updates every 5s | `orderbook.mid` (from `data/last_cycle.json`) |
+| Confidence score | 0–100 integer | `alerts[].confidence` |
+| Tier badge | A+ / B / WATCH / NO-TRADE | `alerts[].tier` |
+| Direction | LONG / SHORT / NEUTRAL | `alerts[].direction` |
+| R:R ratio | e.g. 2.3 | `alerts[].rr_ratio` |
+| Regime badge | trend / range / chop | `alerts[].regime` |
+| Kelly % tile | Live updating | `stats.kelly_pct` |
+| Circuit breaker | Red lockout banner when `active=true` | `circuit_breaker.active` |
+| Recent signals table | Last 10 alerts | `alerts[]` array |
+| Win rate | % | `stats.win_rate` |
+| Profit factor | number | `stats.profit_factor` |
+| Session stats | asia/london/ny win rates | `stats.session_stats` |
+| Regime stats | trend/range/chop win rates | `stats.regime_stats` |
+| Execution modal | Opens on signal click, shows entry/stop/TP | `alerts[].entry_zone` etc |
+
+If the dashboard shows "Data Stale" or "Risk Gate RED" when the engine is running: confirm `data/last_cycle.json` exists and has a timestamp within the last 2 minutes. The server reads this file for engine liveness (not the JSONL log).
+
+---
+
+## WHAT IS ALREADY DONE (do not re-implement)
+
+Phases 10–26 are fully implemented and tested. The following are confirmed working:
+
+- All 13+ intelligence probes wired in engine.py (structure, sweeps, vwap, volume_impulse, oi_classifier, auto_rr, squeeze, sentiment, volume_profile, liquidity, macro_correlation, recipes, detectors)
+- min_rr enforcement gate before signal publish (engine.py ~line 516)
+- Phase 27 vetoes in engine.py: macro (1h+4h), order-flow (taker ratio), chop-zone (value area) — all three gate signals via the `blockers` list
+- Multi-provider fallback chain in all collectors (price/derivatives/flows) with BudgetManager
+- Engine heartbeat (`data/last_cycle.json`) with btc_price written by app.py every cycle
+- Dashboard reads heartbeat for BTC price and engine liveness (dashboard_server.py ~line 676)
+- Circuit breaker banner + execute button lock when active
+- Kelly% on Live Tape
+- Session stats and regime stats in `_portfolio_stats()`
+- SCORE_MULTIPLIER = 7.0x normalization
+- Confluence rubric (A+/B tier gate, 6-point scale)

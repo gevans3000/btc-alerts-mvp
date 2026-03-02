@@ -207,6 +207,7 @@ def fetch_btc_multi_timeframe_candles(budget: BudgetManager, limit: int = 120) -
         "5m": {"kraken": 5, "bybit": "5", "binance": "5m", "coinbase": 300, "bitstamp": 300},
         "15m": {"kraken": 15, "bybit": "15", "binance": "15m", "coinbase": 900, "bitstamp": 900},
         "1h": {"kraken": 60, "bybit": "60", "binance": "1h", "coinbase": 3600, "bitstamp": 3600},
+        "4h": {"kraken": 240, "bybit": "240", "binance": "4h", "coinbase": 14400, "bitstamp": 14400},
     }
     out = {}
     for label, m in frames.items():
