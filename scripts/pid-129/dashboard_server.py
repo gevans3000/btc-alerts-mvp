@@ -824,7 +824,9 @@ def get_dashboard_data():
             bs_filter = "⚡ HEAVY BUYS — Bullish pressure"
             bs_severity = 0
 
-        stats = _portfolio_stats(portfolio, current_price=mid, alerts=all_recent_alerts)
+        # Load full alert history for stats (limit=50 only captures ~36 of 79 resolved trades)
+        _all_alerts_for_stats = _load_alerts(limit=1000)
+        stats = _portfolio_stats(portfolio, current_price=mid, alerts=_all_alerts_for_stats)
 
         # ── Phase 25: Drawdown Circuit Breaker ──
         dd_pct = stats.get("drawdown_pct", 0.0)

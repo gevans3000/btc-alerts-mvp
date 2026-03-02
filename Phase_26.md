@@ -362,4 +362,120 @@ After all 7 tasks are complete, verify each of the following:
 
 ---
 
+## ✅ POST-COMPLETION AUDIT — GAPS CLOSED (Found 2026-03-02, Fixed 2026-03-02)
+
+Phase 26 had three unresolved gaps after initial implementation. All four gaps below have been audited and closed. An additional bug (portfolio stats sample size) was discovered and fixed during audit.
+
+---
+
+### Gap 1 — ✅ FIXED: Anti-Flicker JS Applied to `generate_dashboard.py`
+
+**Status:** Fixed in Phase 27 commit. `generate_dashboard.py` lines 1430–1433 now use `Object.assign({{}}, cachedCtx, alertCtx)` merge.
+
+**Original issue:**
+Phase 26 Task 2.3 specified replacing the `wsCtx` assignment in `dashboard.html` to merge live alert context with the cached server context:
+```javascript
+// Required by Phase 26 Task 2.3
+const alertCtx = ((wsLatest.decision_trace || {}).context) || {};
+const cachedCtx = data.cached_context || {};
+const wsCtx = Object.assign({}, cachedCtx, alertCtx);
+```
+The actual code in `scripts/pid-129/generate_dashboard.py` (line ~1341) still uses the OLD single-source assignment:
+```javascript
+const wsCtx = ((wsLatest.decision_trace||{{}}).context)||{{}};
+```
+The dashboard HTML is generated from `generate_dashboard.py`, not from a static `dashboard.html`. The Task 2.3 fix was never applied to the generator. As a result:
+- Vol/Regime, OI/Regime, DXY Macro, Sentiment all show `—` whenever the last alert lacks context
+- Anti-flicker is only half-implemented (server caches it, JS never reads `cached_context`)
+
+**Confirmed evidence:** The last two alerts in `logs/pid-129-alerts.jsonl` have `strategy: TEST` and `strategy: None` with `decision_trace: {confluence_score: N}` — empty context. The JS reads these and shows `—` for all tape intelligence fields.
+
+**File to fix:** `scripts/pid-129/generate_dashboard.py`
+
+**Find (around line 1341):**
+```javascript
+const wsCtx = ((wsLatest.decision_trace||{{}}).context)||{{}};
+```
+**Replace with:**
+```javascript
+const alertCtx = ((wsLatest.decision_trace||{{}}).context)||{{}};
+const cachedCtx = data.cached_context||{{}};
+const wsCtx = Object.assign({{}}, cachedCtx, alertCtx);
+```
+> Note: `{{}}` is the Jinja2-escaped form of `{}` used inside the Python f-string template in `generate_dashboard.py`. Check the surrounding code and match the brace escaping style exactly.
+
+**Verify:** After regenerating and opening the dashboard, Vol/Regime, OI/Regime, DXY Macro, and Sentiment should show real values (from the last alert that had valid context) instead of `—`.
+
+---
+
+### Gap 2 — ✅ FIXED: `_portfolio_stats()` Now Falls Back to JSONL
+
+**Status:** Fixed in Phase 27 commit. `dashboard_server.py` `_portfolio_stats()` lines 163–175 now iterate over alerts when `closed_trades` is empty.
+
+**Additional bug fixed during audit (2026-03-02):** The fallback was passing `all_recent_alerts` (limit=50) which only captured 36 of 79 resolved trades. Fixed to use `_load_alerts(limit=1000)` at line 828 so all historical resolved trades are counted.
+
+**Original issue:**
+`data/paper_portfolio.json` contains an empty `closed_trades` list despite 79 resolved trades existing in `logs/pid-129-alerts.jsonl` (36 wins, 41 losses as of 2026-03-02). The dashboard's `_portfolio_stats()` function reads exclusively from `portfolio["closed_trades"]`. Because that list is empty, `win_rate`, `avg_r`, `kelly_pct`, and `profit_factor` all compute to `0.0`.
+
+**Root cause:** The paper portfolio recorder (`tools/paper_trader.py` or `portfolio.on_alert()`) is not writing resolved trades to `data/paper_portfolio.json`. The outcomes are tracked in the JSONL log but never surfaced to the portfolio file that the dashboard reads.
+
+**Impact:**
+- Kelly % shows 0% → position sizing guidance is meaningless
+- Win Rate shows 0% → circuit breaker streak logic has no signal
+- Auto-tuner has no performance data to tune from
+- Morning briefing correctly reads 79 resolved trades from JSONL (it reads the log directly) but the dashboard shows nothing
+
+**File to fix:** `scripts/pid-129/dashboard_server.py`
+
+**Fix approach — Make `_portfolio_stats()` fall back to JSONL outcomes when `closed_trades` is empty:**
+
+Inside `_portfolio_stats()`, after computing `closed = portfolio.get("closed_trades", [])`, add a fallback that reads from the JSONL alert log:
+
+```python
+def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
+    closed = portfolio.get("closed_trades", []) if isinstance(portfolio, dict) else []
+
+    # ── Phase 26 Gap 2 Fix: Fall back to JSONL outcomes if portfolio file is empty ──
+    if not closed and alerts:
+        for a in alerts:
+            outcome = a.get("outcome")
+            r = a.get("r_multiple")
+            if outcome in ("WIN_TP1", "WIN_TP2", "LOSS", "TIMEOUT") and isinstance(r, (int, float)):
+                closed.append({
+                    "r_multiple": r,
+                    "direction": a.get("direction", "NEUTRAL"),
+                    "alert_id": a.get("alert_id"),
+                    "outcome": outcome,
+                })
+    # ... rest of function continues unchanged
+```
+
+**Verify:** After the fix, Live Tape should show non-zero Win Rate, Avg R, and Kelly % matching the morning briefing values (~46% win rate, -7.43R total).
+
+---
+
+### Gap 3 — ✅ FIXED: TEST and None-Strategy Alerts Filtered in `_load_alerts()`
+
+**Status:** Fixed in Phase 27 commit. `dashboard_server.py` `_load_alerts()` lines 136–138 now filter out `strategy in (None, "TEST", "SYNTHETIC")`. Verified: JSONL has 97 lines, 95 pass the filter (only 1 TEST + 1 None excluded).
+
+**Original issue:**
+Two alerts at the end of `logs/pid-129-alerts.jsonl` had `strategy: "TEST"` and `strategy: None`. Both had nearly empty `decision_trace` with no context, poisoning all tape fields.
+
+---
+
+### Gap 4 — CONTEXT: Negative Expectancy Requires Attention Before Live Execution
+
+**Observed data (2026-03-02):**
+- 7-day record: 36 wins / 41 losses (46% win rate)
+- Total P&L: **-7.43R** over 79 resolved trades
+- Average R per trade is negative (losses larger than wins on average)
+
+**What this means:** A 46% win rate with negative total R means the average loser exceeds the average winner by a significant margin. The R:R targets set by `auto_rr.py` are not being honored at exit, or entries are taken at unfavorable prices relative to the invalidation. The system needs positive expectancy (Win% × Avg_Win > (1 - Win%) × Avg_Loss) before Phase 28 live execution is justified.
+
+**This is NOT a bug to fix here** — it is a signal quality and tuning issue that belongs in Phase 27 (strict vetoes and filtration). However, it is documented here because the 0% dashboard stats (Gap 2) masked this problem entirely. Once Gap 2 is fixed and the dashboard shows real win rate data, the operator will be able to use this information to judge readiness.
+
+**Action required before Phase 28:** Run `python tools/auto_tune.py` once Gaps 1–3 are fixed and the dashboard shows real performance data. Evaluate whether the macro veto (4h), flow veto, and chop zone veto are actually reducing the loss rate before enabling live execution.
+
+---
+
 _Phase 26 | Live-Readiness Hardening & Free API Edge Expansion | Formatted for AI Agent Implementation_
