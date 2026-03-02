@@ -23,7 +23,10 @@ DETECTORS = {
 }
 
 TIMEFRAME_RULES = {
-    "5m":  {"min_rr": 1.35, "trade_long": 45, "trade_short": 18, "watch_long": 25, "watch_short": 34},
+    "5m":  {"min_rr": 1.35, "trade_long": 49, "trade_short": 15, "watch_long": 33, "watch_short": 31},
+    "15m":  {"min_rr": 1.25, "trade_long": 45, "trade_short": 20, "watch_long": 29, "watch_short": 36},
+    "1h":  {"min_rr": 1.15, "trade_long": 45, "trade_short": 24, "watch_long": 29, "watch_short": 40},
+},
     "15m": {"min_rr": 1.25, "trade_long": 40, "trade_short": 24, "watch_long": 20, "watch_short": 40},
     "1h":  {"min_rr": 1.15, "trade_long": 35, "trade_short": 28, "watch_long": 15, "watch_short": 42},
 }

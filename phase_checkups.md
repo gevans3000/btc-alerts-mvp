@@ -1,7 +1,7 @@
 # Phase Checkups — Missing / Incomplete Items from Phases 10-26
 
 > **Status:** WORKING DOCUMENT  
-> **Last Updated:** 2026-03-01  
+> **Last Updated:** 2026-03-02  
 > **Purpose:** Track items from past phases that were documented but not fully implemented
 
 ---
@@ -290,6 +290,14 @@ python -c "import json; lines=open('logs/pid-129-alerts.jsonl').read().strip().s
 # Check min_rr config
 python -c "from config import TIMEFRAME_RULES; print(TIMEFRAME_RULES)"
 ```
+
+## Phase 27 — ✅ DONE
+
+- Strict Signal Filtration & Vetoes ✅
+- API Fallback Rotation Pipeline (Binance → CoinGecko → CryptoCompare) ✅
+- Signal Confluence Upgrade (Delta/CVD scoring) ✅
+- Low-Footprint Execution (caching) ✅
+- Confluence Score in decision_trace JSON ✅
 
 ---
 
