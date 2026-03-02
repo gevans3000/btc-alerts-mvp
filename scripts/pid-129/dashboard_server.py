@@ -37,6 +37,11 @@ except ImportError:
     _HAS_COLLECTORS = False
     print("Warning: Could not import collectors. Derivatives/Price alpha may be missing.")
 
+try:
+    from config import TIMEFRAME_RULES
+except Exception:
+    TIMEFRAME_RULES = {}
+
 # Module-level shared state
 _STATE_LOCK = threading.Lock()
 _CACHED_DATA = {}          # Latest dashboard JSON payload
@@ -332,63 +337,175 @@ def _estimate_spread(alerts):
     return 1.0
 
 
-def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, overrides, spread, taker_ratio):
-    """Find highest-quality trade candidate and return execution readiness checks."""
-    candidates = []
+def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, overrides, spread, flows, derivatives):
+    """Find best long/short candidates and return deterministic execution playbook."""
     now = time.time()
     min_score = int(overrides.get("min_score", 65) or 65)
+    taker_ratio = float((flows or {}).get("taker_ratio") or 1.0)
+    crowding_score = float((flows or {}).get("crowding_score") or 0.0)
+    funding_rate = float((derivatives or {}).get("funding_rate") or 0.0)
+    oi_change_pct = float((derivatives or {}).get("oi_change_pct") or 0.0)
 
+    def _parse_age_seconds(ts):
+        if not ts:
+            return 999999.0
+        try:
+            dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+            return max(0.0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds())
+        except Exception:
+            return 999999.0
+
+    def _tf_min_rr(tf):
+        cfg = TIMEFRAME_RULES.get(str(tf), {}) if isinstance(TIMEFRAME_RULES, dict) else {}
+        try:
+            return float(cfg.get("min_rr", 1.2) or 1.2)
+        except Exception:
+            return 1.2
+
+    def _gate_candidate(c):
+        reds, ambers = [], []
+        if circuit_breaker.get("active"):
+            reds.append(circuit_breaker.get("reason") or "Circuit breaker active")
+        if float(data_age_seconds or 0) > 120:
+            reds.append(f"Data stale ({float(data_age_seconds or 0):.0f}s > 120s)")
+        if float(spread or 0) > 10:
+            reds.append(f"Spread too wide (${float(spread or 0):.2f} > $10)")
+        elif float(spread or 0) >= 5:
+            ambers.append(f"Spread caution (${float(spread or 0):.2f})")
+
+        if c is None:
+            return {"verdict": "RED", "blockers": ["No candidate"], "cautions": [], "passes": False}
+
+        min_rr = c["min_rr"]
+        if c["rr_ratio"] < min_rr:
+            reds.append(f"R:R {c['rr_ratio']:.2f} below {min_rr:.2f} threshold")
+        if c["confidence"] < min_score:
+            reds.append(f"Confidence {c['confidence']:.0f} below min score {min_score}")
+        if c["age_seconds"] > 600:
+            reds.append(f"Signal stale ({c['age_seconds']:.0f}s > 600s)")
+
+        if c["direction"] == "LONG":
+            if crowding_score >= 2.0:
+                ambers.append(f"Crowding risk LONG ({crowding_score:.2f})")
+            if funding_rate >= 0.0005 and oi_change_pct > 0:
+                ambers.append("Derivatives crowded LONG (funding high + OI up)")
+            if taker_ratio < 0.75:
+                ambers.append("Orderflow opposes LONG (heavy sells)")
+        else:
+            if crowding_score <= -2.0:
+                ambers.append(f"Crowding risk SHORT ({crowding_score:.2f})")
+            if funding_rate <= -0.0005 and oi_change_pct > 0:
+                ambers.append("Derivatives crowded SHORT (funding very negative + OI up)")
+            if taker_ratio > 1.35:
+                ambers.append("Orderflow opposes SHORT (heavy buys)")
+
+        verdict = "RED"
+        passes = False
+        if not reds:
+            verdict = "GREEN" if len(ambers) <= 1 else "AMBER"
+            passes = verdict == "GREEN"
+        return {"verdict": verdict, "blockers": reds, "cautions": ambers, "passes": passes}
+
+    def _format_candidate(c):
+        if not c:
+            return None
+        a = c["alert"]
+        gate = _gate_candidate(c)
+        return {
+            "id": a.get("alert_id") or a.get("id"),
+            "symbol": a.get("symbol"),
+            "timeframe": a.get("timeframe"),
+            "direction": c["direction"],
+            "confidence": round(c["confidence"], 1),
+            "rr_ratio": round(c["rr_ratio"], 2),
+            "age_seconds": round(c["age_seconds"], 1),
+            "entry_zone": a.get("entry_zone") or a.get("entry_price") or a.get("price"),
+            "invalidation": a.get("invalidation"),
+            "tp1": a.get("tp1"),
+            "tp2": a.get("tp2"),
+            "recipe": c["recipe"],
+            "expectancy_hint": c["expectancy_hint"],
+            "reason_codes": c["reason_codes"],
+            "gate_status": gate["verdict"],
+            "blockers": gate["blockers"],
+            "cautions": gate["cautions"],
+            "min_rr": c["min_rr"],
+        }
+
+    candidates_by_side = {"LONG": [], "SHORT": []}
     for a in alerts:
         direction = str(a.get("direction") or "").upper()
-        if direction not in ("LONG", "SHORT"):
+        if direction not in candidates_by_side:
             continue
         confidence = float(a.get("confidence") or 0)
-        rr = a.get("rr_ratio")
         try:
-            rr = float(rr)
+            rr = float(a.get("rr_ratio") or 0)
         except Exception:
             rr = 0.0
-        ts = a.get("timestamp")
-        age_s = 999999
-        if ts:
-            try:
-                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-                age_s = max(0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds())
-            except Exception:
-                pass
-
+        age_s = _parse_age_seconds(a.get("timestamp"))
         recipe = a.get("recipe_name") or _match_recipe(a.get("alert_id") or a.get("id"), alerts)
         muted_until = (overrides.get("muted_recipes", {}) or {}).get(recipe, 0)
         if muted_until and muted_until > now:
             continue
+        expectancy_hint = round((confidence / 100.0) * max(0.0, rr), 3)
+        candidates_by_side[direction].append({
+            "alert": a,
+            "direction": direction,
+            "confidence": confidence,
+            "rr_ratio": rr,
+            "age_seconds": age_s,
+            "expectancy_hint": expectancy_hint,
+            "recipe": recipe,
+            "reason_codes": ((a.get("decision_trace") or {}).get("codes") or [])[:5],
+            "min_rr": _tf_min_rr(a.get("timeframe")),
+            "passes_confidence": confidence >= min_score,
+            "passes_rr": rr >= _tf_min_rr(a.get("timeframe")),
+            "passes_freshness": age_s <= 600,
+        })
 
-        expectancy_hint = (confidence / 100.0) * max(0.0, rr)
-        candidates.append(
-            {
-                "alert": a,
-                "confidence": confidence,
-                "rr_ratio": rr,
-                "age_seconds": age_s,
-                "expectancy_hint": round(expectancy_hint, 3),
-                "recipe": recipe,
-                "passes_confidence": confidence >= min_score,
-                "passes_rr": rr >= 1.2,
-                "passes_freshness": age_s <= 600,
-            }
+    for side in candidates_by_side:
+        candidates_by_side[side].sort(
+            key=lambda c: (
+                c["passes_confidence"],
+                c["passes_rr"],
+                c["passes_freshness"],
+                c["expectancy_hint"],
+                c["confidence"],
+            ),
+            reverse=True,
         )
 
-    candidates.sort(
-        key=lambda c: (
-            c["passes_confidence"],
-            c["passes_rr"],
-            c["passes_freshness"],
-            c["expectancy_hint"],
-            c["confidence"],
-        ),
-        reverse=True,
-    )
+    best_long = candidates_by_side["LONG"][0] if candidates_by_side["LONG"] else None
+    best_short = candidates_by_side["SHORT"][0] if candidates_by_side["SHORT"] else None
+    long_out = _format_candidate(best_long)
+    short_out = _format_candidate(best_short)
 
-    best = candidates[0] if candidates else None
+    execute_pool = [c for c in (long_out, short_out) if c and c.get("gate_status") == "GREEN"]
+    if execute_pool:
+        execute_pool.sort(key=lambda c: (c.get("expectancy_hint", 0), c.get("confidence", 0)), reverse=True)
+        winner = execute_pool[0]
+        operator_decision = f"EXECUTE {winner['direction']}"
+    else:
+        operator_decision = "WAIT"
+
+    best_for_legacy = None
+    best_internal = None
+    merged = [c for c in (long_out, short_out) if c]
+    merged_internal = [c for c in (best_long, best_short) if c]
+    if merged:
+        merged.sort(key=lambda c: (c.get("expectancy_hint", 0), c.get("confidence", 0)), reverse=True)
+        best_for_legacy = merged[0]
+    if merged_internal:
+        merged_internal.sort(key=lambda c: (c.get("expectancy_hint", 0), c.get("confidence", 0)), reverse=True)
+        best_internal = merged_internal[0]
+
+    trap_risk_message = "Trap Risk: Normal"
+    if funding_rate >= 0.0005 and oi_change_pct > 0 and crowding_score >= 2.0:
+        trap_risk_message = "Trap Risk: LONG crowded (high funding + OI up + crowding high)"
+    elif funding_rate <= -0.0005 and oi_change_pct > 0 and crowding_score <= -2.0:
+        trap_risk_message = "Trap Risk: SHORT squeeze risk (very negative funding + OI up + crowding bearish)"
+
+    best = best_internal
     checks = [
         {
             "name": "Circuit Breaker",
@@ -428,7 +545,7 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
                 {
                     "name": "Risk/Reward",
                     "ok": best["passes_rr"],
-                    "detail": f"R:R {best['rr_ratio']:.2f} (needs >= 1.20)",
+                    "detail": f"R:R {best['rr_ratio']:.2f} (needs >= {best.get('min_rr', 1.2):.2f})",
                 },
                 {
                     "name": "Signal Freshness",
@@ -463,9 +580,14 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
         "best_trade": out_best,
-        "candidate_count": len(candidates),
+        "candidate_count": len(candidates_by_side["LONG"]) + len(candidates_by_side["SHORT"]),
         "min_score": min_score,
         "message": "Profit lock armed: best candidate is ready" if ready else "Profit lock blocked: review failed checks",
+        "best_overall": best_for_legacy,
+        "best_long_candidate": long_out,
+        "best_short_candidate": short_out,
+        "operator_decision": operator_decision,
+        "trap_risk_message": trap_risk_message,
     }
 
 
@@ -570,26 +692,42 @@ def get_dashboard_data():
                     mid = price_snap.price
                 flow_snap = fetch_flow_context(budget)
                 if flow_snap.healthy:
-                    taker_ratio = flow_snap.taker_buy_vol_ratio
+                    taker_ratio = flow_snap.taker_ratio
             except Exception:
                 pass
 
         spread = _estimate_spread(all_recent_alerts) if mid else 0.0
 
         # ── Phase 26: Derivatives context ──
-        derivatives = {"healthy": False, "source": "none"}
+        flows = {"taker_ratio": round(taker_ratio, 2), "long_short_ratio": 1.0, "crowding_score": 0.0, "healthy": False, "source": "fallback"}
+        if _HAS_COLLECTORS:
+            try:
+                flow_ctx = fetch_flow_context(budget)
+                flows = {
+                    "taker_ratio": flow_ctx.taker_ratio,
+                    "long_short_ratio": flow_ctx.long_short_ratio,
+                    "crowding_score": flow_ctx.crowding_score,
+                    "source": flow_ctx.source,
+                    "healthy": flow_ctx.healthy,
+                }
+                if flow_ctx.healthy:
+                    taker_ratio = flow_ctx.taker_ratio
+            except Exception:
+                flows = {"taker_ratio": round(taker_ratio, 2), "long_short_ratio": 1.0, "crowding_score": 0.0, "healthy": False, "source": "error"}
+
+        derivatives = {"funding_rate": 0.0, "oi_change_pct": 0.0, "basis_pct": 0.0, "healthy": False, "source": "none"}
         if _HAS_COLLECTORS:
             try:
                 deriv_ctx = fetch_derivatives_context(budget)
                 derivatives = {
                     "funding_rate": deriv_ctx.funding_rate,
-                    "oi_change_24h": deriv_ctx.oi_change_24h,
-                    "basis_annualized": deriv_ctx.basis_annualized,
+                    "oi_change_pct": deriv_ctx.oi_change_pct,
+                    "basis_pct": deriv_ctx.basis_pct,
                     "source": deriv_ctx.source,
                     "healthy": deriv_ctx.healthy
                 }
             except Exception:
-                derivatives = {"healthy": False, "source": "error"}
+                derivatives = {"funding_rate": 0.0, "oi_change_pct": 0.0, "basis_pct": 0.0, "healthy": False, "source": "error"}
 
         # Update cached context for anti-flicker
         if all_recent_alerts:
@@ -650,7 +788,7 @@ def get_dashboard_data():
             },
             "bs_filter": bs_filter,
             "bs_severity": bs_severity,
-            "flows": {"taker_ratio": round(taker_ratio, 2)},
+            "flows": flows,
             "derivatives": derivatives,
             "cached_context": _LAST_CONTEXT,
             "data_age_seconds": round(data_age_seconds, 0),
@@ -662,7 +800,8 @@ def get_dashboard_data():
                 data_age_seconds=data_age_seconds,
                 overrides=overrides,
                 spread=spread,
-                taker_ratio=taker_ratio,
+                flows=flows,
+                derivatives=derivatives,
             ),
             "logs": f"Heartbeat {datetime.now().strftime('%H:%M:%S')}",
         }
