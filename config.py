@@ -46,7 +46,7 @@ CONFLUENCE_RULES = {"A+": 5, "B": 3}
 
 TP_MULTIPLIERS = {
     "trend": {"tp1": 1.8, "tp2": 3.0, "inv": 1.1},
-    "range": {"tp1": 1.2, "tp2": 2.0, "inv": 0.9},
+    "range": {"tp1": 1.2, "tp2": 2.4, "inv": 0.9},
     "vol_chop": {"tp1": 1.0, "tp2": 1.6, "inv": 0.8},
     "default": {"tp1": 1.6, "tp2": 2.8, "inv": 1.1},
 }
