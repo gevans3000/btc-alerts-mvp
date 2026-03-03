@@ -175,6 +175,17 @@
             gap: 1.5rem;
             margin-bottom: 1rem;
         }
+        @media (max-width: 900px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.8rem;
+            }
+        }
+        @media (max-width: 560px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
 
         .stat-card {
             padding: 1rem;
@@ -780,18 +791,18 @@
         <div>
             <section style="margin-bottom: 1.5rem;">
                 <h2>Performance Metrics</h2>
-                <p>No portfolio data available.</p>
+                <div id="perf-metrics-body"><p class="mini">Loading...</p></div>
             </section>
 
             <section class="panel">
                 <h2>Timeframe Edge Scoreboard</h2>
-                <p class="mini">No portfolio data available.</p>
+                <div id="tf-edge-body"><p class="mini">Loading...</p></div>
             </section>
 
 
             <section class="panel">
                 <h2>Confidence Calibration</h2>
-                <p class="mini">No portfolio data available.</p>
+                <div id="conf-cal-body"><p class="mini">Loading...</p></div>
             </section>
 
         </div>
@@ -1086,7 +1097,7 @@
                 style="border:0;cursor:pointer;" disabled>Confirm</button></div>
     </dialog>
     <script>
-        let state = { livePrice: 0, spread: 0, inTrade: false, entryPrice: 50000.0, tp1Price: 52000.0, stopPrice: 49000.0, direction: "LONG" };
+        let state = { livePrice: 0, spread: 0, inTrade: false, entryPrice: 0, tp1Price: 0, stopPrice: 0, direction: "LONG" };
         const els = { badge: document.getElementById('connection-badge'), sync: document.getElementById('sync-label'), mid: document.getElementById('live-mid'), spread: document.getElementById('live-spread'), confluence: document.getElementById('live-confluence'), radar: document.getElementById('live-radar'), balance: document.getElementById('live-balance'), winrate: document.getElementById('live-winrate'), pf: document.getElementById('live-pf'), kelly: document.getElementById('live-kelly'), gate: document.getElementById('live-gate'), cbanner: document.getElementById('circuit-breaker-banner'), creason: document.getElementById('circuit-breaker-reason'), execBtn: document.getElementById('executeBtn') };
         function fmtMoney(n, d = 0) { return Number.isFinite(n) ? '$' + n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) : '--'; }
         function deriveConfluence(alerts) { const t = ['5m', '15m', '1h'], m = Object.create(null); for (const a of (alerts || [])) if (a.symbol === 'BTC' && t.includes(a.timeframe)) m[a.timeframe] = a; const p = t.map(tf => m[tf]).filter(Boolean); if (p.length < 3) return 'Partial'; const d = p.map(x => String(x.direction || 'NEUTRAL').toUpperCase()); return d.every(x => x === d[0] && x !== 'NEUTRAL') ? d[0] + ' aligned' : 'Mixed'; }
@@ -1199,7 +1210,18 @@
         function connectWS() {
             const p = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws'; const ws = new WebSocket(p); ws.onopen = () => { els.badge.textContent = 'Live Feed: Online'; els.badge.classList.remove('badge-stale'); }; ws.onmessage = (ev) => {
                 try {
-                    const data = JSON.parse(ev.data); const ob = data.orderbook || {}; state.livePrice = Number(ob.mid || 0); state.spread = Number(ob.spread || 0); updateLivePrice(); els.mid.textContent = fmtMoney(state.livePrice, 2); els.spread.textContent = state.spread.toFixed(2); const po = data.portfolio || {}; els.balance.textContent = fmtMoney(Number(po.balance || 0), 2); const st = data.stats || {}; window._lastStats = st; window._lastBalance = Number(po.balance || 0); els.winrate.textContent = Number(st.win_rate || 0).toFixed(2) + '%'; els.pf.textContent = Number(st.profit_factor || 0).toFixed(2); if (els.kelly) els.kelly.textContent = (Number(st.kelly_pct || 0) * 100).toFixed(2) + '%';
+                    const data = JSON.parse(ev.data); const ob = data.orderbook || {}; state.livePrice = Number(ob.mid || 0); state.spread = Number(ob.spread || 0); updateLivePrice(); els.mid.textContent = fmtMoney(state.livePrice, 2); els.spread.textContent = state.spread.toFixed(2); const po = data.portfolio || {}; els.balance.textContent = fmtMoney(Number(po.balance || 0), 2); const st = data.stats || {}; window._lastStats = st; window._lastBalance = Number(po.balance || 0); els.winrate.textContent = (Number(st.win_rate || 0) * 100).toFixed(1) + '%'; els.pf.textContent = Number(st.avg_r || 0).toFixed(2); if (els.kelly) els.kelly.textContent = (Number(st.kelly_pct || 0) * 100).toFixed(2) + '%';
+                    const positions = po.positions || [];
+                    if (positions.length > 0) {
+                        const p0 = positions[0];
+                        state.inTrade = true;
+                        state.direction = p0.direction || 'LONG';
+                        state.entryPrice = Number(p0.entry_price) || 0;
+                        state.stopPrice = Number(p0.sl) || 0;
+                        state.tp1Price = Number(p0.tp1) || 0;
+                    } else {
+                        state.inTrade = false;
+                    }
                     const pf = data.profit_preflight || {};
                     updateCandidateCard('best-long', pf.best_long_candidate || null);
                     updateCandidateCard('best-short', pf.best_short_candidate || null);
@@ -1257,23 +1279,17 @@
                     } else {
                         if (els.cbanner) els.cbanner.style.display = 'none';
                         if (els.execBtn) {
-                            els.execBtn.disabled = false;
-                            els.execBtn.style.opacity = '1';
-                            els.execBtn.style.cursor = 'pointer';
-                            // ── Phase 26 Task 4.1: Restore the original label based on latest alert tier ──
-                            const tier = wsTier || 'NO-TRADE';
-                            if (tier === 'A+') {
-                                els.execBtn.textContent = '🟢 EXECUTE';
-                                els.execBtn.style.background = '#00cc88';
-                            } else if (tier === 'B') {
-                                els.execBtn.textContent = '🟡 EXECUTE (WATCH)';
-                                els.execBtn.style.background = '#cc8800';
-                            } else {
-                                els.execBtn.textContent = '⚠️ EXECUTE (HIGH RISK)';
-                                els.execBtn.style.background = '#ff4d4d';
+                            const op = String(pf.operator_decision || 'WAIT');
+                            const longGate = ((pf.best_long_candidate || {}).gate_status || '').toUpperCase();
+                            const shortGate = ((pf.best_short_candidate || {}).gate_status || '').toUpperCase();
+                            const gate = op.includes('LONG') ? longGate : (op.includes('SHORT') ? shortGate : 'RED');
+                            els.execBtn.disabled = op === 'WAIT' || gate === 'RED';
+                            els.execBtn.textContent = op === 'WAIT' ? 'WAIT - GATE BLOCKED' : ('1-CLICK ' + op);
+                            els.execBtn.style.opacity = els.execBtn.disabled ? '0.7' : '1.0';
+                            els.execBtn.style.cursor = els.execBtn.disabled ? 'not-allowed' : 'pointer';
+                            els.execBtn.style.background = gate === 'GREEN' ? '#00cc88' : (gate === 'AMBER' ? '#996f00' : '#7a1f1f');
                             }
                         }
-                    }
                     if (wsTier === "A+" && wsLatest.timestamp && wsLatest.timestamp !== window._lastPlayedAlertTs) {
                         window._lastPlayedAlertTs = wsLatest.timestamp;
                         if (!window._isMuted) {
@@ -1309,7 +1325,7 @@
                     _el('tape-taker', taker ? taker.toFixed(2) : '—');
 
                     // ── Phase 26 Task 7.2: Smart Money UI ──
-                    const wsDeriv = wsCtx.derivatives || {};
+                    const wsDeriv = data.derivatives || {};
                     const fundRate = wsDeriv.funding_rate;
                     const basis = wsDeriv.basis_pct;
                     const oiDelta = wsDeriv.oi_change_pct;
@@ -1404,6 +1420,33 @@
                             }
                         }
                     }
+
+                    // ── Phase 28: Performance Metrics rendering ──
+                    const pmEl = document.getElementById('perf-metrics-body');
+                    if (pmEl && st.total_trades > 0) {
+                        pmEl.innerHTML = '<div class="stats-grid">'
+                            + '<div class="stat-card"><div class="stat-label">Win Rate</div><div class="live-value">' + (st.win_rate * 100).toFixed(1) + '%</div></div>'
+                            + '<div class="stat-card"><div class="stat-label">Avg R</div><div class="live-value">' + Number(st.avg_r).toFixed(2) + '</div></div>'
+                            + '<div class="stat-card"><div class="stat-label">Total R</div><div class="live-value">' + Number(st.total_r).toFixed(2) + '</div></div>'
+                            + '<div class="stat-card"><div class="stat-label">Trades</div><div class="live-value">' + st.total_trades + '</div></div>'
+                            + '<div class="stat-card"><div class="stat-label">Streak</div><div class="live-value">' + st.streak + '</div></div>'
+                            + '<div class="stat-card"><div class="stat-label">Open uPnL</div><div class="live-value" style="color:' + (st.open_upnl >= 0 ? 'var(--accent)' : '#ff4d4d') + '">' + fmtMoney(st.open_upnl, 0) + '</div></div>'
+                            + '</div>';
+                    } else if (pmEl) { pmEl.innerHTML = '<p class="mini">No closed trades yet.</p>'; }
+                    const tfEl = document.getElementById('tf-edge-body');
+                    if (tfEl && st.tf_stats) {
+                        let tfH = '<table class="matrix-table"><thead><tr><th>TF</th><th>Trades</th><th>Win%</th><th>Avg R</th></tr></thead><tbody>';
+                        for (const [tf, s] of Object.entries(st.tf_stats)) { tfH += '<tr><td>' + tf + '</td><td>' + s.count + '</td><td>' + (s.win_rate * 100).toFixed(0) + '%</td><td>' + Number(s.avg_r).toFixed(2) + '</td></tr>'; }
+                        tfH += '</tbody></table>';
+                        tfEl.innerHTML = tfH;
+                    } else if (tfEl) { tfEl.innerHTML = '<p class="mini">No timeframe samples yet.</p>'; }
+                    const ccEl = document.getElementById('conf-cal-body');
+                    if (ccEl && st.recipe_stats) {
+                        let ccH = '<table class="matrix-table"><thead><tr><th>Recipe</th><th>Trades</th><th>Win%</th><th>Avg R</th></tr></thead><tbody>';
+                        for (const [r, s] of Object.entries(st.recipe_stats)) { ccH += '<tr><td>' + r + '</td><td>' + s.count + '</td><td>' + (s.win_rate * 100).toFixed(0) + '%</td><td>' + Number(s.avg_r).toFixed(2) + '</td></tr>'; }
+                        ccH += '</tbody></table>';
+                        ccEl.innerHTML = ccH;
+                    } else if (ccEl) { ccEl.innerHTML = '<p class="mini">No recipe calibration samples yet.</p>'; }
 
                     // ── Phase 25: Execution Copilot ──
                     const cpAction = document.getElementById('copilot-action-btn');

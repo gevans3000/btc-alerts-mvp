@@ -85,33 +85,31 @@ def resolve_outcomes(alerts_path: str = "logs/pid-129-alerts.jsonl"):
             continue
 
         if direction == "LONG":
-            if tp2 and current_price >= tp2:
+            if current_price <= sl:
+                resolved = True
+                outcome = "LOSS"
+                r_multiple = -1.0
+            elif tp2 and tp2 > entry and current_price >= tp2:
                 resolved = True
                 outcome = "WIN_TP2"
                 r_multiple = abs(tp2 - entry) / risk
-            elif current_price >= tp1:
-                # We don't necessarily resolve on TP1 if we want to wait for TP2 or SL
-                # But for the MVP, let's mark as resolved on TP1 to simplify
+            elif tp1 and tp1 > entry and current_price >= tp1:
                 resolved = True
                 outcome = "WIN_TP1"
                 r_multiple = abs(tp1 - entry) / risk
-            elif current_price <= sl:
+        elif direction == "SHORT":
+            if current_price >= sl:
                 resolved = True
                 outcome = "LOSS"
                 r_multiple = -1.0
-        elif direction == "SHORT":
-            if tp2 and current_price <= tp2:
+            elif tp2 and tp2 < entry and current_price <= tp2:
                 resolved = True
                 outcome = "WIN_TP2"
                 r_multiple = abs(entry - tp2) / risk
-            elif current_price <= tp1:
+            elif tp1 and tp1 < entry and current_price <= tp1:
                 resolved = True
                 outcome = "WIN_TP1"
                 r_multiple = abs(entry - tp1) / risk
-            elif current_price >= sl:
-                resolved = True
-                outcome = "LOSS"
-                r_multiple = -1.0
         
         # Check timeout
         if not resolved and elapsed > MAX_DURATION.get(tf, 24 * 3600):

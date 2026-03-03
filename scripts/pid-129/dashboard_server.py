@@ -192,13 +192,23 @@ def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
                     "timeframe": a.get("timeframe", "UNKNOWN")
                 })
 
+    normalized_closed = []
+    for t in closed:
+        r = t.get("r_multiple")
+        if not isinstance(r, (int, float)):
+            continue
+        if r < 0 and str(t.get("outcome", "")).upper().startswith("WIN"):
+            t["outcome"] = "LOSS"
+        normalized_closed.append(t)
+    closed = normalized_closed
+
     r_values = [t.get("r_multiple") for t in closed if isinstance(t.get("r_multiple"), (int, float))]
     
     wins = [r for r in r_values if r > 0]
     losses = [r for r in r_values if r < 0]
     count = len(r_values)
     
-    win_rate = (len(wins) / count * 100.0) if count else 0.0
+    win_rate = (len(wins) / count) if count else 0.0
     gross_profit = sum(wins)
     gross_loss = abs(sum(losses))
     profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0.0)
@@ -218,10 +228,10 @@ def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
     def _calc_subset(rs):
         c = len(rs)
         ws = [r for r in rs if r > 0]
-        wr = (len(ws) / c * 100.0) if c else 0.0
+        wr = (len(ws) / c) if c else 0.0
         ar = (sum(rs) / c) if c else 0.0
         tr = sum(rs)
-        return {"count": c, "wins": len(ws), "win_rate": round(wr, 1), "avg_r": round(ar, 2), "total_r": round(tr, 2)}
+        return {"count": c, "wins": len(ws), "win_rate": round(wr, 4), "avg_r": round(ar, 2), "total_r": round(tr, 2)}
 
     long_stats = _calc_subset(long_trades)
     short_stats = _calc_subset(short_trades)
@@ -240,9 +250,9 @@ def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
     for name, rs in recipe_performance.items():
         c = len(rs)
         ws = [r for r in rs if r > 0]
-        wr = (len(ws) / c * 100.0) if c else 0.0
+        wr = (len(ws) / c) if c else 0.0
         ar = (sum(rs) / c) if c else 0.0
-        recipe_stats[name] = {"count": c, "wins": len(ws), "win_rate": round(wr, 1), "avg_r": round(ar, 2)}
+        recipe_stats[name] = {"count": c, "wins": len(ws), "win_rate": round(wr, 4), "avg_r": round(ar, 2)}
 
     # Timeframe Stats
     tf_performance = {}
@@ -653,10 +663,6 @@ def get_dashboard_data():
             # During expansion: suppress counter-trend / mean-reversion recipes
             for name in ("HTF_REVERSAL",):
                 auto_muted_recipes[name] = auto_expiry
-        elif vol_regime == "low":
-            # During low-vol range: suppress trend-continuation recipes
-            for name in ("BOS_CONTINUATION", "VOL_EXPANSION"):
-                auto_muted_recipes[name] = auto_expiry
 
         overrides = _load_overrides().copy()
         
@@ -723,7 +729,7 @@ def get_dashboard_data():
         engine_time = last_cycle_time if last_cycle_time > 0 else last_alert_time
         alerts_stale = (now_ts - engine_time > 120) or (engine_time == 0)
         # data_age_seconds still reflects last tradeable alert age (useful context for operator).
-        data_age_seconds = now_ts - last_alert_time if last_alert_time > 0 else 9999
+        data_age_seconds = now_ts - engine_time if engine_time > 0 else 9999
 
         mid = _latest_price(all_recent_alerts)
         # Prefer the heartbeat price (written every cycle by app.py) over a stale alert price.
@@ -797,35 +803,7 @@ def get_dashboard_data():
                 _LAST_CONTEXT = ctx
                 break
 
-        # ── Phase 25: Extract vol regime from the latest alert's decision trace ──
-        vol_regime = "normal"
-        for a in reversed(all_recent_alerts):
-            dt_ctx = (a.get("decision_trace") or {}).get("context", {})
-            vi = dt_ctx.get("volume_impulse", {})
-            if isinstance(vi, dict) and vi.get("regime"):
-                vol_regime = vi["regime"].lower()
-                break
-
-        # ── Phase 25: Auto-pilot dynamic muting ──
-        auto_muted_recipes = {}
-        now = time.time()
-        auto_expiry = now + 120  # Auto-mutes last 2 minutes
-
-        if vol_regime == "expansion":
-            for name in ("HTF_REVERSAL",):
-                auto_muted_recipes[name] = auto_expiry
-        elif vol_regime == "low":
-            for name in ("BOS_CONTINUATION", "VOL_EXPANSION"):
-                auto_muted_recipes[name] = auto_expiry
-
-        overrides = _load_overrides().copy()
-        if auto_muted_recipes:
-            merged_muted = overrides.get("muted_recipes", {}).copy()
-            for recipe_name, auto_exp in auto_muted_recipes.items():
-                existing_exp = merged_muted.get(recipe_name, 0)
-                if auto_exp > existing_exp:
-                    merged_muted[recipe_name] = auto_exp
-            overrides["muted_recipes"] = merged_muted
+        # (auto-pilot muting already computed above; overrides already merged)
 
         bs_filter = "CLEAR"
         bs_severity = 0  # 0=clear, 1=caution, 2=danger
