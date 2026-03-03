@@ -31,6 +31,7 @@ TIMEFRAME_RULES = {
 STALE_SECONDS = {"5m": 12 * 60, "15m": 35 * 60, "1h": 130 * 60}
 
 COOLDOWN_SECONDS = {"A+": 10 * 60, "B": 20 * 60, "NO-TRADE": 20 * 60}
+MAX_SIGNAL_AGE_SECONDS = 1800
 
 HTTP_RETRY = {"attempts": 4, "backoff_seconds": 2.0, "jitter_seconds": 1.0}
 

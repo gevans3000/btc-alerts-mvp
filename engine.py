@@ -136,7 +136,7 @@ def compute_score(
             codes.append("SQUEEZE_FIRE")
         elif sq["state"] == "SQUEEZE_ON":
             codes.append("SQUEEZE_ON")
-        trace["context"]["squeeze"] = sq["state"]
+        trace["context"]["squeeze"] = {"state": sq["state"]}
 
     if intel and intel.sentiment and INTELLIGENCE_FLAGS.get("sentiment_enabled", True):
         sent = intel.sentiment
@@ -246,6 +246,14 @@ def compute_score(
             codes.append("FLOW_LS_CROWDED_LONG")
         elif flows.long_short_ratio <= 0.67:
             codes.append("FLOW_LS_CROWDED_SHORT")
+        trace["context"]["flows"] = {"taker_ratio": flows.taker_ratio, "long_short_ratio": flows.long_short_ratio}
+
+    if derivatives and derivatives.healthy:
+        trace["context"]["derivatives"] = {
+            "funding_rate": derivatives.funding_rate,
+            "oi_change_pct": derivatives.oi_change_pct,
+            "basis_pct": derivatives.basis_pct
+        }
 
     # --- Phase 17: New Intelligence Layers ---
     # Market Structure (BOS/CHoCH)
@@ -260,6 +268,23 @@ def compute_score(
         }
     except Exception:
         pass
+
+    # --- Phase 28-B: 4H structure (HTF Bias) ---
+    if candles_4h and len(candles_4h) >= 20:
+        try:
+            struct_4h = detect_structure(candles_4h)
+            trace["context"]["structure_4h"] = {
+                "trend": struct_4h["trend"],
+                "event": struct_4h["last_event"],
+                "last_pivot_high": struct_4h.get("last_pivot_high"),
+                "last_pivot_low": struct_4h.get("last_pivot_low"),
+            }
+            if "BULL" in struct_4h["trend"].upper():
+                codes.append("HTF_4H_BULLISH")
+            elif "BEAR" in struct_4h["trend"].upper():
+                codes.append("HTF_4H_BEARISH")
+        except Exception:
+            pass
 
     # Session Levels (PDH/PDL + sweep)
     try:

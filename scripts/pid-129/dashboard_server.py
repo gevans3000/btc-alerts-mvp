@@ -38,9 +38,10 @@ except ImportError:
     print("Warning: Could not import collectors. Derivatives/Price alpha may be missing.")
 
 try:
-    from config import TIMEFRAME_RULES
+    from config import TIMEFRAME_RULES, MAX_SIGNAL_AGE_SECONDS
 except Exception:
     TIMEFRAME_RULES = {}
+    MAX_SIGNAL_AGE_SECONDS = 1800
 
 # Module-level shared state
 _STATE_LOCK = threading.Lock()
@@ -297,15 +298,17 @@ def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
     # Kelly % = W - [(1 - W) / R]
     # W = win probability (decimal)
     # R = average win / average loss ratio (absolute values)
-    if wins and losses:
+    kelly_pct = 0.0
+    kelly_significance = ""
+    if count < 20:
+        kelly_significance = f"({count} trades — need 20+ for significance)"
+    elif wins and losses:
         W = len(wins) / len(r_values)
         avg_win = sum(wins) / len(wins)
         avg_loss = abs(sum(losses) / len(losses))
         R = avg_win / avg_loss if avg_loss > 0 else 1.0
         kelly = W - ((1 - W) / R)
         kelly_pct = round(max(0.0, min(kelly / 4, 0.25)), 4)  # Quarter Kelly, capped at 25%
-    else:
-        kelly_pct = 0.0
 
     # Unrealized PnL
     open_positions = portfolio.get("positions", [])
@@ -350,6 +353,7 @@ def _portfolio_stats(portfolio, current_price=0.0, alerts=None):
         "session_stats": session_stats,
         "regime_stats": regime_stats,
         "kelly_pct": kelly_pct,
+        "kelly_significance": kelly_significance,
         "open_upnl": round(open_upnl, 2),
         "drawdown_pct": drawdown_pct
     }
@@ -428,8 +432,8 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
             reds.append(f"R:R {c['rr_ratio']:.2f} below {min_rr:.2f} threshold")
         if c["confidence"] < min_score:
             reds.append(f"Confidence {c['confidence']:.0f} below min score {min_score}")
-        if c["age_seconds"] > 600:
-            reds.append(f"Signal stale ({c['age_seconds']:.0f}s > 600s)")
+        if c["age_seconds"] > MAX_SIGNAL_AGE_SECONDS:
+            reds.append(f"Signal stale ({c['age_seconds']:.0f}s > {MAX_SIGNAL_AGE_SECONDS}s)")
 
         if c["direction"] == "LONG":
             if crowding_score >= 2.0:
@@ -477,6 +481,8 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
             "blockers": gate["blockers"],
             "cautions": gate["cautions"],
             "min_rr": c["min_rr"],
+            "rubric": (a.get("decision_trace") or {}).get("rubric", {}),
+            "score_breakdown": a.get("score_breakdown", {}),
         }
 
     candidates_by_side = {"LONG": [], "SHORT": []}
@@ -507,7 +513,7 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
             "min_rr": _tf_min_rr(a.get("timeframe")),
             "passes_confidence": confidence >= min_score,
             "passes_rr": rr >= _tf_min_rr(a.get("timeframe")),
-            "passes_freshness": age_s <= 600,
+            "passes_freshness": age_s <= MAX_SIGNAL_AGE_SECONDS,
         })
 
     for side in candidates_by_side:
@@ -533,7 +539,12 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
         winner = execute_pool[0]
         operator_decision = f"EXECUTE {winner['direction']}"
     else:
-        operator_decision = "WAIT"
+        # TIER 1.2: Check if best candidate is stale
+        best_for_dec = long_out or short_out
+        if best_for_dec and best_for_dec.get("age_seconds", 0) > MAX_SIGNAL_AGE_SECONDS:
+            operator_decision = "WAIT (Stale Signals)"
+        else:
+            operator_decision = "WAIT"
 
     best_for_legacy = None
     best_internal = None

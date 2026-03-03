@@ -175,17 +175,6 @@
             gap: 1.5rem;
             margin-bottom: 1rem;
         }
-        @media (max-width: 900px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 0.8rem;
-            }
-        }
-        @media (max-width: 560px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
 
         .stat-card {
             padding: 1rem;
@@ -375,6 +364,148 @@
             display: inline-block;
             animation: breathePulse 2.5s infinite ease-in-out;
         }
+
+        /* Phase 28-B: Command Screen Styles */
+        .command-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        @media (min-width: 1100px) {
+            .command-layout {
+                grid-template-columns: 380px 1fr;
+            }
+        }
+
+        .verdict-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .context-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .tape-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 0.85rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .tape-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .rubric-bar {
+            display: flex;
+            height: 10px;
+            gap: 4px;
+            margin-top: 10px;
+        }
+
+        .rubric-segment {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+
+        .rubric-segment.active {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .score-viz {
+            display: flex;
+            height: 4px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .score-chunk {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .accordion {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .accordion-header {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            user-select: none;
+        }
+
+        .accordion-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .accordion-content {
+            padding: 16px;
+            display: none;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .accordion.open .accordion-content {
+            display: block;
+        }
+
+        .accordion-icon {
+            transition: transform 0.3s;
+        }
+
+        .accordion.open .accordion-icon {
+            transform: rotate(180deg);
+        }
+
+        .matrix-compact {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .matrix-step {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .matrix-arrow {
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
     </style>
 </head>
 
@@ -384,298 +515,203 @@
     <header>
         <div>
             <h1>EMBER COMMAND</h1>
-            <p style="color: var(--text-muted); font-weight: 300;">PID-129 | Self-Validating Trading Loop</p>
+            <p style="color:var(--text-muted); font-weight:300;">PID-129 | Self-Validating Trading Loop</p>
         </div>
         <div class="status">
             <span id="connection-badge" class="badge-live">Live Feed: Connecting</span>
-            <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: 2026-03-02
-                14:29:19</p>
+            <p id="sync-label" style="margin-top:10px; color:var(--text-muted); font-size:0.8rem;">Synced: --</p>
         </div>
     </header>
-    <section class="panel">
-        <h2>Live Tape & Context</h2>
-        <div class="live-grid">
-            <div class="stat-card">
-                <div class="stat-label">BTC Mid</div>
-                <div id="live-mid" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Spread</div>
-                <div id="live-spread" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">RVol</div>
-                <div id="tape-rvol" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Vol Regime</div>
-                <div id="tape-vol-regime" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">OI Regime</div>
-                <div id="tape-oi-regime" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Taker Ratio</div>
-                <div id="tape-taker" class="live-value">—</div>
-            </div>
-            <div class="stat-card" style="border:1px solid rgba(112,0,255,0.3); background:rgba(112,0,255,0.05);">
-                <div class="stat-label">Funding / Basis</div>
-                <div id="tape-funding" class="live-value" style="color:#b580ff;">—</div>
-            </div>
-            <div class="stat-card" style="border:1px solid rgba(112,0,255,0.3); background:rgba(112,0,255,0.05);">
-                <div class="stat-label">OI Delta (5m)</div>
-                <div id="tape-oi-delta" class="live-value" style="color:#b580ff;">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">DXY Macro</div>
-                <div id="tape-dxy" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Sentiment</div>
-                <div id="tape-sentiment" class="live-value">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Balance</div>
-                <div id="live-balance" class="live-value">$10,000.00</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Win Rate (7d)</div>
-                <div id="live-winrate" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Avg R (7d)</div>
-                <div id="live-pf" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Kelly %</div>
-                <div id="live-kelly" class="live-value">--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Risk Gate</div>
-                <div id="live-gate" class="live-value">--</div>
-            </div>
-        </div>
-    </section>
-    <section id="circuit-breaker-banner" class="panel"
-        style="display:none;border:2px solid #ff4d4d;background:rgba(255,77,77,0.15);">
-        <h2 style="margin:0;color:#ff4d4d;">🛑 DO NOT TRADE — CIRCUIT BREAKER ACTIVE</h2>
-        <p id="circuit-breaker-reason" style="margin:.5rem 0 0;color:#ffd2d2;">Risk controls triggered.</p>
-    </section>
+    <div class="command-layout">
+        <!-- LEFT: VERDICT PANEL -->
+        <div class="verdict-panel">
+            <section class="panel">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                    <h2 style="margin:0;">VERDICT</h2>
+                    <span id="gate-badge" class="pill badge-neutral">WAIT</span>
+                </div>
 
-    <section class="panel">
-        <h2>Do Not Trade Now</h2>
-        <div style="margin-bottom:0.6rem;"><span class="pill badge-good">TRADE ENABLED</span></div>
-        <div class='mini' style='color:var(--text)'>✅ 1h/15m direction aligned</div>
-        <div class='mini' style='color:var(--text)'>✅ 5m confidence >= 40</div>
-        <div class='mini' style='color:var(--text)'>✅ Planned R:R >= 1.2</div>
-        <div class='mini' style='color:var(--text)'>✅ Setup quality >= 65</div>
-        <div class='mini' style='color:var(--text)'>✅ Max losing streak < 4</div>
-                <div class='mini' style='color:var(--text)'>✅ Max drawdown <= 12%</div>
-    </section>
+                <div
+                    style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; padding:1.2rem; margin-bottom:1rem; text-align:center;">
+                    <div id="verdict-direction"
+                        style="font-size:2.8rem; font-weight:800; letter-spacing:-2px; line-height:1;">SCANNING</div>
+                    <div
+                        style="display:flex; justify-content:center; align-items:baseline; gap:8px; margin-top:0.5rem;">
+                        <span id="verdict-confidence"
+                            style="font-size:2rem; font-weight:800; color:var(--accent);">--</span>
+                        <span style="color:var(--text-muted); font-size:0.9rem; font-weight:600;">CONFIDENCE</span>
+                    </div>
 
-    <div class="layout-grid">
+                    <div class="rubric-bar">
+                        <div id="rubric-structure" class="rubric-segment" title="Structure"></div>
+                        <div id="rubric-location" class="rubric-segment" title="Location"></div>
+                        <div id="rubric-anchors" class="rubric-segment" title="Anchors"></div>
+                        <div id="rubric-derivatives" class="rubric-segment" title="Derivatives"></div>
+                        <div id="rubric-momentum" class="rubric-segment" title="Momentum"></div>
+                        <div id="rubric-volatility" class="rubric-segment" title="Volatility"></div>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">
+                        <span>Struct</span><span>Loc</span><span>Anch</span><span>Deriv</span><span>Mom</span><span>Vol</span>
+                    </div>
+                </div>
 
-        <section class='panel'>
-            <h2 style='margin:0 0 .7rem 0;'>Best Long vs Best Short (Right Now)</h2>
-            <div class='mini' style='margin-bottom:.7rem;'>Operator Decision: <span id='operator-decision'
-                    class='pill badge-neutral'>WAIT</span></div>
-            <div id='trap-risk' class='mini' style='margin-bottom:.7rem;color:#ffd700;'>Trap Risk: —</div>
-            <div style='display:grid;grid-template-columns:1fr 1fr;gap:.8rem;'>
-                <div
-                    style='border:1px solid var(--border);border-radius:10px;padding:.7rem;background:rgba(255,255,255,.02);'>
-                    <div style='display:flex;justify-content:space-between;align-items:center;'><span
-                            id='best-long-direction' class='pill badge-good'>LONG</span><span id='best-long-gate'
-                            class='pill badge-neutral'>—</span></div>
-                    <div class='mini'>Conf: <span id='best-long-confidence'>—</span> | R:R <span
-                            id='best-long-rr'>—</span> | Age <span id='best-long-age'>—</span></div>
-                    <div class='mini'>Entry <span id='best-long-entry'>—</span> | Stop <span
-                            id='best-long-stop'>—</span></div>
-                    <div class='mini'>TP1 <span id='best-long-tp1'>—</span> | TP2 <span id='best-long-tp2'>—</span>
+                <div id="verdict-details"
+                    style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1rem;">
+                    <div class="mini" style="background:rgba(255,255,255,0.02); padding:8px; border-radius:8px;">
+                        Entry: <span id="v-entry" style="color:var(--text); font-weight:600;">--</span><br>
+                        Stop: <span id="v-stop" style="color:#ff4d4d;">--</span>
                     </div>
-                    <div class='mini'>EV hint: <span id='best-long-ev'>—</span> | <span id='best-long-recipe'>—</span>
-                        <span id='best-long-timeframe'>—</span></div>
-                    <div id='best-long-codes' style='display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;'></div>
-                    <div id='best-long-blockers' class='mini' style='margin-top:6px;color:#ff7a7a;'>—</div>
-                </div>
-                <div
-                    style='border:1px solid var(--border);border-radius:10px;padding:.7rem;background:rgba(255,255,255,.02);'>
-                    <div style='display:flex;justify-content:space-between;align-items:center;'><span
-                            id='best-short-direction' class='pill badge-bad'>SHORT</span><span id='best-short-gate'
-                            class='pill badge-neutral'>—</span></div>
-                    <div class='mini'>Conf: <span id='best-short-confidence'>—</span> | R:R <span
-                            id='best-short-rr'>—</span> | Age <span id='best-short-age'>—</span></div>
-                    <div class='mini'>Entry <span id='best-short-entry'>—</span> | Stop <span
-                            id='best-short-stop'>—</span></div>
-                    <div class='mini'>TP1 <span id='best-short-tp1'>—</span> | TP2 <span id='best-short-tp2'>—</span>
+                    <div class="mini" style="background:rgba(255,255,255,0.02); padding:8px; border-radius:8px;">
+                        TP2: <span id="v-tp2" style="color:var(--accent);">--</span><br>
+                        R:R: <span id="v-rr" style="color:var(--text); font-weight:600;">--</span>
                     </div>
-                    <div class='mini'>EV hint: <span id='best-short-ev'>—</span> | <span id='best-short-recipe'>—</span>
-                        <span id='best-short-timeframe'>—</span></div>
-                    <div id='best-short-codes' style='display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;'></div>
-                    <div id='best-short-blockers' class='mini' style='margin-top:6px;color:#ff7a7a;'>—</div>
                 </div>
-            </div>
-        </section>
+                <div class="mini" style="display:flex; justify-content:space-between; margin-bottom:0.6rem;">
+                    <span>Decision: <span id="operator-decision" class="pill badge-neutral">WAIT</span></span>
+                    <span id="trap-risk" style="color:#ffd700;">Trap Risk: --</span>
+                </div>
 
+                <button id="executeBtn" class="pill"
+                    style="padding:16px; font-size:1.1rem; width:100%; font-weight:800; letter-spacing:1px; cursor:not-allowed; opacity:0.7;"
+                    onclick="requestExecute()" disabled>
+                    STANDBY
+                </button>
 
-        <section class='panel'>
-            <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;'>
-                <h2 style='margin:0;'>Verdict Center</h2>
-                <div style='display:flex;gap:4px;'>
-                    <button id='muteBtn' class='pill badge-neutral' onclick='toggleMute()'
-                        style='margin:0;cursor:pointer;min-width:40px;'>🔊</button>
-                    <button id='filterBtn' class='pill badge-neutral' onclick='toggleFilter()'
-                        style='margin:0;cursor:pointer;'>ALL</button>
-                </div>
-            </div>
-            <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill badge-good'>LONG</span></div>
-            <div class='mini' style='margin-bottom:8px;'>Edge (last 20): <span class='pill badge-bad'>20% (4W)</span>
-            </div>
-            <div
-                style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-                <div style='display:flex;justify-content:space-between;align-items:center;'>
-                    <div>
-                        <div class='mini'>Live BTC Price</div>
-                        <div id='livePrice' style='font-weight:800;'>Loading...</div>
+                <div id="verdict-safety" style="margin-top:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+                    <div class="mini" style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span>Trade Safety</span>
+                        <span id="safety-score" style="color:var(--accent);">0/6</span>
                     </div>
-                    <div style='text-align:right;'>
-                        <div class='mini'>Unrealized PnL</div>
-                        <div id='livePnL'>—</div>
-                    </div>
+                    <div id="safety-checks" style="display:flex; flex-direction:column; gap:2px;"></div>
                 </div>
-                <div style='display:flex;gap:1rem;margin-top:.6rem;'>
-                    <div class='mini'>→ TP1 <span id='distTP1'>—</span></div>
-                    <div class='mini'>→ STOP <span id='distStop'>—</span></div>
-                    <div class='mini'>SPREAD <span id='liveSpread'>—</span></div>
-                </div>
-                <div id="bs-filter-display" class="mini"
-                    style="margin-top:8px;padding:6px 10px;border-radius:8px;font-weight:700;font-size:0.78rem;text-align:center;transition:all 0.3s ease;">
-                </div>
-            </div>
-            <div style='margin-bottom:1rem;'>
-                <div class='mini' style='margin-bottom:6px;'>Conviction Signals</div><span class='mini'>No active reason
-                    codes.</span>
-            </div>
-            <div id='keyLevelsCard'
-                style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-                <div class='mini' style='margin-bottom:6px;'>Key Levels</div>
-                <div
-                    style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;font-family:JetBrains Mono,monospace;font-size:.78rem;'>
-                    <div>PDH: <span id='key-pdh' style='color:#ffd700;'>—</span></div>
-                    <div>PDL: <span id='key-pdl' style='color:#ffd700;'>—</span></div>
-                    <div>POC: <span id='key-poc' style='color:#00ffcc;'>—</span></div>
-                    <div>VAH: <span id='key-vah' style='color:#4488ff;'>—</span></div>
-                    <div>VAL: <span id='key-val' style='color:#4488ff;'>—</span></div>
-                    <div>AVWAP: <span id='key-avwap'>—</span> <span id='key-avwap-side'
-                            style='font-size:.68rem;'>—</span></div>
-                    <div>Structure: <span id='key-struct-event'>—</span></div>
-                    <div>Pivot H: <span id='key-pivot-high'>—</span></div>
-                    <div>Pivot L: <span id='key-pivot-low'>—</span></div>
-                    <div>Bid Walls: <span id='key-bid-walls' style='color:#00ff88;'>—</span></div>
-                    <div>Ask Walls: <span id='key-ask-walls' style='color:#ff4444;'>—</span></div>
-                    <div>Liquidity: <span id='key-liq-targets' style='color:#ffa500;'>—</span></div>
-                </div>
-            </div>
-            <div id='radarCard'
-                style='background:rgba(255,255,255,.03);border:1px solid #ff4d4d;border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-                <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;'><span
-                        class='mini'>Confluence Radar</span><span id='radarScore' class='pill'
-                        style='border:1px solid #ff4d4d;color:#ff4d4d;'>0/15 WEAK</span></div>
-                <div
-                    style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;overflow:hidden;'>
-                    <div id='radarBar' style='height:100%;width:0%;background:#ff4d4d;transition:width 0.4s ease;'>
-                    </div>
-                </div>
-                <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'>
-                    <div class='mini' title='Squeeze=off'>⚫ <span style='color:var(--text-muted)'>Squeeze</span> <span
-                            class='mini' style='opacity:0.5; font-size:0.7em;'>(Squeeze=off)</span></div>
-                    <div class='mini' title='Needs: HTF_ALIGNED or HTF_COUNTER'>⚫ <span
-                            style='color:var(--text-muted)'>Trend (HTF)</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: HTF_ALIGNED or HTF_COUNTER)</span></div>
-                    <div class='mini' title='Needs: SENTIMENT_BULL or FLOW_TAKER_BULLISH or VOLUME_IMPULSE_BULL'>⚫ <span
-                            style='color:var(--text-muted)'>Momentum</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: SENTIMENT_BULL or FLOW_TAKER_BULLISH or
-                            VOLUME_IMPULSE_BULL)</span></div>
-                    <div class='mini' title='Needs: ML_CONFIDENCE_BOOST or ML_SKEPTICISM'>⚫ <span
-                            style='color:var(--text-muted)'>ML Model</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: ML_CONFIDENCE_BOOST or ML_SKEPTICISM)</span>
-                    </div>
-                    <div class='mini' title='Needs: FUNDING_EXTREME_LOW or FUNDING_LOW or FUNDING_EXTREME_HIGH'>⚫ <span
-                            style='color:var(--text-muted)'>Funding</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: FUNDING_EXTREME_LOW or FUNDING_LOW or
-                            FUNDING_EXTREME_HIGH)</span></div>
-                    <div class='mini' title='Needs: DXY_FALLING_BULLISH or DXY_RISING_BEARISH'>⚫ <span
-                            style='color:var(--text-muted)'>DXY Macro</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: DXY_FALLING_BULLISH or
-                            DXY_RISING_BEARISH)</span></div>
-                    <div class='mini' title='Needs: GOLD_RISING_BULLISH or GOLD_FALLING_BEARISH'>⚫ <span
-                            style='color:var(--text-muted)'>Gold Macro</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: GOLD_RISING_BULLISH or
-                            GOLD_FALLING_BEARISH)</span></div>
-                    <div class='mini' title='Needs: FG_EXTREME_FEAR or FG_FEAR or FG_EXTREME_GREED'>⚫ <span
-                            style='color:var(--text-muted)'>Fear & Greed</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: FG_EXTREME_FEAR or FG_FEAR or
-                            FG_EXTREME_GREED)</span></div>
-                    <div class='mini' title='Needs: BID_WALL_SUPPORT or ASK_WALL_RESISTANCE'>⚫ <span
-                            style='color:var(--text-muted)'>Order Book</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: BID_WALL_SUPPORT or
-                            ASK_WALL_RESISTANCE)</span></div>
-                    <div class='mini' title='Needs: OI_SURGE_MAJOR or OI_SURGE_MINOR or BASIS_BULLISH'>⚫ <span
-                            style='color:var(--text-muted)'>OI / Basis</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Needs: OI_SURGE_MAJOR or OI_SURGE_MINOR or
-                            BASIS_BULLISH)</span></div>
-                    <div class='mini' title='Trend=neutral, no BOS/CHoCH'>⚫ <span
-                            style='color:var(--text-muted)'>Structure</span> <span class='mini'
-                            style='opacity:0.5; font-size:0.7em;'>(Trend=neutral, no BOS/CHoCH)</span></div>
-                    <div class='mini' title='No level data'>⚫ <span style='color:var(--text-muted)'>Levels</span> <span
-                            class='mini' style='opacity:0.5; font-size:0.7em;'>(No level data)</span></div>
-                    <div class='mini' title='No AVWAP data'>⚫ <span style='color:var(--text-muted)'>AVWAP</span> <span
-                            class='mini' style='opacity:0.5; font-size:0.7em;'>(No AVWAP data)</span></div>
-                    <div class='mini' title='No VP data in trace'>⚫ <span style='color:var(--text-muted)'>VP
-                            Status</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No VP data in
-                            trace)</span></div>
-                    <div class='mini' title='No auto R:R computed'>⚫ <span style='color:var(--text-muted)'>Auto
-                            R:R</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No auto R:R
-                            computed)</span></div>
-                </div>
-                <div
-                    style='margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.4rem;font-size:.7rem;font-family:JetBrains Mono,monospace;color:var(--text-muted);'>
-                    Net: <span id='radarNet' style='color:var(--accent);font-weight:700;'>+0</span> &nbsp;🟢 0 &nbsp;🔴
-                    0 &nbsp;⚫ 15</div>
-            </div>
-            <div
-                style='background:rgba(0,255,204,0.05);border:1px solid var(--accent);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
-                <div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span
-                        class='pill' style='border:1px solid var(--accent);color:var(--accent);'>GREEN</span></div>
-                <div class='mini' style='color:var(--text)'>✅ TF Alignment</div>
-                <div class='mini' style='color:var(--text)'>✅ ML Conviction</div>
-                <div class='mini' style='color:var(--text)'>✅ R:R >= 1.2</div>
-                <div class='mini' style='color:var(--text)'>✅ Max DD <= 12%</div>
-                        <div class='mini' style='color:var(--text)'>✅ No HTF conflict</div>
-                </div>
-                <button id='executeBtn' class='pill' style='padding:10px 14px;font-size:.9rem;width:100%;'
-                    onclick="requestExecute('latest-btc')">1-CLICK EXECUTE</button>
-        </section>
-        <div id='executeModal'
-            style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;'>
-            <div
-                style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;max-width:360px;width:90%;'>
-                <h3 style='margin-bottom:.6rem;'>Confirm Execute</h3>
-                <div id='executeMeta' class='mini'></div>
-                <div style='margin-top:1rem;display:flex;gap:.5rem;justify-content:flex-end;'><button
-                        class='pill badge-neutral' onclick='closeExecuteModal()'>Cancel</button><button
-                        id='confirmExecuteBtn' class='pill badge-good' disabled>Confirm (3)</button></div>
-            </div>
+            </section>
+            <section id="circuit-breaker-banner" class="panel"
+                style="display:none; border:2px solid #ff4d4d; background:rgba(255,77,77,0.15); padding:1rem;">
+                <h3 style="margin:0; color:#ff4d4d; font-size:1rem;">🛑 CIRCUIT BREAKER</h3>
+                <p id="circuit-breaker-reason" class="mini" style="margin-top:4px; color:#ffd2d2;"></p>
+            </section>
         </div>
 
-        <section class="panel"
-            style="display: flex; flex-direction: column; padding: 0; overflow: hidden; min-height: 500px;">
-            <div style="padding: 1.2rem; padding-bottom: 0;">
-                <h2 style="margin: 0;">Live Charting</h2>
+        <!-- RIGHT: CONTEXT PANEL -->
+        <div class="context-panel">
+            <div class="tape-strip">
+                <div class="tape-item" title="BTC Mid Price">
+                    <span style="color:var(--text-muted)">BTC</span>
+                    <span id="tape-price"
+                        style="font-weight:800; font-family:'JetBrains Mono'; font-size:1.1rem;">--</span>
+                </div>
+                <div class="tape-item"><span style="color:var(--text-muted)">Spread</span><span id="tape-spread"
+                        style="font-family:'JetBrains Mono';">--</span></div>
+                <div class="tape-item"><span style="color:var(--text-muted)">RVol</span><span id="tape-rvol"
+                        style="font-weight:600;">--</span></div>
+                <div class="tape-item"><span style="color:var(--text-muted)">Taker</span><span id="tape-taker"
+                        style="font-weight:600;">--</span></div>
+                <div class="tape-item"><span style="color:var(--text-muted)">Funding</span><span id="tape-funding"
+                        style="font-weight:600;">--</span></div>
+                <div class="tape-item"><span style="color:var(--text-muted)">OI Δ</span><span id="tape-oi"
+                        style="font-weight:600;">--</span></div>
+                <div class="tape-item"><span style="color:var(--text-muted)">F&G</span><span id="tape-fg"
+                        style="font-weight:600;">--</span></div>
+                <div class="tape-item">
+                    <button id="filterBtn" class="pill badge-neutral" style="margin:0; font-size:0.7rem;"
+                        onclick="toggleFilter()">ALL</button>
+                    <button id="muteBtn" class="pill badge-neutral" style="margin:0; font-size:0.7rem;"
+                        onclick="toggleMute()">🔊</button>
+                </div>
             </div>
-            <!-- TradingView Widget BEGIN -->
-            <div class="tradingview-widget-container" style="flex-grow: 1; height: 100%; width: 100%; padding: 1.2rem;">
-                <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
+
+            <section class="panel" style="margin-bottom:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <h2 style="margin:0;">CONFLUENCE RADAR</h2>
+                    <div id="radar-summary" style="display:flex; gap:10px; align-items:center;">
+                        <span id="degraded-badge" class="pill badge-warn" style="display:none; font-size:0.65rem;">⚠️
+                            DEGRADED</span>
+                        <span id="radarScore" class="pill badge-neutral" style="font-size:0.75rem;">0/15</span>
+                    </div>
+                </div>
+                <div
+                    style="height:4px; background:rgba(255,255,255,0.05); border-radius:4px; margin-bottom:1rem; overflow:hidden;">
+                    <div id="radarBar"
+                        style="height:100%; width:0%; background:var(--accent); transition:width 0.4s ease;"></div>
+                </div>
+                <div id="radarGrid"
+                    style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px 12px; height:85px;"></div>
+                <div id="radarNetContainer"
+                    style="margin-top:0.8rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="mini">NET: <span id="radarNet" style="font-weight:800; color:var(--accent);">+0</span>
+                    </div>
+                    <div id="radarStats" class="mini" style="opacity:0.6;">🟢 0 &nbsp; 🔴 0 &nbsp; ⚫ 15</div>
+                </div>
+            </section>
+
+            <section class="panel" style="margin-bottom:0;">
+                <h2 style="margin-bottom:0.8rem;">KEY CONTEXT</h2>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div style="background:rgba(255,255,255,0.02); padding:10px; border-radius:10px;">
+                        <div class="mini" style="margin-bottom:6px; font-weight:800; color:var(--text-muted);">HI-RES
+                            LEVELS</div>
+                        <div
+                            style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-family:'JetBrains Mono'; font-size:0.75rem;">
+                            <div>PDH: <span id="key-pdh">--</span></div>
+                            <div>VAH: <span id="key-vah">--</span></div>
+                            <div>PDL: <span id="key-pdl">--</span></div>
+                            <div>VAL: <span id="key-val">--</span></div>
+                            <div>POC: <span id="key-poc" style="color:var(--accent);">--</span></div>
+                            <div>AVWAP: <span id="key-avwap">--</span></div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.02); padding:10px; border-radius:10px;">
+                        <div class="mini" style="margin-bottom:6px; font-weight:800; color:var(--text-muted);">STRUCTURE
+                            & BIAS</div>
+                        <div class="mini" style="margin-bottom:4px;">Trend: <span id="ctx-trend"
+                                style="font-weight:700;">--</span></div>
+                        <div class="mini" style="margin-bottom:4px;">Event: <span id="ctx-event"
+                                style="font-weight:700;">--</span></div>
+                        <div class="mini" style="margin-bottom:4px;">4H Bias: <span id="ctx-4h"
+                                style="font-weight:700;">--</span></div>
+                        <div class="mini" style="margin-bottom:4px;">Walls: <span id="ctx-walls"
+                                style="font-weight:700;">--</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="matrix-compact" id="alignment-matrix">
+                <div class="mini" style="font-weight:800; opacity:0.6;">MATRIX:</div>
+                <div id="matrix-1h" class="matrix-step"><span class="pill badge-neutral"
+                        style="font-size:0.7rem; padding:2px 6px;">1h --</span></div>
+                <span class="matrix-arrow">→</span>
+                <div id="matrix-15m" class="matrix-step"><span class="pill badge-neutral"
+                        style="font-size:0.7rem; padding:2px 6px;">15m --</span></div>
+                <span class="matrix-arrow">→</span>
+                <div id="matrix-5m" class="matrix-step"><span class="pill badge-neutral"
+                        style="font-size:0.7rem; padding:2px 6px;">5m --</span></div>
+                <div style="flex-grow:1; text-align:right;"><span id="matrix-status" class="pill badge-neutral"
+                        style="font-size:0.7rem;">SCANNING Matrix</span></div>
+            </div>
+
+            <div id="position-copilot"
+                style="background:rgba(112,0,255,0.05); border:1px solid rgba(112,0,255,0.2); border-radius:12px; padding:12px; display:flex; align-items:center; gap:12px;">
+                <div id="copilot-action-btn" class="pill badge-neutral"
+                    style="font-size:0.8rem; font-weight:800; width:120px; text-align:center;">STANDBY</div>
+                <div style="flex-grow:1;">
+                    <div id="copilot-msg" class="mini" style="font-weight:600;">Scanning context...</div>
+                    <div id="copilot-detail" class="mini" style="opacity:0.6; font-size:0.7rem; margin-top:2px;">No
+                        active position</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="accordion" style="margin-top:0.5rem;">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>LIVE CHART</span>
+            <span class="accordion-icon">▼</span>
+        </div>
+        <div class="accordion-content">
+            <div class="tradingview-widget-container"
+                style="height:500px; width:100%; border-radius:12px; overflow:hidden;">
+                <div id="tradingview_chart" style="height:100%; width:100%;"></div>
                 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
                 <script type="text/javascript">
                     new TradingView.widget({
@@ -687,11 +723,11 @@
                         "style": "1",
                         "locale": "en",
                         "enable_publishing": false,
-                        "backgroundColor": "rgba(22, 22, 28, 0)",
-                        "gridColor": "#23232e",
-                        "hide_top_toolbar": false,
-                        "save_image": false,
+                        "hide_side_toolbar": false,
+                        "allow_symbol_change": true,
                         "container_id": "tradingview_chart",
+                        "backgroundColor": "rgba(20, 20, 25, 1)",
+                        "gridColor": "rgba(42, 46, 57, 0.11)",
                         "studies": [
                             "Volume@tv-basicstudies",
                             "VWAP@tv-basicstudies"
@@ -699,227 +735,53 @@
                     });
                 </script>
             </div>
-            <!-- TradingView Widget END -->
-        </section>
-        <section class="panel" style="padding: 1.2rem;">
-            <h2 style="margin: 0 0 0.8rem 0;">Execution Copilot</h2>
-            <div id="copilot-container" style="display:flex;align-items:center;gap:1rem;">
-                <div id="copilot-action-btn" class="pill badge-neutral"
-                    style="font-size:1.1rem;padding:10px 18px;white-space:nowrap;min-width:180px;text-align:center;">
-                    STANDBY</div>
-                <div>
-                    <div id="copilot-msg" class="mini" style="color:var(--text-muted);">No active positions</div>
-                    <div id="copilot-detail" class="mini"
-                        style="color:var(--text-muted);margin-top:4px;font-family:JetBrains Mono,monospace;font-size:0.75rem;">
-                    </div>
-                </div>
-            </div>
-        </section>
+        </div>
     </div>
 
-    <section class="panel">
-        <h2>Execution Matrix (BTC)</h2>
-        <table class="matrix-table">
-            <thead>
-                <tr>
-                    <th>Lane</th>
-                    <th>5m Trigger</th>
-                    <th>15m Setup</th>
-                    <th>1h Bias</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><strong>Alignment View</strong></td>
-                    <td>
-                        <div class="pill-wrap">
-                            <span class="pill badge-good">LONG</span>
-                            <span class="pill badge-good">A+</span>
-                            <span class="pill badge-neutral">80/100</span>
-
-                        </div>
-                        <div class='mini' style='color:var(--accent);font-weight:700;'>Suggested Risk: 0.77% (0.077 BTC)
-                        </div>
-                        <div class="mini">Regime: trend · Session: london</div>
-                        <div class="mini">Entry: $50,000 · Stop: $49,000 · TP1: $52,000 · R:R 2.00</div>
-                        <div class="mini">Blockers: None</div>
-                    </td>
-
-                    <td>
-                        <div class="pill-wrap">
-                            <span class="pill badge-good">LONG</span>
-                            <span class="pill badge-neutral">NO-TRADE</span>
-                            <span class="pill badge-neutral">92/100</span>
-
-                        </div>
-
-                        <div class="mini">Regime: - · Session: -</div>
-                        <div class="mini">Entry: $67,000 · Stop: $66,600 · TP1: $67,720 · R:R 1.80</div>
-                        <div class="mini">Blockers: None</div>
-                    </td>
-
-                    <td>
-                        <div class="pill-wrap">
-                            <span class="pill badge-good">LONG</span>
-                            <span class="pill badge-warn">B</span>
-                            <span class="pill badge-neutral">23/100</span>
-
-                        </div>
-
-                        <div class="mini">Regime: range · Session: weekend</div>
-                        <div class="mini">Entry: $67,172 · Stop: $66,201 · TP1: $67,820 · R:R 0.67</div>
-                        <div class="mini">Blockers: None</div>
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>Execution Decision</strong></td>
-                    <td colspan="3">
-                        <span class="pill badge-good">EXECUTE</span>
-                        <span class='pill badge-good' style='margin-left:12px;'>Setup Quality: 78/100</span>
-                        <span class='pill badge-good' style='margin-left:12px;'>Suggested Risk: 0.77%</span>
-                        <span class='mini' style='margin-left:8px;'>Daily risk budget cap: $200.00</span>
-                        <span class="mini" style="margin-left:8px;">• All timeframes aligned.</span>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <p class="playbook">Playbook: <strong>1h = bias</strong> · <strong>15m = setup</strong> · <strong>5m =
-                trigger</strong>.</p>
-    </section>
-
-    <div class="bottom-panels">
-        <div>
-            <section style="margin-bottom: 1.5rem;">
-                <h2>Performance Metrics</h2>
-                <div id="perf-metrics-body"><p class="mini">Loading...</p></div>
-            </section>
-
-            <section class="panel">
-                <h2>Timeframe Edge Scoreboard</h2>
-                <div id="tf-edge-body"><p class="mini">Loading...</p></div>
-            </section>
-
-
-            <section class="panel">
-                <h2>Confidence Calibration</h2>
-                <div id="conf-cal-body"><p class="mini">Loading...</p></div>
-            </section>
-
+    <div class="accordion">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>PERFORMANCE & EDGE STATISTICS</span>
+            <span class="accordion-icon">▼</span>
         </div>
-        <div>
+        <div class="accordion-content">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                <section class="panel">
+                    <h3 class="mini" style="color:var(--text-muted); margin-bottom:1rem;">PORTFOLIO HEALTH</h3>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                        <span>Balance</span><span id="stat-balance" style="font-weight:800;">$0.00</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span>Win Rate
+                            (7d)</span><span id="stat-winrate" class="pill badge-neutral">0%</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span>Avg
+                            R</span><span id="stat-pf" style="font-weight:600;">0.00</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>Kelly %</span><span
+                            id="stat-kelly">0%</span></div>
+                </section>
+                <section class="panel">
+                    <h3 class="mini" style="color:var(--text-muted); margin-bottom:1rem;">CONVICTION CALIBRATION</h3>
+                    <table class="matrix-table" style="font-size:0.75rem;">
+                        <thead>
+                            <tr>
+                                <th>Bin</th>
+                                <th>Trades</th>
+                                <th>WR</th>
+                                <th>Avg R</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calibration-body"></tbody>
+                    </table>
+                </section>
+            </div>
+        </div>
+    </div>
 
-            <section class="panel">
-                <h2>Active Trade Lifecycle</h2>
-                <table class="matrix-table">
-                    <thead>
-                        <tr>
-                            <th>TF</th>
-                            <th>Direction</th>
-                            <th>Age</th>
-                            <th>Time Used</th>
-                            <th>Planned R:R</th>
-                            <th>Blockers</th>
-                            <th>Management Priority</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>5m</td>
-                            <td>LONG</td>
-                            <td>26.5h</td>
-                            <td>662%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-bad'>Late setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>LONG</td>
-                            <td>43.1h</td>
-                            <td>90%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-bad'>Late setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>SHORT</td>
-                            <td>43.1h</td>
-                            <td>90%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-bad'>Late setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>SHORT</td>
-                            <td>43.0h</td>
-                            <td>90%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-bad'>Late setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>LONG</td>
-                            <td>41.4h</td>
-                            <td>86%</td>
-                            <td>0.82</td>
-                            <td>None</td>
-                            <td><span class='pill badge-bad'>Late setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>LONG</td>
-                            <td>29.5h</td>
-                            <td>61%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Aging setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>LONG</td>
-                            <td>29.3h</td>
-                            <td>61%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Aging setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>LONG</td>
-                            <td>29.2h</td>
-                            <td>61%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Aging setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td>LONG</td>
-                            <td>28.8h</td>
-                            <td>60%</td>
-                            <td>0.67</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Aging setup · Low R:R</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td>LONG</td>
-                            <td>25.7h</td>
-                            <td>214%</td>
-                            <td>1.80</td>
-                            <td>None</td>
-                            <td><span class='pill badge-warn'>Late setup</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
-
-
-            <section class="panel">
-                <h2>📡 Recent Signals (Last 10)</h2>
+    <div class="accordion">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>RECENT SIGNALS & HISTORY</span>
+            <span class="accordion-icon">▼</span>
+        </div>
+        <div class="accordion-content">
+            <section class="panel" style="padding:0; overflow:hidden;">
                 <table class="matrix-table">
                     <thead>
                         <tr>
@@ -927,178 +789,73 @@
                             <th>Dir</th>
                             <th>Conf</th>
                             <th>Tier</th>
-                            <th>Codes</th>
+                            <th>Recipe</th>
                             <th>Age</th>
-                            <th>Status</th>
+                            <th>Status/Outcome</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="signals-body">
                         <tr>
-                            <td>5m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>80</td>
-                            <td><span class="pill badge-good">A+</span></td>
-                            <td>0</td>
-                            <td>47m</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>92</td>
-                            <td><span class="pill badge-neutral">-</span></td>
-                            <td>2</td>
-                            <td>25.7h</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>5m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>100</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>25</td>
-                            <td>26.5h</td>
-                            <td><span class="pill badge-warn">OPEN</span></td>
-                        </tr>
-                        <tr>
-                            <td>5m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>86</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>16</td>
-                            <td>26.8h</td>
-                            <td><span class="pill badge-bad">LOSS</span></td>
-                        </tr>
-                        <tr>
-                            <td>5m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>72</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>18</td>
-                            <td>26.9h</td>
-                            <td><span class="pill badge-bad">LOSS</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>75</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>25</td>
-                            <td>27.3h</td>
-                            <td><span class="pill badge-bad">LOSS</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>61</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>24</td>
-                            <td>27.4h</td>
-                            <td><span class="pill badge-bad">LOSS</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>79</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>21</td>
-                            <td>27.5h</td>
-                            <td><span class="pill badge-bad">LOSS</span></td>
-                        </tr>
-                        <tr>
-                            <td>1h</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>23</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>17</td>
-                            <td>27.6h</td>
-                            <td><span class="pill badge-bad">LOSS</span></td>
-                        </tr>
-                        <tr>
-                            <td>15m</td>
-                            <td><span class="pill badge-good">LONG</span></td>
-                            <td>37</td>
-                            <td><span class="pill badge-warn">B</span></td>
-                            <td>20</td>
-                            <td>27.6h</td>
-                            <td><span class="pill badge-bad">LOSS</span></td>
+                            <td colspan="7" style="text-align:center; padding:2rem; opacity:0.5;">No signal history
+                                available</td>
                         </tr>
                     </tbody>
                 </table>
             </section>
-
         </div>
     </div>
-    <section>
-        <h2>Active Signals</h2>
-        <div class="grid">
-            <p class="mini">No active signals detected.</p>
+
+    <div class="accordion">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>INTELLIGENCE REPORT</span>
+            <span class="accordion-icon">▼</span>
         </div>
-    </section>
-    <section class="scorecard-section">
-        <h2>Intelligence Report</h2>
-        <pre># PID-129 BTC Alerts Performance Scorecard
+        <div class="accordion-content">
+            <section class="panel">
+                <pre id="audit-log"
+                    style="font-family:'JetBrains Mono'; font-size:0.75rem; color:var(--text-muted); white-space:pre-wrap;"></pre>
+            </section>
+        </div>
+    </div>
 
-**Generated:** 2026-03-02 15:04:43 UTC
-
-## Signal Summary (Last 7 Days)
-
-- **Total Alerts:** 96
-- **Directional Split:** 66 LONG / 30 SHORT
-- **High Confidence (>=70):** 36
-
-## Trading Performance (Paper)
-
-- **Resolved Trades:** 79
-- **Win Rate:** 45.6%
-- **Total P&L (R):** -7.43R
-- **Average R per Trade:** -0.09R
-- **Outcomes:** {'WIN_TP2': 17, 'LOSS': 41, 'WIN_TP1': 19, 'TIMEOUT': 2}
-
-## Strategy Breakdown
-
-- **TREND_CONTINUATION**: 66 alerts
-- **NONE**: 15 alerts
-- **MEAN_REVERSION**: 9 alerts
-- **VOLATILITY_EXPANSION**: 5 alerts
-- **UNKNOWN**: 1 alerts
-
-## Recent Alerts (Last 10)
-
-| Time | Direction | Strategy | Confidence | Outcome |
-|:---|:---|:---|:---|:---|
-| 2026-03-01 15:45 | LONG | TREND_CONTINUATION | 79 | LOSS |
-| 2026-03-01 15:53 | LONG | TREND_CONTINUATION | 37 | LOSS |
-| 2026-03-01 15:53 | LONG | TREND_CONTINUATION | 23 | LOSS |
-| 2026-03-01 16:00 | LONG | TREND_CONTINUATION | 79 | LOSS |
-| 2026-03-01 16:05 | LONG | TREND_CONTINUATION | 61 | LOSS |
-| 2026-03-01 16:10 | LONG | TREND_CONTINUATION | 75 | LOSS |
-| 2026-03-01 16:35 | LONG | TREND_CONTINUATION | 72 | LOSS |
-| 2026-03-01 16:40 | LONG | TREND_CONTINUATION | 86 | LOSS |
-| 2026-03-01 17:00 | LONG | MEAN_REVERSION | 100 | PENDING |
-| 2026-03-01 17:45 | LONG | None | 92 | PENDING |
-
-## System Health (Audit Log - Last 24h)
-
-- **Cycles Completed:** 81
-- **Peak Confidence Seen:** 100
-- **Status:** Bot Active & Scanning
-</pre>
-    </section>
-    <footer style="margin-top: 2rem; text-align: center; color: var(--text-muted); padding-bottom: 2rem;">
-        &copy; 2026 EMBER Loop | BTC Alerts MVP
+    <footer
+        style="margin-top:2rem; text-align:center; color:var(--text-muted); padding-bottom:2rem; font-size:0.7rem; letter-spacing:1px; opacity:0.5;">
+        &copy; 2026 EMBER COMMAND | BTC ALERTS MVP
     </footer>
-    <dialog id="execModal"
-        style="max-width:420px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);padding:1rem;">
-        <h3 style="margin-bottom:.5rem;">Confirm Execution</h3>
-        <p class="mini" id="execCountdown">Arming confirmation...</p>
-        <div style="display:flex;gap:.5rem;margin-top:1rem;"><button id="cancelExec" class="pill badge-neutral"
-                style="border:0;cursor:pointer;">Cancel</button><button id="confirmExec" class="pill badge-good"
-                style="border:0;cursor:pointer;" disabled>Confirm</button></div>
+
+    <dialog id="executeModal"
+        style="max-width:400px; border:1px solid var(--border); border-radius:16px; background:var(--surface); color:var(--text); padding:1.5rem; outline:none; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+        <h2 style="margin-top:0; font-size:1.2rem;">CONFIRM EXECUTION</h2>
+        <div id="executeMeta" class="mini"
+            style="background:rgba(255,255,255,0.03); padding:1rem; border-radius:10px; margin:1rem 0;"></div>
+        <div id="executeWarning" style="color:#ff4d4d; font-size:0.7rem; margin-bottom:1rem; font-weight:700;"></div>
+        <div style="display:flex; gap:0.8rem;">
+            <button class="pill badge-neutral" style="flex:1; padding:12px; cursor:pointer;"
+                onclick="closeExecuteModal()">CANCEL</button>
+            <button id="confirmExecuteBtn" class="pill badge-good"
+                style="flex:2; padding:12px; cursor:pointer; font-weight:800;" disabled>CONFIRM (3)</button>
+        </div>
     </dialog>
     <script>
-        let state = { livePrice: 0, spread: 0, inTrade: false, entryPrice: 0, tp1Price: 0, stopPrice: 0, direction: "LONG" };
-        const els = { badge: document.getElementById('connection-badge'), sync: document.getElementById('sync-label'), mid: document.getElementById('live-mid'), spread: document.getElementById('live-spread'), confluence: document.getElementById('live-confluence'), radar: document.getElementById('live-radar'), balance: document.getElementById('live-balance'), winrate: document.getElementById('live-winrate'), pf: document.getElementById('live-pf'), kelly: document.getElementById('live-kelly'), gate: document.getElementById('live-gate'), cbanner: document.getElementById('circuit-breaker-banner'), creason: document.getElementById('circuit-breaker-reason'), execBtn: document.getElementById('executeBtn') };
+        let state = { livePrice: 0, spread: 0, inTrade: true, entryPrice: 66835.3, tp1Price: 67352.55571428571, stopPrice: 66203.09857142858, direction: "LONG" };
+        function _firstEl(ids) { for (const id of ids) { const el = document.getElementById(id); if (el) return el; } return null; }
+        const els = {
+            badge: _firstEl(['connection-badge']),
+            sync: _firstEl(['sync-label']),
+            // Phase 28-B layout renamed legacy live-* IDs to tape-*.
+            mid: _firstEl(['tape-price', 'live-mid']),
+            spread: _firstEl(['tape-spread', 'live-spread']),
+            confluence: _firstEl(['live-confluence']),
+            radar: _firstEl(['live-radar']),
+            balance: _firstEl(['stat-balance', 'live-balance']),
+            winrate: _firstEl(['stat-winrate', 'live-winrate']),
+            pf: _firstEl(['stat-pf', 'live-pf']),
+            kelly: _firstEl(['stat-kelly', 'live-kelly']),
+            gate: _firstEl(['gate-badge', 'live-gate']),
+            cbanner: _firstEl(['circuit-breaker-banner']),
+            creason: _firstEl(['circuit-breaker-reason']),
+            execBtn: _firstEl(['executeBtn'])
+        };
         function fmtMoney(n, d = 0) { return Number.isFinite(n) ? '$' + n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) : '--'; }
         function deriveConfluence(alerts) { const t = ['5m', '15m', '1h'], m = Object.create(null); for (const a of (alerts || [])) if (a.symbol === 'BTC' && t.includes(a.timeframe)) m[a.timeframe] = a; const p = t.map(tf => m[tf]).filter(Boolean); if (p.length < 3) return 'Partial'; const d = p.map(x => String(x.direction || 'NEUTRAL').toUpperCase()); return d.every(x => x === d[0] && x !== 'NEUTRAL') ? d[0] + ' aligned' : 'Mixed'; }
         function updateLivePrice() {
@@ -1124,8 +881,10 @@
             if (state.entryPrice > 0 && state.tp1Price > 0 && state.stopPrice > 0) {
                 const toTp = state.direction === 'SHORT' ? state.livePrice - state.tp1Price : state.tp1Price - state.livePrice;
                 const toStop = state.direction === 'SHORT' ? state.stopPrice - state.livePrice : state.livePrice - state.stopPrice;
-                document.getElementById('distTP1').textContent = (toTp >= 0 ? '+' : '-') + '$' + Math.abs(toTp).toFixed(0) + ' (' + ((toTp / state.livePrice) * 100).toFixed(2) + '%)';
-                document.getElementById('distStop').textContent = (toStop >= 0 ? '+' : '-') + '$' + Math.abs(toStop).toFixed(0) + ' (' + ((toStop / state.livePrice) * 100).toFixed(2) + '%)';
+                const distTpEl = document.getElementById('distTP1');
+                if (distTpEl) distTpEl.textContent = (toTp >= 0 ? '+' : '-') + '$' + Math.abs(toTp).toFixed(0) + ' (' + ((toTp / state.livePrice) * 100).toFixed(2) + '%)';
+                const distStopEl = document.getElementById('distStop');
+                if (distStopEl) distStopEl.textContent = (toStop >= 0 ? '+' : '-') + '$' + Math.abs(toStop).toFixed(0) + ' (' + ((toStop / state.livePrice) * 100).toFixed(2) + '%)';
             }
             if (state.inTrade && state.entryPrice > 0) {
                 const mult = state.direction === 'SHORT' ? -1 : 1;
@@ -1159,26 +918,7 @@
                     clearInterval(t);
                     btn.disabled = false;
                     btn.textContent = 'Confirm Execute';
-                    btn.onclick = async () => {
-                        btn.disabled = true;
-                        btn.textContent = 'Executing...';
-                        try {
-                            const resp = await fetch('/api/command', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'execute_trade' })
-                            });
-                            const result = await resp.json();
-                            if (result.status === 'success') {
-                                btn.textContent = result.trade_status + ': ' + (result.order_id || 'done');
-                            } else {
-                                btn.textContent = 'Error: ' + (result.error || 'unknown');
-                            }
-                        } catch (e) {
-                            btn.textContent = 'Network error';
-                        }
-                        setTimeout(closeExecuteModal, 2000);
-                    };
+                    btn.onclick = () => closeExecuteModal();
                 } else { btn.textContent = 'Confirm (' + n + ')'; }
             }, 1000);
         }
@@ -1210,21 +950,8 @@
         function connectWS() {
             const p = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws'; const ws = new WebSocket(p); ws.onopen = () => { els.badge.textContent = 'Live Feed: Online'; els.badge.classList.remove('badge-stale'); }; ws.onmessage = (ev) => {
                 try {
-                    const data = JSON.parse(ev.data); const ob = data.orderbook || {}; state.livePrice = Number(ob.mid || 0); state.spread = Number(ob.spread || 0); updateLivePrice(); els.mid.textContent = fmtMoney(state.livePrice, 2); els.spread.textContent = state.spread.toFixed(2); const po = data.portfolio || {}; els.balance.textContent = fmtMoney(Number(po.balance || 0), 2); const st = data.stats || {}; window._lastStats = st; window._lastBalance = Number(po.balance || 0); els.winrate.textContent = (Number(st.win_rate || 0) * 100).toFixed(1) + '%'; els.pf.textContent = Number(st.avg_r || 0).toFixed(2); if (els.kelly) els.kelly.textContent = (Number(st.kelly_pct || 0) * 100).toFixed(2) + '%';
-                    const positions = po.positions || [];
-                    if (positions.length > 0) {
-                        const p0 = positions[0];
-                        state.inTrade = true;
-                        state.direction = p0.direction || 'LONG';
-                        state.entryPrice = Number(p0.entry_price) || 0;
-                        state.stopPrice = Number(p0.sl) || 0;
-                        state.tp1Price = Number(p0.tp1) || 0;
-                    } else {
-                        state.inTrade = false;
-                    }
+                    const data = JSON.parse(ev.data); const ob = data.orderbook || {}; state.livePrice = Number(ob.mid || 0); state.spread = Number(ob.spread || 0); updateLivePrice(); if (els.mid) els.mid.textContent = fmtMoney(state.livePrice, 2); if (els.spread) els.spread.textContent = state.spread.toFixed(2); const po = data.portfolio || {}; if (els.balance) els.balance.textContent = fmtMoney(Number(po.balance || 0), 2); const st = data.stats || {}; window._lastStats = st; window._lastBalance = Number(po.balance || 0); if (els.winrate) els.winrate.textContent = Number(st.win_rate || 0).toFixed(2) + '%'; if (els.pf) els.pf.textContent = Number(st.profit_factor || 0).toFixed(2); if (els.kelly) els.kelly.textContent = (Number(st.kelly_pct || 0) * 100).toFixed(2) + '%';
                     const pf = data.profit_preflight || {};
-                    updateCandidateCard('best-long', pf.best_long_candidate || null);
-                    updateCandidateCard('best-short', pf.best_short_candidate || null);
                     _set('operator-decision', pf.operator_decision || 'WAIT');
                     const od = document.getElementById('operator-decision');
                     if (od) { const t = String(pf.operator_decision || 'WAIT'); od.className = 'pill ' + (t.includes('LONG') ? 'badge-good' : t.includes('SHORT') ? 'badge-bad' : 'badge-neutral'); }
@@ -1279,17 +1006,111 @@
                     } else {
                         if (els.cbanner) els.cbanner.style.display = 'none';
                         if (els.execBtn) {
-                            const op = String(pf.operator_decision || 'WAIT');
-                            const longGate = ((pf.best_long_candidate || {}).gate_status || '').toUpperCase();
-                            const shortGate = ((pf.best_short_candidate || {}).gate_status || '').toUpperCase();
-                            const gate = op.includes('LONG') ? longGate : (op.includes('SHORT') ? shortGate : 'RED');
-                            els.execBtn.disabled = op === 'WAIT' || gate === 'RED';
-                            els.execBtn.textContent = op === 'WAIT' ? 'WAIT - GATE BLOCKED' : ('1-CLICK ' + op);
-                            els.execBtn.style.opacity = els.execBtn.disabled ? '0.7' : '1.0';
-                            els.execBtn.style.cursor = els.execBtn.disabled ? 'not-allowed' : 'pointer';
-                            els.execBtn.style.background = gate === 'GREEN' ? '#00cc88' : (gate === 'AMBER' ? '#996f00' : '#7a1f1f');
+                            els.execBtn.disabled = false;
+                            els.execBtn.style.opacity = '1';
+                            els.execBtn.style.cursor = 'pointer';
+                            // ── Phase 26 Task 4.1: Restore the original label based on latest alert tier ──
+                            const tier = wsTier || 'NO-TRADE';
+                            if (tier === 'A+') {
+                                els.execBtn.textContent = '🟢 EXECUTE';
+                                els.execBtn.style.background = '#00cc88';
+                            } else if (tier === 'B') {
+                                els.execBtn.textContent = '🟡 EXECUTE (WATCH)';
+                                els.execBtn.style.background = '#cc8800';
+                            } else {
+                                els.execBtn.textContent = '⚠️ EXECUTE (HIGH RISK)';
+                                els.execBtn.style.background = '#ff4d4d';
                             }
                         }
+                    }
+                    
+                    // ── Phase 28-B T3.3: Degraded Probes Indicator ──
+                    const degraded = (wsLatest.decision_trace || {}).degraded || [];
+                    const degBadge = document.getElementById('degraded-badge');
+                    if (degBadge) {
+                        if (degraded && degraded.length > 0) {
+                            degBadge.style.display = 'inline-block';
+                            degBadge.textContent = '⚠️ ' + degraded.length + ' DEGRADED';
+                            degBadge.title = 'Degraded probes: ' + degraded.join(', ');
+                        } else {
+                            degBadge.style.display = 'none';
+                        }
+                    }
+                    
+                    // ── Phase 28-B: Update Verdict Panel ──
+                    const vd = document.getElementById('verdict-direction');
+                    const vc = document.getElementById('verdict-confidence');
+                    const ve = document.getElementById('v-entry');
+                    const vs = document.getElementById('v-stop');
+                    const vt = document.getElementById('v-tp2');
+                    const vr = document.getElementById('v-rr');
+                    
+                    const bestCand = pf.best_long_candidate || pf.best_short_candidate;
+                    if (bestCand) {
+                        state.direction = String(bestCand.direction || state.direction).toUpperCase();
+                        state.entryPrice = Number(bestCand.price || bestCand.entry_zone || state.entryPrice) || state.entryPrice;
+                        state.tp1Price = Number(bestCand.tp1 || state.tp1Price) || state.tp1Price;
+                        state.stopPrice = Number(bestCand.invalidation || state.stopPrice) || state.stopPrice;
+                        if (vd) {
+                            vd.textContent = bestCand.direction || 'SCANNING';
+                            vd.style.color = (bestCand.direction || '').toUpperCase() === 'LONG' ? '#00ffcc' : '#ff4d4d';
+                        }
+                        if (vc) vc.textContent = Math.round(bestCand.confidence || 0);
+                        if (ve) ve.textContent = bestCand.entry_zone ? '$' + Number(bestCand.entry_zone).toLocaleString() : '--';
+                        if (vs) vs.textContent = bestCand.invalidation ? '$' + Number(bestCand.invalidation).toLocaleString() : '--';
+                        if (vt) vt.textContent = bestCand.tp2 ? '$' + Number(bestCand.tp2).toLocaleString() : '--';
+                        if (vr) vr.textContent = (bestCand.rr_ratio || 0).toFixed(2) + 'R';
+                        
+                        // Update rubric bar (Phase 28-B T1.4)
+                        const rubric = bestCand.rubric || {};
+                        const rubricDetails = rubric.details || {};
+                        const rubricSegs = ['rubric-structure', 'rubric-location', 'rubric-anchors', 'rubric-derivatives', 'rubric-momentum', 'rubric-volatility'];
+                        rubricSegs.forEach((id, idx) => {
+                            const seg = document.getElementById(id);
+                            if (seg) {
+                                const keys = ['structure', 'location', 'anchors', 'derivatives', 'momentum', 'volatility'];
+                                const active = rubricDetails[keys[idx]];
+                                seg.classList.toggle('active', !!active);
+                            }
+                        });
+                        
+                        // Score breakdown visualization (Phase 28-B T1.5)
+                        const sbd = bestCand.score_breakdown || {};
+                        // Create or update score viz container if needed
+                        let scoreViz = document.getElementById('score-viz-container');
+                        if (!scoreViz) {
+                            // Find verdict-details and add score viz after it
+                            const vdDiv = document.getElementById('verdict-details');
+                            if (vdDiv) {
+                                scoreViz = document.createElement('div');
+                                scoreViz.id = 'score-viz-container';
+                                scoreViz.style.cssText = 'margin-top:8px; padding:8px; background:rgba(255,255,255,0.02); border-radius:8px;';
+                                scoreViz.innerHTML = '<div class="mini" style="margin-bottom:4px;">SCORE BREAKDOWN</div><div id="score-viz-bars" style="display:flex; gap:3px; height:6px;"></div>';
+                                vdDiv.parentNode.insertBefore(scoreViz, vdDiv.nextSibling);
+                            }
+                        }
+                        if (scoreViz) {
+                            const barContainer = document.getElementById('score-viz-bars');
+                            if (barContainer) {
+                                const components = ['trend_alignment', 'momentum', 'volatility', 'volume', 'htf', 'penalty'];
+                                const maxVal = Math.max(...components.map(k => Math.abs(sbd[k] || 0)), 1);
+                                barContainer.innerHTML = components.map(k => {
+                                    const val = sbd[k] || 0;
+                                    const width = Math.min(Math.abs(val) / maxVal * 100, 100);
+                                    const color = k === 'penalty' ? (val < 0 ? '#ff4d4d' : 'rgba(255,255,255,0.1)') : (val >= 0 ? '#00ffcc' : '#ff4d4d');
+                                    return `<div style="flex:${width}; background:${color}; border-radius:2px; min-width:2px;" title="${k}: ${val.toFixed(1)}"></div>`;
+                                }).join('');
+                            }
+                        }
+                    } else {
+                        if (vd) { vd.textContent = 'SCANNING'; vd.style.color = 'var(--text)'; }
+                        if (vc) vc.textContent = '--';
+                        if (ve) ve.textContent = '--';
+                        if (vs) vs.textContent = '--';
+                        if (vt) vt.textContent = '--';
+                        if (vr) vr.textContent = '--';
+                    }
+                    
                     if (wsTier === "A+" && wsLatest.timestamp && wsLatest.timestamp !== window._lastPlayedAlertTs) {
                         window._lastPlayedAlertTs = wsLatest.timestamp;
                         if (!window._isMuted) {
@@ -1320,12 +1141,21 @@
                     const _el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
                     _el('tape-oi-regime', wsOR.toUpperCase());
                     _el('tape-dxy', (wsMC.dxy || '—').toUpperCase());
+                    // Phase 28-B T3.2: Add Fear & Greed numeric to tape (0-100 scale)
+                    const fgEl = document.getElementById('tape-fg');
+                    if (fgEl && wsSN.score !== undefined) {
+                        const fgVal = Math.round((wsSN.score + 1) * 50);  // Convert -1 to +1 -> 0 to 100
+                        fgEl.textContent = fgVal;
+                        if (fgVal < 25) fgEl.style.color = '#00ffcc';  // Fear (buy opportunity)
+                        else if (fgVal > 75) fgEl.style.color = '#ff4d4d';  // Greed (sell pressure)
+                        else fgEl.style.color = '#ffd700';
+                    }
                     _el('tape-sentiment', wsSN.score ? wsSN.score.toFixed(2) : '—');
                     const taker = (data.flows || {}).taker_ratio;
                     _el('tape-taker', taker ? taker.toFixed(2) : '—');
 
                     // ── Phase 26 Task 7.2: Smart Money UI ──
-                    const wsDeriv = data.derivatives || {};
+                    const wsDeriv = wsCtx.derivatives || {};
                     const fundRate = wsDeriv.funding_rate;
                     const basis = wsDeriv.basis_pct;
                     const oiDelta = wsDeriv.oi_change_pct;
@@ -1341,7 +1171,7 @@
                             else fundEl.style.color = '#b580ff';
                         } else { fundEl.textContent = '—'; }
                     }
-                    const oiEl = document.getElementById('tape-oi-delta');
+                    const oiEl = document.getElementById('tape-oi-delta') || document.getElementById('tape-oi');
                     if (oiEl) {
                         if (oiDelta !== undefined) {
                             oiEl.textContent = (oiDelta > 0 ? '+' : '') + oiDelta.toFixed(2) + '%';
@@ -1357,12 +1187,31 @@
                     _el('key-vah', wsVP.vah ? '$' + Number(wsVP.vah).toLocaleString() : '—');
                     _el('key-val', wsVP.val ? '$' + Number(wsVP.val).toLocaleString() : '—');
                     _el('key-avwap', wsAV.value ? '$' + Number(wsAV.value).toLocaleString() : '—');
-                    _el('key-avwap-side', wsAV.position || '—');
-                    const asE = document.getElementById('key-avwap-side');
-                    if (asE && wsAV.position) { asE.style.color = wsAV.position === 'ABOVE' ? '#00ff88' : wsAV.position === 'BELOW' ? '#ff4444' : '#ffffff'; }
-                    _el('key-struct-event', wsST.event || wsST.trend || '—');
-                    const seE = document.getElementById('key-struct-event');
-                    if (seE && (wsST.event || wsST.trend)) { const t = (wsST.event || wsST.trend).toUpperCase(); seE.style.color = t.includes('BULL') ? '#00ff88' : t.includes('BEAR') ? '#ff4444' : '#ffffff'; }
+                    _el('ctx-trend', wsST.trend || '—');
+                    _el('ctx-event', wsST.event || '—');
+                    _el('ctx-walls', (wsLQ.bid_walls ?? '—') + ' / ' + (wsLQ.ask_walls ?? '—'));
+                    const trendEl = document.getElementById('ctx-trend');
+                    if (trendEl && wsST.trend) {
+                        const t = String(wsST.trend).toUpperCase();
+                        trendEl.style.color = t.includes('BULL') ? '#00ff88' : t.includes('BEAR') ? '#ff4444' : '#ffffff';
+                    }
+                    const eventEl = document.getElementById('ctx-event');
+                    if (eventEl && wsST.event) {
+                        const t = String(wsST.event).toUpperCase();
+                        eventEl.style.color = t.includes('BULL') ? '#00ff88' : t.includes('BEAR') ? '#ff4444' : '#ffffff';
+                    }
+                    
+                    // Phase 28-B T3.1: 4H Bias in Key Context
+                    const ws4h = wsCtx.structure_4h || {};
+                    const ctx4hEl = document.getElementById('ctx-4h');
+                    if (ctx4hEl) {
+                        const trend4h = ws4h.trend || '—';
+                        ctx4hEl.textContent = trend4h;
+                        if (trend4h.toUpperCase().includes('BULL')) ctx4hEl.style.color = '#00ff88';
+                        else if (trend4h.toUpperCase().includes('BEAR')) ctx4hEl.style.color = '#ff4444';
+                        else ctx4hEl.style.color = 'var(--text-muted)';
+                    }
+                    
                     _el('key-pivot-high', wsST.last_pivot_high ? '$' + Number(wsST.last_pivot_high).toLocaleString() : '—');
                     _el('key-pivot-low', wsST.last_pivot_low ? '$' + Number(wsST.last_pivot_low).toLocaleString() : '—');
                     _el('key-bid-walls', wsLQ.bid_walls !== undefined ? wsLQ.bid_walls : '—');
@@ -1378,8 +1227,161 @@
                         if (wsCS.has('ATR_EXPANSION_ONSET')) { vrE.textContent += ' ⚡'; vrE.style.color = '#ff6b00'; }
                     }
 
-                    const wsPD = [[['SQUEEZE_FIRE', 'SQUEEZE_ON'], [], 'Squeeze'], [['HTF_ALIGNED'], ['HTF_COUNTER'], 'Trend (HTF)'], [['SENTIMENT_BULL', 'FLOW_TAKER_BULLISH', 'VOLUME_IMPULSE_BULL'], ['SENTIMENT_BEAR', 'FLOW_TAKER_BEARISH', 'VOLUME_IMPULSE_BEAR'], 'Momentum'], [['ML_CONFIDENCE_BOOST'], ['ML_SKEPTICISM'], 'ML Model'], [['FUNDING_EXTREME_LOW', 'FUNDING_LOW'], ['FUNDING_EXTREME_HIGH', 'FUNDING_HIGH'], 'Funding'], [['DXY_FALLING_BULLISH'], ['DXY_RISING_BEARISH'], 'DXY Macro'], [['GOLD_RISING_BULLISH'], ['GOLD_FALLING_BEARISH'], 'Gold Macro'], [['FG_EXTREME_FEAR', 'FG_FEAR'], ['FG_EXTREME_GREED', 'FG_GREED'], 'Fear & Greed'], [['BID_WALL_SUPPORT'], ['ASK_WALL_RESISTANCE'], 'Order Book'], [['OI_SURGE_MAJOR', 'OI_SURGE_MINOR', 'BASIS_BULLISH', 'OI_NEW_LONGS'], ['BASIS_BEARISH', 'OI_NEW_SHORTS'], 'OI / Basis'], [['STRUCTURE_BOS_BULL', 'STRUCTURE_CHOCH_BULL'], ['STRUCTURE_BOS_BEAR', 'STRUCTURE_CHOCH_BEAR'], 'Structure'], [['PDL_SWEEP_BULL', 'EQL_SWEEP_BULL', 'SESSION_LOW_SWEEP', 'PDH_RECLAIM_BULL'], ['PDH_SWEEP_BEAR', 'EQH_SWEEP_BEAR', 'SESSION_HIGH_SWEEP', 'PDL_BREAK_BEAR'], 'Levels'], [['AVWAP_RECLAIM_BULL'], ['AVWAP_REJECT_BEAR'], 'AVWAP'], [['ABOVE_VALUE'], ['BELOW_VALUE'], 'VP Status'], [['AUTO_RR_EXCELLENT'], ['AUTO_RR_POOR'], 'Auto R:R']];
-                    let wsAl = 0, wsAg = 0; const wsRH = wsPD.map(([b, br, lbl]) => { const hb = b.some(c => wsCS.has(c)); const hbr = br.some(c => wsCS.has(c)); let ic = '⚫', co = 'var(--text-muted)'; if ((wsDir === 'LONG' && hb) || (wsDir === 'SHORT' && hbr)) { ic = '🟢'; co = 'var(--accent)'; wsAl++; } else if ((wsDir === 'LONG' && hbr) || (wsDir === 'SHORT' && hb)) { ic = '🔴'; co = '#ff4d4d'; wsAg++; } return "<div class='mini'>" + ic + " <span style='color:" + co + "'>" + lbl + "</span></div>"; }).join(''); const wsT = wsPD.length, wsPct = Math.round((wsAl / wsT) * 100), wsLbl = wsAl >= 7 ? 'STRONG' : wsAl >= 4 ? 'MODERATE' : 'WEAK', wsClr = wsAl >= 7 ? 'var(--accent)' : wsAl >= 4 ? '#ffd700' : '#ff4d4d', wsNet = wsAl - wsAg; els.gate.textContent = wsAl >= 7 ? 'GREEN' : wsAl >= 4 ? 'AMBER' : 'RED'; const rSc = document.getElementById('radarScore'); if (rSc) { rSc.textContent = wsAl + '/' + wsT + ' ' + wsLbl; rSc.style.color = wsClr; rSc.style.borderColor = wsClr; }; const rBr = document.getElementById('radarBar'); if (rBr) { rBr.style.width = wsPct + '%'; rBr.style.background = wsClr; }; const rGr = document.getElementById('radarGrid'); if (rGr) rGr.innerHTML = wsRH; const rNt = document.getElementById('radarNet'); if (rNt) { rNt.textContent = (wsNet >= 0 ? '+' : '') + wsNet; rNt.style.color = wsNet >= 0 ? 'var(--accent)' : '#ff4d4d'; };
+                    // ── Phase 28-B T1.1: Derive radar from cached_context directly (not just reason_codes) ──
+                    const _ctx = (key) => wsCtx[key] || {};
+                    const _code = (code) => wsCS.has(code);
+                    
+                    // Derive probe states from context data
+                    const probeStates = {
+                        'Squeeze': (() => {
+                            const s = _ctx('squeeze');
+                            if (s.state === 'SQUEEZE_FIRE') return 1;
+                            if (s.state === 'SQUEEZE_ON') return 0;
+                            return -1;
+                        })(),
+                        'Momentum': (() => {
+                            const v = _ctx('volume_impulse') || {};
+                            if (v.rvol > 1.5) return 1;
+                            if (v.rvol < 0.5) return -1;
+                            return 0;
+                        })(),
+                        'Trend (HTF)': (() => {
+                            if (_code('')) return 1;
+                            if (_code('HTFHTF_ALIGNED_COUNTER')) return -1;
+                            const st = _ctx('structure') || {};
+                            if (st.trend && st.trend.toUpperCase().includes('BULL')) return 1;
+                            if (st.trend && st.trend.toUpperCase().includes('BEAR')) return -1;
+                            return 0;
+                        })(),
+                        'Structure': (() => {
+                            const st = _ctx('structure') || {};
+                            const evt = st.event || '';
+                            if (evt.toUpperCase().includes('BULL')) return 1;
+                            if (evt.toUpperCase().includes('BEAR')) return -1;
+                            return 0;
+                        })(),
+                        'Funding': (() => {
+                            const d = _ctx('derivatives') || {};
+                            if (d.funding_rate < -0.01) return 1;
+                            if (d.funding_rate > 0.03) return -1;
+                            return 0;
+                        })(),
+                        'DXY Macro': (() => {
+                            const m = _ctx('macro_correlation') || {};
+                            if (m.dxy === 'falling') return 1;
+                            if (m.dxy === 'rising') return -1;
+                            return 0;
+                        })(),
+                        'Gold Macro': (() => {
+                            const m = _ctx('macro_correlation') || {};
+                            if (m.gold === 'rising') return 1;
+                            if (m.gold === 'falling') return -1;
+                            return 0;
+                        })(),
+                        'Fear & Greed': (() => {
+                            const s = _ctx('sentiment') || {};
+                            if (s.score < -0.5) return 1;  // Fear = potential buy opportunity
+                            if (s.score > 0.5) return -1;  // Greed = potential sell opportunity
+                            return 0;
+                        })(),
+                        'Order Book': (() => {
+                            const l = _ctx('liquidity') || {};
+                            if (l.bid_walls > l.ask_walls * 1.3) return 1;
+                            if (l.ask_walls > l.bid_walls * 1.3) return -1;
+                            return 0;
+                        })(),
+                        'OI / Basis': (() => {
+                            const d = _ctx('derivatives') || {};
+                            if (d.oi_change_pct > 2) return 1;
+                            if (d.basis_pct > 0.02) return 1;
+                            if (d.basis_pct < -0.02) return -1;
+                            return 0;
+                        })(),
+                        'Levels': (() => {
+                            const sl = _ctx('session_levels') || {};
+                            if (sl.pdh || sl.pdl || sl.session_high || sl.session_low) return 1;
+                            return 0;
+                        })(),
+                        'AVWAP': (() => {
+                            const a = _ctx('avwap') || {};
+                            if (a.position === 'ABOVE') return 1;
+                            if (a.position === 'BELOW') return -1;
+                            return 0;
+                        })(),
+                        'VP Status': (() => {
+                            const v = _ctx('volume_profile') || {};
+                            if (v.near_poc) return 0;  // Yellow for near POC
+                            if (_code('ABOVE_VALUE')) return 1;
+                            if (_code('BELOW_VALUE')) return -1;
+                            return 0;
+                        })(),
+                        'Auto R:R': (() => {
+                            const ar = _ctx('auto_rr') || {};
+                            if (ar.rr > 2.0) return 1;
+                            if (ar.rr < 1.0) return -1;
+                            return 0;
+                        })(),
+                        'ML Model': (() => {
+                            if (_code('ML_CONFIDENCE_BOOST')) return 1;
+                            if (_code('ML_SKEPTICISM')) return -1;
+                            return 0;
+                        })(),
+                        '4H Bias': (() => {
+                            const s4 = _ctx('structure_4h') || {};
+                            if (s4.trend && s4.trend.toUpperCase().includes('BULL')) return 1;
+                            if (s4.trend && s4.trend.toUpperCase().includes('BEAR')) return -1;
+                            return 0;
+                        })()
+                    };
+                    
+                    const wsPD = [
+                        [['SQUEEZE_FIRE'], ['SQUEEZE_ON'], 'Squeeze'],
+                        [['HTF_ALIGNED'], ['HTF_COUNTER'], 'Trend (HTF)'],
+                        [['SENTIMENT_BULL', 'FLOW_TAKER_BULLISH'], ['SENTIMENT_BEAR', 'FLOW_TAKER_BEARISH'], 'Momentum'],
+                        [['ML_CONFIDENCE_BOOST'], ['ML_SKEPTICISM'], 'ML Model'],
+                        [['FUNDING_EXTREME_LOW', 'FUNDING_LOW'], ['FUNDING_EXTREME_HIGH', 'FUNDING_HIGH'], 'Funding'],
+                        [['DXY_FALLING_BULLISH'], ['DXY_RISING_BEARISH'], 'DXY Macro'],
+                        [['GOLD_RISING_BULLISH'], ['GOLD_FALLING_BEARISH'], 'Gold Macro'],
+                        [['FG_EXTREME_FEAR', 'FG_FEAR'], ['FG_EXTREME_GREED', 'FG_GREED'], 'Fear & Greed'],
+                        [['BID_WALL_SUPPORT'], ['ASK_WALL_RESISTANCE'], 'Order Book'],
+                        [['OI_SURGE_MAJOR', 'OI_SURGE_MINOR', 'BASIS_BULLISH'], ['BASIS_BEARISH'], 'OI / Basis'],
+                        [['STRUCTURE_BOS_BULL', 'STRUCTURE_CHOCH_BULL'], ['STRUCTURE_BOS_BEAR', 'STRUCTURE_CHOCH_BEAR'], 'Structure'],
+                        [['PDL_SWEEP_BULL', 'EQL_SWEEP_BULL', 'SESSION_LOW_SWEEP'], ['PDH_SWEEP_BEAR', 'EQH_SWEEP_BEAR', 'SESSION_HIGH_SWEEP'], 'Levels'],
+                        [['AVWAP_RECLAIM_BULL'], ['AVWAP_REJECT_BEAR'], 'AVWAP'],
+                        [['ABOVE_VALUE'], ['BELOW_VALUE'], 'VP Status'],
+                        [['AUTO_RR_EXCELLENT'], ['AUTO_RR_POOR'], 'Auto R:R']
+                    ];
+                    // Render radar with context-derived probe states (Phase 28-B T1.1)
+                    let wsAl = 0, wsAg = 0;
+                    const wsRH = wsPD.map(([b, br, lbl]) => {
+                        // First check context-derived state
+                        const ctxState = probeStates[lbl];
+                        const hb = b.some(c => wsCS.has(c)) || (ctxState === 1);
+                        const hbr = br.some(c => wsCS.has(c)) || (ctxState === -1);
+                        let ic = '⚫', co = 'var(--text-muted)';
+                        if ((wsDir === 'LONG' && hb) || (wsDir === 'SHORT' && hbr)) {
+                            ic = '🟢';
+                            co = 'var(--accent)';
+                            wsAl++;
+                        } else if ((wsDir === 'LONG' && hbr) || (wsDir === 'SHORT' && hb)) {
+                            ic = '🔴';
+                            co = '#ff4d4d';
+                            wsAg++;
+                        }
+                        return "<div class='mini'>" + ic + " <span style='color:" + co + "'>" + lbl + "</span></div>";
+                    }).join('');
+                    
+                    // Add 4H Bias row (Phase 28-B T3.1)
+                    const ctx4h = probeStates['4H Bias'];
+                    if (ctx4h !== -1) {
+                        if ((wsDir === 'LONG' && ctx4h === 1) || (wsDir === 'SHORT' && ctx4h === -1)) {
+                            wsAl++;
+                        } else if ((wsDir === 'LONG' && ctx4h === -1) || (wsDir === 'SHORT' && ctx4h === 1)) {
+                            wsAg++;
+                        }
+                    }
+                    
+                    const wsT = wsPD.length + 1, wsPct = Math.round((wsAl / wsT) * 100), wsLbl = wsAl >= 8 ? 'STRONG' : wsAl >= 4 ? 'MODERATE' : 'WEAK', wsClr = wsAl >= 8 ? 'var(--accent)' : wsAl >= 4 ? '#ffd700' : '#ff4d4d', wsNet = wsAl - wsAg; if (els.gate) els.gate.textContent = wsAl >= 8 ? 'GREEN' : wsAl >= 4 ? 'AMBER' : 'RED'; const rSc = document.getElementById('radarScore'); if (rSc) { rSc.textContent = wsAl + '/' + wsT + ' ' + wsLbl; rSc.style.color = wsClr; rSc.style.borderColor = wsClr; }; const rBr = document.getElementById('radarBar'); if (rBr) { rBr.style.width = wsPct + '%'; rBr.style.background = wsClr; }; const rGr = document.getElementById('radarGrid'); if (rGr) rGr.innerHTML = wsRH; const rNt = document.getElementById('radarNet'); if (rNt) { rNt.textContent = (wsNet >= 0 ? '+' : '') + wsNet; rNt.style.color = wsNet >= 0 ? 'var(--accent)' : '#ff4d4d'; };
 
                     // ── Phase 26 Task 6.2: Data Freshness Warning ──
                     const dataAge = data.data_age_seconds || 0;
@@ -1420,33 +1422,6 @@
                             }
                         }
                     }
-
-                    // ── Phase 28: Performance Metrics rendering ──
-                    const pmEl = document.getElementById('perf-metrics-body');
-                    if (pmEl && st.total_trades > 0) {
-                        pmEl.innerHTML = '<div class="stats-grid">'
-                            + '<div class="stat-card"><div class="stat-label">Win Rate</div><div class="live-value">' + (st.win_rate * 100).toFixed(1) + '%</div></div>'
-                            + '<div class="stat-card"><div class="stat-label">Avg R</div><div class="live-value">' + Number(st.avg_r).toFixed(2) + '</div></div>'
-                            + '<div class="stat-card"><div class="stat-label">Total R</div><div class="live-value">' + Number(st.total_r).toFixed(2) + '</div></div>'
-                            + '<div class="stat-card"><div class="stat-label">Trades</div><div class="live-value">' + st.total_trades + '</div></div>'
-                            + '<div class="stat-card"><div class="stat-label">Streak</div><div class="live-value">' + st.streak + '</div></div>'
-                            + '<div class="stat-card"><div class="stat-label">Open uPnL</div><div class="live-value" style="color:' + (st.open_upnl >= 0 ? 'var(--accent)' : '#ff4d4d') + '">' + fmtMoney(st.open_upnl, 0) + '</div></div>'
-                            + '</div>';
-                    } else if (pmEl) { pmEl.innerHTML = '<p class="mini">No closed trades yet.</p>'; }
-                    const tfEl = document.getElementById('tf-edge-body');
-                    if (tfEl && st.tf_stats) {
-                        let tfH = '<table class="matrix-table"><thead><tr><th>TF</th><th>Trades</th><th>Win%</th><th>Avg R</th></tr></thead><tbody>';
-                        for (const [tf, s] of Object.entries(st.tf_stats)) { tfH += '<tr><td>' + tf + '</td><td>' + s.count + '</td><td>' + (s.win_rate * 100).toFixed(0) + '%</td><td>' + Number(s.avg_r).toFixed(2) + '</td></tr>'; }
-                        tfH += '</tbody></table>';
-                        tfEl.innerHTML = tfH;
-                    } else if (tfEl) { tfEl.innerHTML = '<p class="mini">No timeframe samples yet.</p>'; }
-                    const ccEl = document.getElementById('conf-cal-body');
-                    if (ccEl && st.recipe_stats) {
-                        let ccH = '<table class="matrix-table"><thead><tr><th>Recipe</th><th>Trades</th><th>Win%</th><th>Avg R</th></tr></thead><tbody>';
-                        for (const [r, s] of Object.entries(st.recipe_stats)) { ccH += '<tr><td>' + r + '</td><td>' + s.count + '</td><td>' + (s.win_rate * 100).toFixed(0) + '%</td><td>' + Number(s.avg_r).toFixed(2) + '</td></tr>'; }
-                        ccH += '</tbody></table>';
-                        ccEl.innerHTML = ccH;
-                    } else if (ccEl) { ccEl.innerHTML = '<p class="mini">No recipe calibration samples yet.</p>'; }
 
                     // ── Phase 25: Execution Copilot ──
                     const cpAction = document.getElementById('copilot-action-btn');
