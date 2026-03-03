@@ -51,6 +51,96 @@ _LAST_PORTFOLIO_MTIME = 0.0 # os.stat() mtime of portfolio JSON
 _OVERRIDES = {}
 
 
+def _load_market_cache():
+    return _safe_json(BASE_DIR / "data" / "market_cache.json", {})
+
+
+def _orderbook_micro(mid_price=0.0):
+    """
+    Build real microstructure metrics from cached orderbook (best bid/ask + top-of-book depth).
+    Falls back safely when cache is missing.
+    """
+    out = {
+        "healthy": False,
+        "best_bid": 0.0,
+        "best_ask": 0.0,
+        "spread_abs": 0.0,
+        "spread_bps": 0.0,
+        "top_depth_usd": 0.0,
+        "impact_bps_5k": 999.0,
+        "mode": "BLOCKED",
+    }
+    try:
+        cache = _load_market_cache()
+        ob = cache.get("orderbook", {}) if isinstance(cache, dict) else {}
+        bids = ob.get("bids", []) if isinstance(ob, dict) else []
+        asks = ob.get("asks", []) if isinstance(ob, dict) else []
+        if not bids or not asks:
+            return out
+
+        def _px_sz(level):
+            if isinstance(level, (list, tuple)) and len(level) >= 2:
+                return float(level[0]), float(level[1])
+            return 0.0, 0.0
+
+        bid_px, bid_sz = _px_sz(bids[0])
+        ask_px, ask_sz = _px_sz(asks[0])
+        if bid_px <= 0 or ask_px <= 0 or ask_px < bid_px:
+            return out
+
+        mid = float(mid_price or (bid_px + ask_px) / 2.0)
+        spread_abs = ask_px - bid_px
+        spread_bps = (spread_abs / mid * 10000.0) if mid > 0 else 0.0
+        top_depth_usd = (bid_px * max(0.0, bid_sz)) + (ask_px * max(0.0, ask_sz))
+        # Coarse impact model for a 5k notional sweep against top-of-book liquidity.
+        impact_bps_5k = (5000.0 / max(top_depth_usd, 1.0)) * 10000.0
+
+        mode = "FAST"
+        if spread_bps > 3.0 or impact_bps_5k > 80.0:
+            mode = "BLOCKED"
+        elif spread_bps > 1.5 or impact_bps_5k > 35.0:
+            mode = "DEFENSIVE"
+
+        out.update({
+            "healthy": True,
+            "best_bid": round(bid_px, 2),
+            "best_ask": round(ask_px, 2),
+            "spread_abs": round(spread_abs, 2),
+            "spread_bps": round(spread_bps, 2),
+            "top_depth_usd": round(top_depth_usd, 2),
+            "impact_bps_5k": round(impact_bps_5k, 1),
+            "mode": mode,
+        })
+    except Exception:
+        pass
+    return out
+
+
+def _compute_data_quorum(data_age_seconds, mid, flows, derivatives, micro):
+    required = ("price", "orderbook", "flows", "derivatives", "freshness")
+    healthy = {
+        "price": bool(float(mid or 0) > 0),
+        "orderbook": bool((micro or {}).get("healthy")),
+        "flows": bool((flows or {}).get("healthy")),
+        "derivatives": bool((derivatives or {}).get("healthy")),
+        "freshness": bool(float(data_age_seconds or 9999) <= 120),
+    }
+    healthy_sources = [k for k, v in healthy.items() if v]
+    missing = [k for k in required if not healthy.get(k)]
+    quorum_ratio = len(healthy_sources) / float(len(required))
+    confidence_score = round(quorum_ratio * 100.0, 1)
+    # Require at least 4/5 healthy sources and no stale data.
+    passed = (len(healthy_sources) >= 4) and healthy["freshness"]
+    return {
+        "required_sources": list(required),
+        "healthy_sources": healthy_sources,
+        "quorum_ratio": round(quorum_ratio, 2),
+        "confidence_score": confidence_score,
+        "pass": passed,
+        "missing": missing,
+    }
+
+
 def _safe_json(path: Path, default):
     if not path.exists():
         return default
@@ -388,7 +478,7 @@ def _estimate_spread(alerts):
     return 1.0
 
 
-def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, overrides, spread, flows, derivatives):
+def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, overrides, spread, flows, derivatives, data_quorum=None, micro=None):
     """Find best long/short candidates and return deterministic execution playbook."""
     now = time.time()
     min_score = int(overrides.get("min_score", 65) or 65)
@@ -423,6 +513,14 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
             reds.append(f"Spread too wide (${float(spread or 0):.2f} > $10)")
         elif float(spread or 0) >= 5:
             ambers.append(f"Spread caution (${float(spread or 0):.2f})")
+        if not bool((data_quorum or {}).get("pass", True)):
+            missing = ", ".join((data_quorum or {}).get("missing", [])) or "core feeds"
+            reds.append(f"Data quorum insufficient (missing: {missing})")
+        micro_mode = str((micro or {}).get("mode") or "FAST")
+        if micro_mode == "BLOCKED":
+            reds.append("Micro-spread defense blocked execution")
+        elif micro_mode == "DEFENSIVE":
+            ambers.append("Micro-spread defense enabled (defensive execution)")
 
         if c is None:
             return {"verdict": "RED", "blockers": ["No candidate"], "cautions": [], "passes": False}
@@ -581,6 +679,16 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
             "detail": f"Estimated spread ${float(spread or 0):.2f}",
         },
         {
+            "name": "Data Quorum",
+            "ok": bool((data_quorum or {}).get("pass", False)),
+            "detail": f"{((data_quorum or {}).get('confidence_score', 0)):.1f}% confidence; missing: {', '.join((data_quorum or {}).get('missing', [])) or 'none'}",
+        },
+        {
+            "name": "Micro-Spread Defense",
+            "ok": str((micro or {}).get("mode", "BLOCKED")) != "BLOCKED",
+            "detail": f"mode={(micro or {}).get('mode', 'BLOCKED')} spread={float((micro or {}).get('spread_bps', 0)):.2f}bps impact={float((micro or {}).get('impact_bps_5k', 999)):.1f}bps",
+        },
+        {
             "name": "Orderflow Bias",
             "ok": 0.7 <= float(taker_ratio or 1.0) <= 1.5,
             "detail": f"Taker ratio {float(taker_ratio or 1.0):.2f}",
@@ -646,6 +754,8 @@ def _compute_profit_preflight(alerts, stats, circuit_breaker, data_age_seconds, 
         "best_short_candidate": short_out,
         "operator_decision": operator_decision,
         "trap_risk_message": trap_risk_message,
+        "data_quorum": data_quorum or {},
+        "execution_micro": micro or {},
     }
 
 
@@ -774,6 +884,10 @@ def get_dashboard_data():
                 pass
 
         spread = _estimate_spread(all_recent_alerts) if mid else 0.0
+        micro = _orderbook_micro(mid_price=mid)
+        if micro.get("healthy") and micro.get("spread_abs", 0) > 0:
+            # Prefer real orderbook spread when available.
+            spread = float(micro["spread_abs"])
 
         # ── Phase 26: Derivatives context ──
         flows = {"taker_ratio": round(taker_ratio, 2), "long_short_ratio": 1.0, "crowding_score": 0.0, "healthy": False, "source": "fallback"}
@@ -805,6 +919,14 @@ def get_dashboard_data():
                 }
             except Exception:
                 derivatives = {"funding_rate": 0.0, "oi_change_pct": 0.0, "basis_pct": 0.0, "healthy": False, "source": "error"}
+
+        data_quorum = _compute_data_quorum(
+            data_age_seconds=data_age_seconds,
+            mid=mid,
+            flows=flows,
+            derivatives=derivatives,
+            micro=micro,
+        )
 
         # ── Phase 26: Cache the richest decision_trace.context for display ──
         global _LAST_CONTEXT
@@ -860,6 +982,7 @@ def get_dashboard_data():
                 "bid": round(mid - spread/2, 2) if mid else 0,
                 "ask": round(mid + spread/2, 2) if mid else 0
             },
+            "microstructure": micro,
             "portfolio": portfolio,
             "alerts": light_alerts,
             "stats": stats,
@@ -875,6 +998,7 @@ def get_dashboard_data():
             "derivatives": derivatives,
             "cached_context": _LAST_CONTEXT,
             "data_age_seconds": round(data_age_seconds, 0),
+            "data_quorum": data_quorum,
             "circuit_breaker": circuit_breaker,
             "profit_preflight": _compute_profit_preflight(
                 alerts=alerts,
@@ -885,6 +1009,8 @@ def get_dashboard_data():
                 spread=spread,
                 flows=flows,
                 derivatives=derivatives,
+                data_quorum=data_quorum,
+                micro=micro,
             ),
             "execution_log": _load_execution_log(),
             "logs": f"Heartbeat {datetime.now().strftime('%H:%M:%S')}",
@@ -1040,18 +1166,50 @@ class DashboardHandler(BaseHTTPRequestHandler):
             elif action == "execute_trade":
                 from tools.executor import execute_trade
 
-                alerts = _load_alerts(limit=10)
-                target = None
-                for a in reversed(alerts):
-                    if a.get("tier") == "A+" and a.get("symbol", "BTC") != "SPX_PROXY":
-                        target = a
-                        break
+                with _STATE_LOCK:
+                    payload = _CACHED_DATA.copy() if isinstance(_CACHED_DATA, dict) else {}
+                if not payload:
+                    payload = get_dashboard_data()
+                pf = payload.get("profit_preflight", {}) if isinstance(payload, dict) else {}
+                quorum = pf.get("data_quorum", {}) if isinstance(pf, dict) else {}
+                mode = "LIVE" if os.environ.get("LIVE_EXECUTION", "0") == "1" else "PAPER"
 
-                if not target:
-                    self._json_response({"status": "error", "error": "No A+ alert available to execute"})
+                # Hard execute-time revalidation: GREEN + quorum + freshness.
+                blockers = []
+                if not pf.get("ready"):
+                    blockers.append("preflight not ready")
+                if not quorum.get("pass", False):
+                    blockers.append("data quorum failed")
+                if float(payload.get("data_age_seconds", 9999) or 9999) > 120:
+                    blockers.append("data stale")
+
+                best = pf.get("best_overall") if isinstance(pf, dict) else None
+                if not best:
+                    blockers.append("no vetted candidate")
+                elif str(best.get("gate_status", "")).upper() != "GREEN":
+                    blockers.append(f"candidate gate is {best.get('gate_status', 'RED')}")
+
+                if blockers:
+                    self._json_response({
+                        "status": "error",
+                        "error": "execute blocked",
+                        "reasons": blockers,
+                        "mode": mode,
+                    })
                     return
 
-                mode = "LIVE" if os.environ.get("LIVE_EXECUTION", "0") == "1" else "PAPER"
+                alerts = _load_alerts(limit=50)
+                target = None
+                best_id = best.get("id")
+                for a in reversed(alerts):
+                    aid = a.get("alert_id") or a.get("id")
+                    if aid == best_id:
+                        target = a
+                        break
+                if not target:
+                    self._json_response({"status": "error", "error": "Vetted candidate not found in live alert log", "mode": mode})
+                    return
+
                 result = execute_trade(target, mode=mode)
                 self._json_response({
                     "status": "success",

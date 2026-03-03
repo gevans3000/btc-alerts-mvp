@@ -571,6 +571,10 @@
                     <span>Decision: <span id="operator-decision" class="pill badge-neutral">WAIT</span></span>
                     <span id="trap-risk" style="color:#ffd700;">Trap Risk: --</span>
                 </div>
+                <div class="mini" style="display:flex; justify-content:space-between; margin-bottom:0.6rem;">
+                    <span>Quorum: <span id="quorum-badge" class="pill badge-neutral">--</span></span>
+                    <span>Exec: <span id="micro-mode" class="pill badge-neutral">--</span></span>
+                </div>
 
                 <button id="executeBtn" class="pill"
                     style="padding:16px; font-size:1.1rem; width:100%; font-weight:800; letter-spacing:1px; cursor:not-allowed; opacity:0.7;"
@@ -823,6 +827,11 @@
         &copy; 2026 EMBER COMMAND | BTC ALERTS MVP
     </footer>
 
+    <!-- Phase 28-Final: Execution feedback toast -->
+    <div id="executionToast" style="display:none; position:fixed; top:20px; right:20px; z-index:10000;
+         padding:16px 24px; border-radius:10px; font-family:'JetBrains Mono',monospace; font-size:0.85rem;
+         border:1px solid; max-width:420px; box-shadow:0 4px 24px rgba(0,0,0,0.6); transition:opacity 0.3s;"></div>
+
     <dialog id="executeModal"
         style="max-width:400px; border:1px solid var(--border); border-radius:16px; background:var(--surface); color:var(--text); padding:1.5rem; outline:none; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
         <h2 style="margin-top:0; font-size:1.2rem;">CONFIRM EXECUTION</h2>
@@ -894,6 +903,31 @@
             }
         }
         function closeExecuteModal() { const m = document.getElementById('executeModal'); if (m) m.style.display = 'none'; }
+        // Phase 28-Final: Post-execution feedback toast
+        function _showExecutionToast(result) {
+            const toast = document.getElementById('executionToast');
+            if (!toast) return;
+            const ok = result.status === 'success';
+            toast.style.display = 'block';
+            toast.style.opacity = '1';
+            toast.style.background = ok ? 'rgba(0,40,20,0.97)' : 'rgba(60,0,0,0.97)';
+            toast.style.borderColor = ok ? '#00ffcc' : '#ff4d4d';
+            toast.style.color = ok ? '#00ffcc' : '#ff4d4d';
+            if (ok) {
+                toast.innerHTML = '<b style="font-size:1.1rem;">TRADE EXECUTED</b><br><br>'
+                    + '<span style="color:#aaa;">Mode:</span> ' + (result.mode || 'PAPER') + '<br>'
+                    + '<span style="color:#aaa;">Status:</span> ' + (result.trade_status || '--') + '<br>'
+                    + '<span style="color:#aaa;">Fill:</span> $' + Number(result.fill_price || 0).toLocaleString() + '<br>'
+                    + '<span style="color:#aaa;">Order:</span> ' + (result.order_id || '--');
+            } else {
+                toast.innerHTML = '<b style="font-size:1.1rem;">EXECUTION BLOCKED</b><br><br>'
+                    + '<span style="color:#ffaaaa;">' + (result.reason || result.message || 'Unknown error') + '</span>';
+                if (result.reasons && Array.isArray(result.reasons)) {
+                    toast.innerHTML += '<br><br><span style="color:#aaa;font-size:0.75rem;">' + result.reasons.join('<br>') + '</span>';
+                }
+            }
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => { toast.style.display = 'none'; }, 300); }, 8000);
+        }
         function requestExecute(alertId) {
             const modal = document.getElementById('executeModal');
             if (!modal) return;
@@ -918,7 +952,24 @@
                     clearInterval(t);
                     btn.disabled = false;
                     btn.textContent = 'Confirm Execute';
-                    btn.onclick = () => closeExecuteModal();
+                    // Phase 28-Final: Wire execute button to POST /api/command
+                    btn.onclick = async () => {
+                        btn.disabled = true;
+                        btn.textContent = 'EXECUTING...';
+                        try {
+                            const resp = await fetch('/api/command', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({action: 'execute_trade'})
+                            });
+                            const result = await resp.json();
+                            closeExecuteModal();
+                            _showExecutionToast(result);
+                        } catch (err) {
+                            closeExecuteModal();
+                            _showExecutionToast({status: 'error', reason: 'Network error: ' + err.message});
+                        }
+                    };
                 } else { btn.textContent = 'Confirm (' + n + ')'; }
             }, 1000);
         }
@@ -950,12 +1001,39 @@
         function connectWS() {
             const p = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws'; const ws = new WebSocket(p); ws.onopen = () => { els.badge.textContent = 'Live Feed: Online'; els.badge.classList.remove('badge-stale'); }; ws.onmessage = (ev) => {
                 try {
-                    const data = JSON.parse(ev.data); const ob = data.orderbook || {}; state.livePrice = Number(ob.mid || 0); state.spread = Number(ob.spread || 0); updateLivePrice(); if (els.mid) els.mid.textContent = fmtMoney(state.livePrice, 2); if (els.spread) els.spread.textContent = state.spread.toFixed(2); const po = data.portfolio || {}; if (els.balance) els.balance.textContent = fmtMoney(Number(po.balance || 0), 2); const st = data.stats || {}; window._lastStats = st; window._lastBalance = Number(po.balance || 0); if (els.winrate) els.winrate.textContent = Number(st.win_rate || 0).toFixed(2) + '%'; if (els.pf) els.pf.textContent = Number(st.profit_factor || 0).toFixed(2); if (els.kelly) els.kelly.textContent = (Number(st.kelly_pct || 0) * 100).toFixed(2) + '%';
+                    const data = JSON.parse(ev.data); const ob = data.orderbook || {}; state.livePrice = Number(ob.mid || 0); state.spread = Number(ob.spread || 0); updateLivePrice(); if (els.mid) els.mid.textContent = fmtMoney(state.livePrice, 2); if (els.spread) els.spread.textContent = state.spread.toFixed(2); const po = data.portfolio || {}; if (els.balance) els.balance.textContent = fmtMoney(Number(po.balance || 0), 2); const st = data.stats || {}; window._lastStats = st; window._lastBalance = Number(po.balance || 0); if (els.winrate) els.winrate.textContent = (Number(st.win_rate || 0) * 100).toFixed(1) + '%'; if (els.pf) els.pf.textContent = Number(st.avg_r ?? st.profit_factor ?? 0).toFixed(2); if (els.kelly) els.kelly.textContent = (Number(st.kelly_pct || 0) * 100).toFixed(2) + '%';
                     const pf = data.profit_preflight || {};
                     _set('operator-decision', pf.operator_decision || 'WAIT');
                     const od = document.getElementById('operator-decision');
                     if (od) { const t = String(pf.operator_decision || 'WAIT'); od.className = 'pill ' + (t.includes('LONG') ? 'badge-good' : t.includes('SHORT') ? 'badge-bad' : 'badge-neutral'); }
                     _set('trap-risk', pf.trap_risk_message || 'Trap Risk: —');
+                    const dq = pf.data_quorum || data.data_quorum || {};
+                    const qBadge = document.getElementById('quorum-badge');
+                    if (qBadge) {
+                        qBadge.textContent = dq.pass ? ('PASS ' + Number(dq.confidence_score || 0).toFixed(0) + '%') : ('FAIL ' + Number(dq.confidence_score || 0).toFixed(0) + '%');
+                        qBadge.className = 'pill ' + (dq.pass ? 'badge-good' : 'badge-bad');
+                        qBadge.title = (dq.missing || []).length ? ('Missing: ' + dq.missing.join(', ')) : 'All core feeds healthy';
+                    }
+                    const em = pf.execution_micro || data.microstructure || {};
+                    const mm = document.getElementById('micro-mode');
+                    if (mm) {
+                        const mode = String(em.mode || 'BLOCKED').toUpperCase();
+                        mm.textContent = mode + ' | ' + Number(em.spread_bps || 0).toFixed(2) + 'bps';
+                        mm.className = 'pill ' + (mode === 'FAST' ? 'badge-good' : (mode === 'DEFENSIVE' ? 'badge-warn' : 'badge-bad'));
+                    }
+                    const checks = Array.isArray(pf.checks) ? pf.checks : [];
+                    const safetyChecks = document.getElementById('safety-checks');
+                    const safetyScore = document.getElementById('safety-score');
+                    if (safetyChecks) {
+                        const passCount = checks.filter(c => !!c.ok).length;
+                        if (safetyScore) safetyScore.textContent = passCount + '/' + checks.length;
+                        safetyChecks.innerHTML = checks.slice(0, 8).map(c => {
+                            const ok = !!c.ok;
+                            const icon = ok ? '✅' : '❌';
+                            const color = ok ? 'var(--accent)' : '#ff4d4d';
+                            return "<div class='mini' style='color:" + color + "'>" + icon + " " + c.name + " — " + c.detail + "</div>";
+                        }).join('');
+                    }
 
                     // ── Phase 25: Overrides + Auto-Pilot Indicator ──
                     state.overrides = data.overrides || {};
@@ -1006,21 +1084,16 @@
                     } else {
                         if (els.cbanner) els.cbanner.style.display = 'none';
                         if (els.execBtn) {
-                            els.execBtn.disabled = false;
-                            els.execBtn.style.opacity = '1';
-                            els.execBtn.style.cursor = 'pointer';
-                            // ── Phase 26 Task 4.1: Restore the original label based on latest alert tier ──
-                            const tier = wsTier || 'NO-TRADE';
-                            if (tier === 'A+') {
-                                els.execBtn.textContent = '🟢 EXECUTE';
-                                els.execBtn.style.background = '#00cc88';
-                            } else if (tier === 'B') {
-                                els.execBtn.textContent = '🟡 EXECUTE (WATCH)';
-                                els.execBtn.style.background = '#cc8800';
-                            } else {
-                                els.execBtn.textContent = '⚠️ EXECUTE (HIGH RISK)';
-                                els.execBtn.style.background = '#ff4d4d';
-                            }
+                            const op2 = String(pf.operator_decision || 'WAIT');
+                            const longGate2 = ((pf.best_long_candidate || {}).gate_status || '').toUpperCase();
+                            const shortGate2 = ((pf.best_short_candidate || {}).gate_status || '').toUpperCase();
+                            const gate2 = op2.includes('LONG') ? longGate2 : (op2.includes('SHORT') ? shortGate2 : 'RED');
+                            const ready2 = !!pf.ready;
+                            els.execBtn.disabled = !ready2 || gate2 !== 'GREEN';
+                            els.execBtn.style.opacity = els.execBtn.disabled ? '0.7' : '1.0';
+                            els.execBtn.style.cursor = els.execBtn.disabled ? 'not-allowed' : 'pointer';
+                            els.execBtn.textContent = els.execBtn.disabled ? 'WAIT — GATE BLOCKED' : ('1-CLICK ' + op2);
+                            els.execBtn.style.background = els.execBtn.disabled ? '#7a1f1f' : '#00cc88';
                         }
                     }
                     
@@ -1048,7 +1121,9 @@
                     const bestCand = pf.best_long_candidate || pf.best_short_candidate;
                     if (bestCand) {
                         state.direction = String(bestCand.direction || state.direction).toUpperCase();
-                        state.entryPrice = Number(bestCand.price || bestCand.entry_zone || state.entryPrice) || state.entryPrice;
+                        // Phase 28-Final: entry_zone may be "MARKET", "LIMIT@67,000", or "67,122" (commas) — parse safely
+                        const _rawEntry = Number(bestCand.price) || Number(String(bestCand.entry_zone || '').replace(/[^0-9.]/g, '')) || 0;
+                        state.entryPrice = _rawEntry > 0 ? _rawEntry : state.entryPrice;
                         state.tp1Price = Number(bestCand.tp1 || state.tp1Price) || state.tp1Price;
                         state.stopPrice = Number(bestCand.invalidation || state.stopPrice) || state.stopPrice;
                         if (vd) {
@@ -1056,7 +1131,10 @@
                             vd.style.color = (bestCand.direction || '').toUpperCase() === 'LONG' ? '#00ffcc' : '#ff4d4d';
                         }
                         if (vc) vc.textContent = Math.round(bestCand.confidence || 0);
-                        if (ve) ve.textContent = bestCand.entry_zone ? '$' + Number(bestCand.entry_zone).toLocaleString() : '--';
+                        if (ve) {
+                            const _ep = Number(bestCand.price) || Number(String(bestCand.entry_zone || '').replace(/[^0-9.]/g, '')) || 0;
+                            ve.textContent = _ep > 0 ? '$' + _ep.toLocaleString() : '--';
+                        }
                         if (vs) vs.textContent = bestCand.invalidation ? '$' + Number(bestCand.invalidation).toLocaleString() : '--';
                         if (vt) vt.textContent = bestCand.tp2 ? '$' + Number(bestCand.tp2).toLocaleString() : '--';
                         if (vr) vr.textContent = (bestCand.rr_ratio || 0).toFixed(2) + 'R';
@@ -1155,7 +1233,7 @@
                     _el('tape-taker', taker ? taker.toFixed(2) : '—');
 
                     // ── Phase 26 Task 7.2: Smart Money UI ──
-                    const wsDeriv = wsCtx.derivatives || {};
+                    const wsDeriv = data.derivatives || wsCtx.derivatives || {};
                     const fundRate = wsDeriv.funding_rate;
                     const basis = wsDeriv.basis_pct;
                     const oiDelta = wsDeriv.oi_change_pct;

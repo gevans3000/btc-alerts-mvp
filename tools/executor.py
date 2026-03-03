@@ -1,5 +1,6 @@
 import os
 import json
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -39,6 +40,37 @@ def _get_spread_pct() -> float:
     except Exception:
         pass
     return 0.0
+
+
+def _execution_micro_mode() -> str:
+    """
+    Real micro-spread defense mode from cached orderbook:
+    FAST | DEFENSIVE | BLOCKED
+    """
+    try:
+        cache = _load_market_cache()
+        ob = cache.get("orderbook", {}) if isinstance(cache, dict) else {}
+        bids = ob.get("bids", []) if isinstance(ob, dict) else []
+        asks = ob.get("asks", []) if isinstance(ob, dict) else []
+        if not bids or not asks:
+            return "BLOCKED"
+        bid = float(bids[0][0])
+        ask = float(asks[0][0])
+        bid_sz = float(bids[0][1]) if len(bids[0]) > 1 else 0.0
+        ask_sz = float(asks[0][1]) if len(asks[0]) > 1 else 0.0
+        if bid <= 0 or ask <= 0 or ask < bid:
+            return "BLOCKED"
+        mid = (ask + bid) / 2.0
+        spread_bps = ((ask - bid) / mid) * 10000.0 if mid > 0 else 999.0
+        top_depth_usd = (bid * max(0.0, bid_sz)) + (ask * max(0.0, ask_sz))
+        impact_bps_5k = (5000.0 / max(top_depth_usd, 1.0)) * 10000.0
+        if spread_bps > 3.0 or impact_bps_5k > 80.0:
+            return "BLOCKED"
+        if spread_bps > 1.5 or impact_bps_5k > 35.0:
+            return "DEFENSIVE"
+        return "FAST"
+    except Exception:
+        return "BLOCKED"
 
 
 def _system_disabled() -> bool:
@@ -82,7 +114,10 @@ def execute_trade(alert: dict, mode: str = "PAPER") -> dict:
         size = base_usdt
     
     spread_pct = _get_spread_pct()
-    use_limit = spread_pct > 0.0015
+    micro_mode = _execution_micro_mode()
+    if micro_mode == "BLOCKED":
+        return {"status": "REJECTED", "reason": "micro-spread defense blocked", "order_id": "", "fill_price": 0.0}
+    use_limit = (micro_mode == "DEFENSIVE") or (spread_pct > 0.0015)
     
     timestamp = datetime.utcnow().isoformat()
     
