@@ -13,3 +13,4 @@ test_output.txt
 dashboard.html
 .pytest_cache/
 reports/
+.claude/
