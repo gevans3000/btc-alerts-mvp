@@ -228,6 +228,108 @@ def _light_alerts(alerts):
     return light
 
 
+def _compute_code_edge(alerts):
+    """Win rate per reason code across all resolved alerts (min 5 trades)."""
+    code_records = {}
+    for a in alerts:
+        outcome = a.get("outcome")
+        r = a.get("r_multiple")
+        if outcome not in ("WIN_TP1", "WIN_TP2", "LOSS", "TIMEOUT"):
+            continue
+        if not isinstance(r, (int, float)):
+            continue
+        codes = (a.get("decision_trace") or {}).get("codes", [])
+        is_win = r > 0
+        for code in codes:
+            if code.startswith("REGIME_") or code.startswith("SESSION_"):
+                continue
+            rec = code_records.setdefault(code, {"wins": 0, "losses": 0})
+            if is_win:
+                rec["wins"] += 1
+            else:
+                rec["losses"] += 1
+    result = {}
+    for code, rec in code_records.items():
+        total = rec["wins"] + rec["losses"]
+        if total < 5:
+            continue
+        result[code] = {
+            "wins": rec["wins"],
+            "losses": rec["losses"],
+            "total": total,
+            "wr": round(rec["wins"] / total, 3),
+        }
+    return result
+
+
+def _compute_hour_stats(alerts):
+    """Win rate by hour of day (UTC) from resolved alerts."""
+    hour_records = {}
+    for a in alerts:
+        outcome = a.get("outcome")
+        r = a.get("r_multiple")
+        if outcome not in ("WIN_TP1", "WIN_TP2", "LOSS", "TIMEOUT"):
+            continue
+        if not isinstance(r, (int, float)):
+            continue
+        ts = a.get("timestamp", "")
+        try:
+            dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+            hour = dt.hour
+        except Exception:
+            continue
+        rec = hour_records.setdefault(hour, {"wins": 0, "count": 0, "r_total": 0.0})
+        if r > 0:
+            rec["wins"] += 1
+        rec["count"] += 1
+        rec["r_total"] += r
+    result = {}
+    for hour, rec in hour_records.items():
+        if rec["count"] == 0:
+            continue
+        result[str(hour)] = {
+            "count": rec["count"],
+            "wr": round(rec["wins"] / rec["count"], 3),
+            "avg_r": round(rec["r_total"] / rec["count"], 3),
+        }
+    return result
+
+
+def _compute_rubric_stats(alerts):
+    """Win rate by rubric confluence score (0-6) from resolved alerts."""
+    rubric_records = {}
+    for a in alerts:
+        outcome = a.get("outcome")
+        r = a.get("r_multiple")
+        if outcome not in ("WIN_TP1", "WIN_TP2", "LOSS", "TIMEOUT"):
+            continue
+        if not isinstance(r, (int, float)):
+            continue
+        dt_obj = a.get("decision_trace") or {}
+        rubric = dt_obj.get("rubric") or {}
+        score = rubric.get("score")
+        if score is None:
+            score = rubric.get("confluence_score")
+        if not isinstance(score, (int, float)):
+            continue
+        score = int(score)
+        rec = rubric_records.setdefault(score, {"wins": 0, "count": 0, "r_total": 0.0})
+        if r > 0:
+            rec["wins"] += 1
+        rec["count"] += 1
+        rec["r_total"] += r
+    result = {}
+    for score, rec in rubric_records.items():
+        if rec["count"] == 0:
+            continue
+        result[str(score)] = {
+            "count": rec["count"],
+            "wr": round(rec["wins"] / rec["count"], 3),
+            "avg_r": round(rec["r_total"] / rec["count"], 3),
+        }
+    return result
+
+
 def _load_alerts(limit=50):
     if not ALERTS_PATH.exists():
         return []
@@ -957,6 +1059,11 @@ def get_dashboard_data():
         _all_alerts_for_stats = _load_alerts(limit=1000)
         stats = _portfolio_stats(portfolio, current_price=mid, alerts=_all_alerts_for_stats)
 
+        # ── Phase 28+ Edge Intelligence ──
+        code_edge = _compute_code_edge(_all_alerts_for_stats)
+        hour_stats = _compute_hour_stats(_all_alerts_for_stats)
+        rubric_stats = _compute_rubric_stats(_all_alerts_for_stats)
+
         # ── Phase 25: Drawdown Circuit Breaker ──
         dd_pct = stats.get("drawdown_pct", 0.0)
         streak = stats.get("streak", 0)
@@ -1013,6 +1120,9 @@ def get_dashboard_data():
                 micro=micro,
             ),
             "execution_log": _load_execution_log(),
+            "code_edge": code_edge,
+            "hour_stats": hour_stats,
+            "rubric_stats": rubric_stats,
             "logs": f"Heartbeat {datetime.now().strftime('%H:%M:%S')}",
         }
     except Exception as e:

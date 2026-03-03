@@ -992,6 +992,14 @@ def generate_html():
         <div id="bs-filter-display" class="mini" style="margin-top:8px;padding:6px 10px;border-radius:8px;font-weight:700;font-size:0.78rem;text-align:center;transition:all 0.3s ease;"></div>
       </div>
       <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div>{signals_html}</div>
+      <div id='signal-dna-card' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:.9rem;margin-bottom:1rem;'>
+        <div class='mini' style='margin-bottom:6px;font-weight:700;letter-spacing:.04em;'>Signal DNA</div>
+        <div id='toxic-warning' class='mini' style='padding:6px 10px;border-radius:8px;margin-bottom:.5rem;font-weight:700;transition:all .3s;display:none;'>—</div>
+        <div style='display:grid;grid-template-columns:1fr 1fr;gap:4px;'>
+          <div><div class='mini' style='opacity:.6;margin-bottom:3px;'>✅ Edge Codes</div><div id='dna-positive' style='display:flex;flex-wrap:wrap;gap:3px;'></div></div>
+          <div><div class='mini' style='opacity:.6;margin-bottom:3px;'>⚠️ Toxic Codes</div><div id='dna-negative' style='display:flex;flex-wrap:wrap;gap:3px;'></div></div>
+        </div>
+      </div>
       <div id='keyLevelsCard' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div class='mini' style='margin-bottom:6px;'>Key Levels</div>
         <div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;font-family:JetBrains Mono,monospace;font-size:.78rem;'>
@@ -1014,6 +1022,16 @@ def generate_html():
         <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;overflow:hidden;'><div id='radarBar' style='height:100%;width:{int((a_count/t_probes)*100) if t_probes else 0}%;background:{radar_color};transition:width 0.4s ease;'></div></div>
         <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'>{radar_rows}</div>
         <div style='margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.4rem;font-size:.7rem;font-family:JetBrains Mono,monospace;color:var(--text-muted);'>Net: <span id='radarNet' style='color:{net_color};font-weight:700;'>{net_score:+d}</span> &nbsp;🟢 {a_count} &nbsp;🔴 {ag_count} &nbsp;⚫ {inactive_count}</div>
+      </div>
+      <div id='rubricCard' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:.9rem;margin-bottom:1rem;'>
+        <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;'><span class='mini'>Rubric Gate</span><span id='rubric-conviction' class='pill badge-neutral' style='transition:all .3s;'>—/6</span></div>
+        <div style='display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:.3rem 0;'>
+          {''.join(f"<div id='rubric-seg-{d}' title='{d}' style='height:20px;border-radius:4px;background:rgba(255,255,255,0.06);transition:background .4s;cursor:default;'></div>" for d in ['structure','location','anchors','derivatives','momentum','volatility'])}
+        </div>
+        <div style='display:flex;justify-content:space-between;margin-top:.3rem;'>
+          {''.join(f"<span class='mini' style='font-size:.65rem;opacity:.55;'>{d[:3].upper()}</span>" for d in ['structure','location','anchors','derivatives','momentum','volatility'])}
+        </div>
+        <div id='rubric-hist-edge' class='mini' style='margin-top:.5rem;opacity:.7;font-size:.72rem;'>Historical edge loading...</div>
       </div>
       <div style='background:{gate_bg};border:1px solid {gate_color};border-radius:12px;padding:1rem;margin-bottom:1rem;'><div style='display:flex;justify-content:space-between;'><span class='mini'>Trade Safety</span><span class='pill' style='border:1px solid {gate_color};color:{gate_color};'>{vctx['gate']}</span></div>{gate_rows}</div>
       {execute_html}
@@ -1171,6 +1189,14 @@ def generate_html():
         <p id="circuit-breaker-reason" style="margin:.5rem 0 0;color:#ffd2d2;">Risk controls triggered.</p>
     </section>
     {no_trade_html}
+    <section class="panel" id="session-edge-panel" style="margin-bottom:1.5rem;">
+      <h2 style="margin-bottom:.6rem;">Session Edge Heatmap</h2>
+      <div id="hour-edge-banner" class="mini" style="padding:6px 10px;border-radius:8px;margin-bottom:.6rem;font-weight:700;font-size:.82rem;transition:all .3s;">Loading hour data...</div>
+      <div style="display:grid;grid-template-columns:repeat(24,1fr);gap:3px;margin:.4rem 0;">
+        {''.join(f"<div id='hour-cell-{h}' style='text-align:center;border-radius:5px;padding:4px 2px;font-size:.65rem;font-family:JetBrains Mono,monospace;font-weight:600;background:rgba(255,255,255,0.04);color:var(--text-muted);cursor:default;transition:all .3s;'>{h:02d}</div>" for h in range(24))}
+      </div>
+      <div class="mini" style="margin-top:.3rem;opacity:.6;">UTC hours · 🟢 Profitable ≥ +0.1R · 🔴 Unprofitable ≤ -0.1R · 🟡 Breakeven · Glowing = current hour</div>
+    </section>
     <div class="layout-grid">
         {playbook_html}
         {verdict_html}
@@ -1502,7 +1528,86 @@ if(vrE) {{ vrE.textContent = (wsVI.regime||'—').toUpperCase(); vrE.style.color
 }}
 
 const wsPD=[[['SQUEEZE_FIRE','SQUEEZE_ON'],[],'Squeeze'],[['HTF_ALIGNED'],['HTF_COUNTER'],'Trend (HTF)'],[['SENTIMENT_BULL','FLOW_TAKER_BULLISH','VOLUME_IMPULSE_BULL'],['SENTIMENT_BEAR','FLOW_TAKER_BEARISH','VOLUME_IMPULSE_BEAR'],'Momentum'],[['ML_CONFIDENCE_BOOST'],['ML_SKEPTICISM'],'ML Model'],[['FUNDING_EXTREME_LOW','FUNDING_LOW'],['FUNDING_EXTREME_HIGH','FUNDING_HIGH'],'Funding'],[['DXY_FALLING_BULLISH'],['DXY_RISING_BEARISH'],'DXY Macro'],[['GOLD_RISING_BULLISH'],['GOLD_FALLING_BEARISH'],'Gold Macro'],[['FG_EXTREME_FEAR','FG_FEAR'],['FG_EXTREME_GREED','FG_GREED'],'Fear & Greed'],[['BID_WALL_SUPPORT'],['ASK_WALL_RESISTANCE'],'Order Book'],[['OI_SURGE_MAJOR','OI_SURGE_MINOR','BASIS_BULLISH','OI_NEW_LONGS'],['BASIS_BEARISH','OI_NEW_SHORTS'],'OI / Basis'],[['STRUCTURE_BOS_BULL','STRUCTURE_CHOCH_BULL'],['STRUCTURE_BOS_BEAR','STRUCTURE_CHOCH_BEAR'],'Structure'],[['PDL_SWEEP_BULL','EQL_SWEEP_BULL','SESSION_LOW_SWEEP','PDH_RECLAIM_BULL'],['PDH_SWEEP_BEAR','EQH_SWEEP_BEAR','SESSION_HIGH_SWEEP','PDL_BREAK_BEAR'],'Levels'],[['AVWAP_RECLAIM_BULL'],['AVWAP_REJECT_BEAR'],'AVWAP'],[['ABOVE_VALUE'],['BELOW_VALUE'],'VP Status'],[['AUTO_RR_EXCELLENT'],['AUTO_RR_POOR'],'Auto R:R']];
-let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}}; 
+let wsAl=0,wsAg=0;const wsRH=wsPD.map(([b,br,lbl])=>{{const hb=b.some(c=>wsCS.has(c));const hbr=br.some(c=>wsCS.has(c));let ic='⚫',co='var(--text-muted)';if((wsDir==='LONG'&&hb)||(wsDir==='SHORT'&&hbr)){{ic='🟢';co='var(--accent)';wsAl++;}}else if((wsDir==='LONG'&&hbr)||(wsDir==='SHORT'&&hb)){{ic='🔴';co='#ff4d4d';wsAg++;}}return "<div class='mini'>"+ic+" <span style='color:"+co+"'>"+lbl+"</span></div>";}}).join('');const wsT=wsPD.length,wsPct=Math.round((wsAl/wsT)*100),wsLbl=wsAl>=7?'STRONG':wsAl>=4?'MODERATE':'WEAK',wsClr=wsAl>=7?'var(--accent)':wsAl>=4?'#ffd700':'#ff4d4d',wsNet=wsAl-wsAg;els.gate.textContent=wsAl>=7?'GREEN':wsAl>=4?'AMBER':'RED';const rSc=document.getElementById('radarScore');if(rSc){{rSc.textContent=wsAl+'/'+wsT+' '+wsLbl;rSc.style.color=wsClr;rSc.style.borderColor=wsClr;}};const rBr=document.getElementById('radarBar');if(rBr){{rBr.style.width=wsPct+'%';rBr.style.background=wsClr;}};const rGr=document.getElementById('radarGrid');if(rGr)rGr.innerHTML=wsRH;const rNt=document.getElementById('radarNet');if(rNt){{rNt.textContent=(wsNet>=0?'+':'')+wsNet;rNt.style.color=wsNet>=0?'var(--accent)':'#ff4d4d';}};
+
+// ── Rubric Quality Gate ──
+const wsRubric=((wsLatest.decision_trace||{{}}).rubric)||{{}};
+const wsRubricDetails=wsRubric.details||{{}};
+const wsRubricScore=typeof wsRubric.score==='number'?wsRubric.score:(typeof wsRubric.confluence_score==='number'?wsRubric.confluence_score:-1);
+['structure','location','anchors','derivatives','momentum','volatility'].forEach(dim=>{{
+  const seg=document.getElementById('rubric-seg-'+dim);
+  if(seg){{seg.style.background=wsRubricDetails[dim]?'var(--accent)':'rgba(255,255,255,0.06)';seg.title=dim+': '+(wsRubricDetails[dim]?'✅ ACTIVE':'⚫ INACTIVE');}}
+}});
+const convEl=document.getElementById('rubric-conviction');
+if(convEl&&wsRubricScore>=0){{
+  let rl,rc;
+  if(wsRubricScore>=5){{rl='HIGH CONVICTION';rc='var(--accent)';}}
+  else if(wsRubricScore===4){{rl='STANDARD';rc='#ffd700';}}
+  else if(wsRubricScore===3){{rl='MARGINAL';rc='#ffa500';}}
+  else{{rl='AVOID';rc='#ff4d4d';}}
+  convEl.textContent=wsRubricScore+'/6 '+rl;
+  convEl.style.color=rc;convEl.style.borderColor=rc;
+  const rubricCard=document.getElementById('rubricCard');
+  if(rubricCard){{rubricCard.style.borderColor=rc;rubricCard.style.background='rgba('+( wsRubricScore>=5?'0,255,204':wsRubricScore>=4?'255,215,0':wsRubricScore>=3?'255,165,0':'255,77,77')+',0.04)';}}
+}}
+const rubricStats=data.rubric_stats||{{}};
+const curRubricStats=rubricStats[String(wsRubricScore)]||null;
+const rubricEdgeEl=document.getElementById('rubric-hist-edge');
+if(rubricEdgeEl){{
+  if(curRubricStats){{rubricEdgeEl.textContent='Historical: '+(curRubricStats.wr*100).toFixed(0)+'% WR · '+(curRubricStats.avg_r>=0?'+':'')+curRubricStats.avg_r.toFixed(2)+'R avg · '+curRubricStats.count+' trades';rubricEdgeEl.style.color=curRubricStats.avg_r>0?'var(--accent)':curRubricStats.avg_r<-0.05?'#ff4d4d':'#ffd700';}}
+  else{{rubricEdgeEl.textContent='No historical data for rubric '+wsRubricScore;rubricEdgeEl.style.color='var(--text-muted)';}}
+}}
+
+// ── Code Toxicity Filter ──
+const codeEdge=data.code_edge||{{}};
+const activeCodes=Array.from(wsCS);
+const toxicCodes=activeCodes.filter(c=>{{const e=codeEdge[c];return e&&e.total>=8&&e.wr<0.40;}}).sort((a,b)=>(codeEdge[a].wr||1)-(codeEdge[b].wr||1));
+const edgeCodes=activeCodes.filter(c=>{{const e=codeEdge[c];return e&&e.total>=8&&e.wr>=0.60;}}).sort((a,b)=>(codeEdge[b].wr||0)-(codeEdge[a].wr||0));
+const toxicWarn=document.getElementById('toxic-warning');
+if(toxicWarn){{
+  if(toxicCodes.length>0){{
+    const w=toxicCodes[0];const we=codeEdge[w];
+    toxicWarn.innerHTML='⚠️ TOXIC: '+w+' ('+(we.wr*100).toFixed(0)+'% WR · '+we.total+' trades) — consider SKIP';
+    toxicWarn.style.cssText='padding:6px 10px;border-radius:8px;margin-bottom:.5rem;font-weight:700;transition:all .3s;background:rgba(255,77,77,0.12);color:#ff4d4d;border:1px solid rgba(255,77,77,0.4);display:block;';
+  }}else{{
+    toxicWarn.innerHTML='✅ No toxic codes active';
+    toxicWarn.style.cssText='padding:6px 10px;border-radius:8px;margin-bottom:.5rem;font-weight:700;transition:all .3s;background:rgba(0,255,204,0.06);color:var(--accent);border:1px solid rgba(0,255,204,0.2);display:block;';
+  }}
+}}
+const dnaPos=document.getElementById('dna-positive');
+if(dnaPos)dnaPos.innerHTML=edgeCodes.length?edgeCodes.slice(0,4).map(c=>{{const e=codeEdge[c];return "<span class='pill badge-good' title='"+(e.wr*100).toFixed(0)+"% WR/"+e.total+" trades'>"+c+"</span>";}}).join(''):"<span class='mini' style='opacity:.5;'>None firing</span>";
+const dnaNeg=document.getElementById('dna-negative');
+if(dnaNeg)dnaNeg.innerHTML=toxicCodes.length?toxicCodes.slice(0,4).map(c=>{{const e=codeEdge[c];return "<span class='pill badge-bad' title='"+(e.wr*100).toFixed(0)+"% WR/"+e.total+" trades'>"+c+"</span>";}}).join(''):"<span class='mini' style='opacity:.5;'>None active</span>";
+
+// ── Session Edge Heatmap ──
+const hourStats=data.hour_stats||{{}};
+const curHour=new Date().getUTCHours();
+for(let h=0;h<24;h++){{
+  const cell=document.getElementById('hour-cell-'+h);
+  if(!cell)continue;
+  const hs=hourStats[String(h)];
+  cell.style.boxShadow=h===curHour?'0 0 0 2px var(--accent)':'none';
+  cell.style.fontWeight=h===curHour?'800':'600';
+  if(hs&&hs.count>=3){{
+    if(hs.avg_r>0.10&&hs.wr>0.55){{cell.style.background='rgba(0,255,204,0.22)';cell.style.color='#00ffcc';}}
+    else if(hs.avg_r<-0.10||hs.wr<0.35){{cell.style.background='rgba(255,77,77,0.18)';cell.style.color='#ff4d4d';}}
+    else{{cell.style.background='rgba(255,215,0,0.12)';cell.style.color='#ffd700';}}
+    cell.title=h+':00 UTC | WR:'+(hs.wr*100).toFixed(0)+'% | AvgR:'+hs.avg_r.toFixed(2)+' | N='+hs.count;
+  }}else{{cell.style.background='rgba(255,255,255,0.04)';cell.style.color='var(--text-muted)';cell.title=h+':00 UTC — <3 trades';}}
+}}
+const hourBanner=document.getElementById('hour-edge-banner');
+if(hourBanner){{
+  const chs=hourStats[String(curHour)];
+  if(chs&&chs.count>=3){{
+    const isG=chs.avg_r>0.10&&chs.wr>0.55,isB=chs.avg_r<-0.10||chs.wr<0.35;
+    const hc=isG?'var(--accent)':(isB?'#ff4d4d':'#ffd700'),hi=isG?'🟢':(isB?'🔴':'🟡');
+    hourBanner.innerHTML=hi+' Hour '+curHour+':00 UTC | WR: '+(chs.wr*100).toFixed(0)+'% · AvgR: '+(chs.avg_r>=0?'+':'')+chs.avg_r.toFixed(2)+'R · N='+chs.count;
+    hourBanner.style.cssText='padding:6px 10px;border-radius:8px;margin-bottom:.6rem;font-weight:700;font-size:.82rem;color:'+hc+';background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);transition:all .3s;';
+  }}else{{
+    hourBanner.innerHTML='⚫ Hour '+curHour+':00 UTC — insufficient data (<3 trades)';
+    hourBanner.style.cssText='padding:6px 10px;border-radius:8px;margin-bottom:.6rem;font-weight:700;font-size:.82rem;color:var(--text-muted);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:all .3s;';
+  }}
+}}
 
 // ── Phase 26 Task 6.2: Data Freshness Warning ──
 const dataAge = data.data_age_seconds || 0;
