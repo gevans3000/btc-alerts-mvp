@@ -377,7 +377,7 @@ def compute_score(
             # Phase 31: Removed binary HTF veto in favor of HTF Cascade Scoring
             intel.recipes.append(sig)
             codes.append(f"{sig.recipe}_RECIPE")
-            breakdown["momentum"] += sig_score / SCORE_MULTIPLIER
+            breakdown["momentum"] += sig.raw_score / SCORE_MULTIPLIER
             reasons.append(f"Recipe: {sig.recipe} ({sig.direction})")
     except Exception as e:
         logger.warning(f"Recipe detection failed: {e}")

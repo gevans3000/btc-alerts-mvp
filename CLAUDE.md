@@ -22,7 +22,7 @@ PYTHONPATH=. python -m pytest tests/ -v
 # Run a single test file
 PYTHONPATH=. python -m pytest tests/test_confluence.py -v
 
-# Start the WebSocket dashboard server (http://localhost:8000)
+# Start the WebSocket dashboard server (http://localhost:8002)
 python scripts/pid-129/dashboard_server.py
 
 # Generate morning briefing
@@ -32,7 +32,7 @@ python scripts/morning_briefing.py
 python tools/auto_tune.py
 
 # Backtest
-python tools/run_backtest.py --symbol BTC --since 2025-02-01 --to 2025-02-28
+python tools/run_backtest.py --symbol BTC --limit 1000 --since 2025-02-01 --to 2025-02-28
 
 # System on/off toggle
 python scripts/toggle.py status|on|off

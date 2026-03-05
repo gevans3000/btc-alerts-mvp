@@ -13,45 +13,60 @@ from tools.replay import replay_symbol_timeframe, summarize
 
 import engine
 
+import argparse
+
+# Force UTF-8 encoding for stdout to handle emojis if needed, 
+# although we'll use text symbols for better compatibility.
+if sys.stdout.encoding.lower() != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # Monkeypatch: Disable stale checks for replay
 engine._is_stale = lambda candles, timeframe: False
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-def get_history(limit=720):
-    """Fetch max available 5m candles."""
+def get_history(symbol="BTC", limit=720):
+    """Fetch max available candles for the given symbol."""
     budget = BudgetManager()
     
     # If limit > 720, try Bybit first as Kraken is typically capped at 720
     if limit > 720:
-        logging.info(f"Fetching last {limit} candles (5m timeframe) from Bybit...")
+        logging.info(f"Fetching last {limit} candles (5m timeframe) from Bybit for {symbol}...")
         candles = _fetch_bybit_ohlc(budget, interval="5", limit=limit)
         if candles:
             logging.info(f"Successfully loaded {len(candles)} candles from Bybit.")
             return candles
         logging.info("Bybit failed, falling back to Kraken...")
 
-    logging.info(f"Fetching last {limit} candles (5m timeframe) from Kraken...")
+    logging.info(f"Fetching last {limit} candles (5m timeframe) from Kraken for {symbol}...")
     candles = _fetch_kraken_ohlc(budget, interval=5, limit=limit)
     if not candles:
         logging.info("Kraken failed, trying Bybit (final fallback)...")
         candles = _fetch_bybit_ohlc(budget, interval="5", limit=limit)
         
     if not candles:
-        logging.error("Could not fetch historical data from any source.")
+        logging.error(f"Could not fetch historical data for {symbol} from any source.")
         sys.exit(1)
         
     logging.info(f"Successfully loaded {len(candles)} candles.")
     return candles
 
 def main():
+    parser = argparse.ArgumentParser(description="Backtest Runner for BTC Alerts")
+    parser.add_argument("--symbol", type=str, default="BTC", help="Symbol to backtest")
+    parser.add_argument("--limit", type=int, default=1000, help="Number of 5m candles")
+    parser.add_argument("--since", type=str, help="Start date (kept for CLI compatibility)")
+    parser.add_argument("--to", type=str, help="End date (kept for CLI compatibility)")
+    args = parser.parse_args()
+
     print("==================================================")
-    print("   BTC ALERTS MVP — BACKTEST ENGINE")
+    print(f"   {args.symbol} ALERTS MVP — BACKTEST ENGINE")
     print("==================================================")
     
     # 1. Fetch History
-    candles = get_history(limit=1000) # Maximize history
+    candles = get_history(symbol=args.symbol, limit=args.limit)
     
     # 2. Run Replays
     print("\n>>> RUNNING REPLAYS <<<")
@@ -60,7 +75,7 @@ def main():
     for tf in ["5m", "15m", "1h"]:
         print(f"Testing {tf} strategy...", end=" ", flush=True)
         try:
-            metrics = replay_symbol_timeframe("BTC", tf, candles)
+            metrics = replay_symbol_timeframe(args.symbol, tf, candles)
             results[tf] = metrics
             print("DONE")
         except Exception as e:
@@ -68,7 +83,7 @@ def main():
     
     # 3. Report
     print("\n==================================================")
-    print("   PERFORMANCE REPORT (Last ~3 Days)")
+    print(f"   PERFORMANCE REPORT ({args.symbol} Last ~{args.limit*5/60/24:.1f} Days)")
     print("==================================================")
     print(f"{'TIMEFRAME':<10} | {'ALERTS':<8} | {'TRADES':<8} | {'WIN RATE':<10} | {'EXPECTANCY'}")
     print("-" * 65)
@@ -78,9 +93,9 @@ def main():
         # Rough expectancy calc: (WinRate * Reward) - (LossRate * Risk)
         # Assuming avg Reward 1.5R and Risk 1.0R for this estimation
         ev = (m.directional_hit_proxy * 1.5) - ((1.0 - m.directional_hit_proxy) * 1.0)
-        ev_color = "🟢" if ev > 0.2 else "🔴" if ev < 0 else "⚪"
+        ev_symbol = "(+)" if ev > 0.2 else "(-)" if ev < 0 else "(~)"
         
-        print(f"{tf:<10} | {m.alerts:<8} | {m.trades:<8} | {win_rate:<10} | {ev_color} {ev:.2f}R")
+        print(f"{tf:<10} | {m.alerts:<8} | {m.trades:<8} | {win_rate:<10} | {ev_symbol} {ev:.2f}R")
         
     print("==================================================")
     print("\nNOTE: This backtest uses Price Action Only.")

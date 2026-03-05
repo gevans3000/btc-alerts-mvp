@@ -330,6 +330,8 @@ def _compute_rubric_stats(alerts):
     return result
 
 
+# Display uses limit=50 (last ~4 hours of 5-min cycles).
+# Portfolio stats fallback uses limit=1000 for full history.
 def _load_alerts(limit=50):
     if not ALERTS_PATH.exists():
         return []

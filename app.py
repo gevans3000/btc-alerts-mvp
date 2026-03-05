@@ -414,7 +414,16 @@ def run(bm: BudgetManager, notif: Notifier, state: AlertStateStore, p_logger: Pe
         
         # Generate reporting artifacts
         os.system(f"{sys.executable} scripts/pid-129/generate_scorecard.py")
-        # os.system(f"{sys.executable} scripts/pid-129/generate_dashboard.py")
+        
+        # Part 2: Re-enable Dashboard HTML Auto-Generation (only if non-SKIP alerts produced)
+        if any(a.action != "SKIP" for a in alerts):
+            import subprocess
+            try:
+                subprocess.run([sys.executable, "scripts/pid-129/generate_dashboard.py"],
+                               capture_output=True, timeout=30, check=True)
+                logger.info("Dashboard HTML regenerated.")
+            except Exception as e:
+                logger.warning(f"Dashboard HTML generation failed: {e}")
     except Exception as e:
         logger.error(f"Error during loop house-keeping: {e}")
 

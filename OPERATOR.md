@@ -50,9 +50,9 @@ The operator can interact with the backend live without restarting:
 
 ## 🤖 4. AI-Operator Quick Specs
 
-*   **REST Endpoint**: `GET http://localhost:8000/api/alerts`
+*   **REST Endpoint**: `GET http://localhost:8002/api/alerts`
     *   Returns the full `decision_trace` with all 17 intelligence probes for deep analysis.
-*   **WebSocket Feed**: `ws://localhost:8000/ws`
+*   **WebSocket Feed**: `ws://localhost:8002/ws`
     *   Provides a lightweight 15-alert buffer + global performance stats.
 *   **State Persistence**: All user overrides are saved to `data/dashboard_overrides.json`.
 

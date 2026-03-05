@@ -78,7 +78,32 @@ class Portfolio:
             "equity_curve": self.equity_curve
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(data, indent=2))
+        
+        # Phase 31 Hardening: Use file locking to prevent corruption during concurrent access
+        try:
+            import msvcrt
+            import time
+            success = False
+            for _ in range(100): # Try for 1 second max
+                try:
+                    # Open file, lock it, write, unlock
+                    with open(self.path, "w") as f:
+                        msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                        f.write(json.dumps(data, indent=2))
+                        f.seek(0)
+                        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                    success = True
+                    break
+                except IOError:
+                    time.sleep(0.01)
+            
+            if not success:
+                logger.error(f"Failed to acquire file lock for {self.path}")
+                # Fallback to write directly if lock times out
+                self.path.write_text(json.dumps(data, indent=2))
+        except ImportError:
+            # Fallback for non-Windows
+            self.path.write_text(json.dumps(data, indent=2))
 
     def on_alert(self, alert_id: str, symbol: str, tf: str, direction: str, price: float, sl: float, tp1: float, tier: str, confidence: int = 0, regime: str = "unknown", session: str = "unknown"):
         if tier != "TRADE":
