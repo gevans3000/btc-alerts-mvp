@@ -22,7 +22,7 @@
 
 **Goal:** Recalibrate so confidence correlates with actual win rate.
 
-### Task 29.1 — Add calibration analysis script
+### Task 29.1 — Add calibration analysis script [COMPLETE]
 
 Create `tools/calibration_report.py`:
 
@@ -41,7 +41,7 @@ Only include alerts where outcome is not None (resolved trades).
 **Writes:** `reports/calibration_report.json`
 **Test:** Run the script. It should print a table with 5 bins. Verify the numbers match the JSONL data.
 
-### Task 29.2 — Fix scoring inversion in engine.py
+### Task 29.2 — Fix scoring inversion in engine.py [COMPLETE]
 
 After running the calibration report, identify which probes contribute most to the 61–80 bin. The fix:
 
@@ -80,7 +80,7 @@ confidence = min(confidence, CONFLUENCE_RULES.get("CONFIDENCE_CAP", 85))
 
 **Goal:** Automatically pause trading after hitting loss limits.
 
-### Task 30.1 — Daily loss circuit breaker
+### Task 30.1 — Daily loss circuit breaker [COMPLETE]
 
 **File:** `tools/executor.py`
 **What to add:** Before executing any trade, check cumulative R for today:
@@ -112,7 +112,7 @@ def _check_circuit_breaker(self) -> bool:
 
 Call `_check_circuit_breaker()` at the top of the execute method. If it returns `False`, log the skip and return without trading.
 
-### Task 30.2 — Max open positions cap
+### Task 30.2 — Max open positions cap [COMPLETE]
 
 **File:** `tools/executor.py`
 **What to add:** Before opening a new position, count current open positions:
