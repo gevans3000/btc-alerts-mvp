@@ -99,6 +99,8 @@ def badge_class_for_tier(tier: str):
         return "badge-good"
     if tier == "B":
         return "badge-warn"
+    if tier == "C":
+        return "badge-monitor"
     return "badge-neutral"
 def badge_class_for_direction(direction: str):
     if direction == "LONG":
@@ -294,12 +296,6 @@ def render_execution_matrix(alerts):
         direction = get_direction(a)
         tier = get_tier(a)
         conf = get_confidence(a)
-        # Phase 19 FIX 10: override tier if confidence doesn't match thresholds
-        # Prevents stale alerts from showing A+ on low scores
-        if tier == "A+" and conf < 45:
-            tier = "B" if conf >= 25 else "NO-TRADE"
-        elif tier == "B" and conf < 20:
-            tier = "NO-TRADE"
         blockers = ", ".join(get_blockers(a)[:2]) or "None"
         entry = float(a.get("entry_price") or a.get("entry") or 0)
         stop = float(a.get("invalidation") or 0)
@@ -1114,6 +1110,7 @@ def generate_html():
         .badge-warn {{ background: rgba(255,215,0,0.12); color: #ffd700; border: 1px solid rgba(255,215,0,0.45); }}
         .badge-bad {{ background: rgba(255,77,77,0.12); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.45); }}
         .badge-neutral {{ background: rgba(128,128,138,0.12); color: var(--text-muted); border: 1px solid rgba(128,128,138,0.35); }}
+        .badge-monitor {{ background: rgba(150, 150, 150, 0.1); color: #999; border: 1px solid #666; opacity: 0.8; cursor: not-allowed; filter: grayscale(0.5); }}
         .mini {{ color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }}
         .playbook {{ margin-top: 0.8rem; color: var(--text-muted); font-size: 0.92rem; }}
         .scorecard-section {{ background: var(--surface); border-radius: 18px; padding: 1.2rem; border: 1px solid var(--border); }}

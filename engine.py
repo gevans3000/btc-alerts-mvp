@@ -14,7 +14,11 @@ from collectors.derivatives import DerivativesSnapshot
 from collectors.flows import FlowSnapshot
 from collectors.price import PriceSnapshot
 from collectors.social import FearGreedSnapshot, Headline
-from config import TIMEFRAME_RULES, CONFLUENCE_RULES, TP_MULTIPLIERS
+from config import (
+    TIMEFRAME_RULES, CONFLUENCE_RULES, TP_MULTIPLIERS,
+    CONFLUENCE_WEIGHTS, CONFLUENCE_THRESHOLDS,
+    HTF_CASCADE_WEIGHTS, DIRECTIONAL_SEASON
+)
 from utils import (
     Candle,
     atr,
@@ -41,37 +45,48 @@ from core.logger import logger
 # up to the 0-100 confidence range expected by TIMEFRAME_RULES thresholds.
 SCORE_MULTIPLIER = 7.0
 
-def _tier_and_action(score: int, blockers: List[str], timeframe: str, rubric_score: int) -> tuple[str, str]:
+def _tier_and_action(score: int, blockers: List[str], timeframe: str, rubric_score: float, threshold_adj: int = 0) -> tuple[str, str]:
     """
-    Tiering logic updated for Phase 22:
-    - Enforces 6-point Confluence Rubric.
-    - TRADE (A+) requires rubric_score >= 4.
-    - WATCH (B) requires rubric_score >= 2.
+    Tiering logic updated for Phase 29:
+    - Weighted Confluence Rubric (A+ >= 6.0, B >= 4.0, C >= 2.5).
+    - C tier (MONITOR) is grey and non-executable.
+    - Threshold adjustments (seasoning) applied to Confidence score.
     """
     cfg = TIMEFRAME_RULES.get(timeframe, TIMEFRAME_RULES["5m"])
     if blockers:
         return "NO-TRADE", "SKIP"
     
+    # Seasoned thresholds
+    trade_threshold = cfg.get("trade_long" if score > 0 else "trade_short", 40) + threshold_adj
+    watch_threshold = cfg.get("watch_long" if score > 0 else "watch_short", 25) + threshold_adj
+
     tier = "NO-TRADE"
     action = "SKIP"
 
-    # Preliminary tiering based on confidence score (normalized)
-    if score >= cfg["trade_long"]:
+    # 1. Preliminary tiering based on confidence score
+    if score >= trade_threshold:
         tier = "A+"
         action = "TRADE"
-    elif score >= cfg["watch_long"]:
+    elif score >= watch_threshold:
         tier = "B"
         action = "WATCH"
 
-    # Hard Gate: Confluence Rubric (Phase 23: Tightened to 5/6 for A+, 3/6 for B)
-    if tier == "A+" and rubric_score < 5:
+    # 2. Hard Gate: Weighted Confluence Rubric (Phase 29)
+    if tier == "A+" and rubric_score < CONFLUENCE_THRESHOLDS["A+"]:
         tier = "B"
-        if rubric_score < 3:
+    
+    if tier == "B" and rubric_score < CONFLUENCE_THRESHOLDS["B"]:
+        if rubric_score >= CONFLUENCE_THRESHOLDS["C"]:
+            tier = "C"
+            action = "MONITOR"
+        else:
             tier = "NO-TRADE"
             action = "SKIP"
-    elif tier == "B" and rubric_score < 3:
-        tier = "NO-TRADE"
-        action = "SKIP"
+    
+    # If not already A+/B, check if it qualifies for C-tier monitor
+    if tier == "NO-TRADE" and rubric_score >= CONFLUENCE_THRESHOLDS["C"]:
+        tier = "C"
+        action = "MONITOR"
 
     return tier, action
 
@@ -351,24 +366,15 @@ def compute_score(
                     "equal_highs": trace["context"].get("equal_levels", {}).get("eq_highs", [])},
             avwap=trace["context"].get("avwap", {}),
             squeeze={"state": trace["context"].get("squeeze", "NONE")},
-            atr_val=local_atr if 'local_atr' in locals() else None
+            atr_val=local_atr if 'local_atr' in locals() else None,
+            context=trace["context"]
         )
         
         # Phase 23: Resolve contradictions (max 1 recipe)
         recipe_signals = resolve_conflicts(raw_signals)
         
         for sig in recipe_signals:
-            # Phase 23: Multi-Timeframe Confirmation
-            # Check 1h if current is 5/15m, check 15m if current is 1h
-            htf_candles = candles_1h if timeframe != "1h" else candles_15m
-            confirmed = _htf_confirms(sig.direction, htf_candles)
-            
-            sig_score = sig.raw_score
-            if not confirmed:
-                sig_score *= 0.5
-                codes.append("HTF_CONFLICT")
-                reasons.append(f"Recipe {sig.recipe} downgraded (HTF Conflict)")
-            
+            # Phase 31: Removed binary HTF veto in favor of HTF Cascade Scoring
             intel.recipes.append(sig)
             codes.append(f"{sig.recipe}_RECIPE")
             breakdown["momentum"] += sig_score / SCORE_MULTIPLIER
@@ -389,24 +395,58 @@ def compute_score(
     codes.extend(arb_codes)
 
     # Final score
-    total_score = sum(breakdown.values())
-    # -- Phase 19 CRITICAL-1: normalize score to fill 0-100 range --
-    # Raw scores typically land in -30 to +30 range.
-    # Scale by 3x so a raw 15 becomes 45 (the A+ threshold for 5m).
-    # This means: 5 active signals ≈ raw 15 → normalized 45 → A+ tier.
-    total_score = total_score * SCORE_MULTIPLIER
-
-    # Map ML Mock / Fallback
-    # If the score is extreme, we assume high algorithmic conviction.
-    # Phase 19: align ML thresholds with normalized score range
-    # After 3x multiplier: 25 = raw ~8.3 = genuine multi-signal confluence
-    if total_score >= 25:
-        codes.append("ML_CONFIDENCE_BOOST")
-    elif total_score <= -25:
-        codes.append("ML_SKEPTICISM")
-
     # -- Phase 19 FIX 5: compute direction + auto_rr early so codes reach confluence --
+    prelim_total = sum(breakdown.values())
+    prelim_dir = "LONG" if prelim_total > 0 else "SHORT" if prelim_total < 0 else "NEUTRAL"
+
+    # Phase 31: HTF Cascade Scoring
+    htf_bonus = 0
+    if candles_4h and len(candles_4h) >= 20:
+        struct_4h = detect_structure(candles_4h)
+        if (prelim_dir == "LONG" and "BULL" in struct_4h["trend"].upper()) or \
+           (prelim_dir == "SHORT" and "BEAR" in struct_4h["trend"].upper()):
+            htf_bonus += HTF_CASCADE_WEIGHTS["4h"]
+    
+    if candles_1h and len(candles_1h) >= 10:
+        struct_1h = detect_structure(candles_1h)
+        if (prelim_dir == "LONG" and "BULL" in struct_1h["trend"].upper()) or \
+           (prelim_dir == "SHORT" and "BEAR" in struct_1h["trend"].upper()):
+            htf_bonus += HTF_CASCADE_WEIGHTS["1h"]
+            
+    if candles_15m and len(candles_15m) >= 10:
+        struct_15m = detect_structure(candles_15m)
+        if (prelim_dir == "LONG" and "BULL" in struct_15m["trend"].upper()) or \
+           (prelim_dir == "SHORT" and "BEAR" in struct_15m["trend"].upper()):
+            htf_bonus += HTF_CASCADE_WEIGHTS["15m"]
+
+    if htf_bonus == 0 and prelim_dir != "NEUTRAL":
+        htf_bonus += HTF_CASCADE_WEIGHTS["counter_aligned"]
+
+    breakdown["htf"] += htf_bonus
+
+    # Phase 31: Directional Seasoning
+    threshold_adj = 0
+    funding_rate = derivatives.funding_rate if derivatives and derivatives.healthy else 0
+    taker_ratio = flows.taker_ratio if flows and flows.healthy else 1.0
+    ls_ratio = flows.long_short_ratio if flows and flows.healthy else 1.0
+    
+    if funding_rate > DIRECTIONAL_SEASON["funding_threshold_long"]:
+        if prelim_dir == "SHORT":
+            threshold_adj -= DIRECTIONAL_SEASON["funding_relax_pts"]
+        else:
+            threshold_adj += DIRECTIONAL_SEASON["funding_tighten_pts"]
+    elif funding_rate < DIRECTIONAL_SEASON["funding_threshold_short"]:
+        if prelim_dir == "LONG":
+            threshold_adj -= DIRECTIONAL_SEASON["funding_relax_pts"]
+        else:
+            threshold_adj += DIRECTIONAL_SEASON["funding_tighten_pts"]
+            
+    if ls_ratio > DIRECTIONAL_SEASON["crowding_ratio_threshold"]:
+        threshold_adj += DIRECTIONAL_SEASON["crowding_tighten_pts"]
+
+    total_score = sum(breakdown.values()) * SCORE_MULTIPLIER
     direction = "LONG" if total_score > 0 else "SHORT" if total_score < 0 else "NEUTRAL"
+
     try:
         auto_rr = compute_auto_rr(candles, direction)
         codes.extend(auto_rr["codes"])
@@ -417,53 +457,53 @@ def compute_score(
     except Exception:
         pass
 
-    # --- Confluence Rubric (Phase 22) ---
-    # Sum signals from (Structure, Location, Anchors, Derivatives, Momentum, Volatility)
-    rubric_score = 0
+    # --- Confluence Rubric (Phase 29: Weighted) ---
+    # Sum weighted signals from (Structure, Location, Anchors, Derivatives, Momentum, Volatility)
+    rubric_score = 0.0
     rubric_details = {}
 
     def has_any(targets: List[str]) -> bool:
         return any(t in codes for t in targets)
 
-    # 1. Structure
+    # 1. Structure (2.0)
     struct_signals = ["STRUCTURE_BOS_BULL", "STRUCTURE_CHOCH_BULL", "BOS_CONTINUATION_RECIPE"] if direction == "LONG" else \
                      ["STRUCTURE_BOS_BEAR", "STRUCTURE_CHOCH_BEAR", "BOS_CONTINUATION_RECIPE"]
     if has_any(struct_signals):
-        rubric_score += 1
+        rubric_score += CONFLUENCE_WEIGHTS["structure"]
         rubric_details["structure"] = True
 
-    # 2. Location
-    loc_signals = ["NEAR_POC", "BID_WALL_SUPPORT", "EQL_SWEEP_BULL", "PDL_SWEEP_BULL"] if direction == "LONG" else \
-                  ["NEAR_POC", "ASK_WALL_RESISTANCE", "EQH_SWEEP_BEAR", "PDH_SWEEP_BEAR"]
+    # 2. Location (1.5)
+    loc_signals = ["NEAR_POC", "BID_WALL_SUPPORT", "EQL_SWEEP_BULL", "PDL_SWEEP_BULL", "RANGE_BREAKOUT_RECIPE"] if direction == "LONG" else \
+                  ["NEAR_POC", "ASK_WALL_RESISTANCE", "EQH_SWEEP_BEAR", "PDH_SWEEP_BEAR", "RANGE_BREAKOUT_RECIPE"]
     if has_any(loc_signals):
-        rubric_score += 1
+        rubric_score += CONFLUENCE_WEIGHTS["location"]
         rubric_details["location"] = True
 
-    # 3. Anchors
+    # 3. Anchors (1.5)
     anchor_signals = ["AVWAP_RECLAIM_BULL", "AVWAP_ABOVE_1SD"] if direction == "LONG" else \
                      ["AVWAP_REJECT_BEAR", "AVWAP_BELOW_1SD"]
     if has_any(anchor_signals) or "HTF_REVERSAL_RECIPE" in codes:
-        rubric_score += 1
+        rubric_score += CONFLUENCE_WEIGHTS["anchors"]
         rubric_details["anchors"] = True
 
-    # 4. Derivatives
-    deriv_signals = ["FUNDING_LOW", "OI_SURGE_MINOR", "OI_SURGE_MAJOR", "BASIS_BULLISH"] if direction == "LONG" else \
-                    ["FUNDING_HIGH", "OI_SURGE_MINOR", "OI_SURGE_MAJOR", "BASIS_BEARISH"]
+    # 4. Derivatives (1.0)
+    deriv_signals = ["FUNDING_LOW", "OI_SURGE_MINOR", "OI_SURGE_MAJOR", "BASIS_BULLISH", "FUNDING_FLUSH_RECIPE"] if direction == "LONG" else \
+                    ["FUNDING_HIGH", "OI_SURGE_MINOR", "OI_SURGE_MAJOR", "BASIS_BEARISH", "FUNDING_FLUSH_RECIPE"]
     if has_any(deriv_signals):
-        rubric_score += 1
+        rubric_score += CONFLUENCE_WEIGHTS["derivatives"]
         rubric_details["derivatives"] = True
 
-    # 5. Momentum
-    mom_signals = ["HTF_ALIGNED", "FLOW_TAKER_BULLISH", "SENTIMENT_BULL"] if direction == "LONG" else \
-                  ["HTF_COUNTER", "FLOW_TAKER_BEARISH", "SENTIMENT_BEAR"]
+    # 5. Momentum (1.0)
+    mom_signals = ["HTF_ALIGNED", "FLOW_TAKER_BULLISH", "SENTIMENT_BULL", "MOM_DIVERGENCE_RECIPE"] if direction == "LONG" else \
+                  ["HTF_COUNTER", "FLOW_TAKER_BEARISH", "SENTIMENT_BEAR", "MOM_DIVERGENCE_RECIPE"]
     if has_any(mom_signals):
-        rubric_score += 1
+        rubric_score += CONFLUENCE_WEIGHTS["momentum"]
         rubric_details["momentum"] = True
 
-    # 6. Volatility
+    # 6. Volatility (1.0)
     vol_signals = ["SQUEEZE_FIRE", "VOL_EXPANSION_RECIPE"]
     if has_any(vol_signals):
-        rubric_score += 1
+        rubric_score += CONFLUENCE_WEIGHTS["volatility"]
         rubric_details["volatility"] = True
 
     trace["rubric"] = {"score": rubric_score, "details": rubric_details}
@@ -520,7 +560,7 @@ def compute_score(
         blockers.append(f"R:R {rr:.2f} below {min_rr:.2f} threshold")
 
     # Final Action/Tier Decision (after hard R:R gate)
-    tier, action = _tier_and_action(int(abs(total_score)), blockers, timeframe, rubric_score)
+    tier, action = _tier_and_action(int(total_score), blockers, timeframe, rubric_score, threshold_adj)
 
     trace["codes"] = list(set(codes))
     trace["degraded"] = degraded

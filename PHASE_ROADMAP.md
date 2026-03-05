@@ -208,4 +208,4 @@ echo $null > STOP
 ```
 
 ---
-_v28.0 FINAL | EMBER | Autonomous Bitcoin futures trading complete and operational. No phases beyond 28._
+_v28.0 FINAL | EMBER | Autonomous Bitcoin futures trading complete and operational. No phases beyond 28 except when ready for PHASE_ROADMAP_2-claude.md

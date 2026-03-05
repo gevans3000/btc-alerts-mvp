@@ -106,7 +106,7 @@
         </div>
         <div class="status">
             <span id="connection-badge" class="badge-live">Live Feed: Connecting</span>
-            <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: 2026-03-03 14:05:32</p>
+            <p id="sync-label" style="margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">Synced: 2026-03-05 06:00:29</p>
         </div>
     </header>
     <section class="panel">
@@ -128,7 +128,7 @@
             </div>
             <div class="stat-card"><div class="stat-label">DXY Macro</div><div id="tape-dxy" class="live-value">—</div></div>
             <div class="stat-card"><div class="stat-label">Sentiment</div><div id="tape-sentiment" class="live-value">—</div></div>
-            <div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">$10,114.00</div></div>
+            <div class="stat-card"><div class="stat-label">Balance</div><div id="live-balance" class="live-value">$10,244.45</div></div>
             <div class="stat-card"><div class="stat-label">Win Rate (7d)</div><div id="live-winrate" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">Avg R (7d)</div><div id="live-pf" class="live-value">--</div></div>
             <div class="stat-card"><div class="stat-label">Kelly %</div><div id="live-kelly" class="live-value">--</div></div>
@@ -192,13 +192,13 @@
         </div>
       </div>
       <div class='mini' style='margin-bottom:8px;'>Direction: <span class='pill badge-good'>LONG</span></div>
-      <div class='mini' style='margin-bottom:8px;'>Edge (last 20): <span class='pill badge-bad'>0% (0W)</span></div>
+      <div class='mini' style='margin-bottom:8px;'>Edge (last 20): <span class='pill badge-warn'>50% (10W)</span></div>
       <div style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div style='display:flex;justify-content:space-between;align-items:center;'><div><div class='mini'>Live BTC Price</div><div id='livePrice' style='font-weight:800;'>Loading...</div></div><div style='text-align:right;'><div class='mini'>Unrealized PnL</div><div id='livePnL'>—</div></div></div>
         <div style='display:flex;gap:1rem;margin-top:.6rem;'><div class='mini'>→ TP1 <span id='distTP1'>—</span></div><div class='mini'>→ STOP <span id='distStop'>—</span></div><div class='mini'>SPREAD <span id='liveSpread'>—</span></div></div>
         <div id="bs-filter-display" class="mini" style="margin-top:8px;padding:6px 10px;border-radius:8px;font-weight:700;font-size:0.78rem;text-align:center;transition:all 0.3s ease;"></div>
       </div>
-      <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div><span class='pill badge-neutral'>REGIME_RANGE</span><span class='pill badge-neutral'>HTF_REVERSAL_RECIPE</span><span class='pill badge-neutral'>EQUAL_HIGHS_NEARBY</span><span class='pill badge-neutral'>ML_CONFIDENCE_BOOST</span><span class='pill badge-neutral'>FUNDING_LOW</span><span class='pill badge-neutral'>FG_EXTREME_FEAR</span><span class='pill badge-neutral'>HTF_4H_BULLISH</span><span class='pill badge-neutral'>FLOW_TAKER_BULLISH</span></div>
+      <div style='margin-bottom:1rem;'><div class='mini' style='margin-bottom:6px;'>Conviction Signals</div><span class='pill badge-neutral'>BASIS_BEARISH</span><span class='pill badge-neutral'>ABOVE_VALUE</span><span class='pill badge-neutral'>GOLD_FALLING_BEARISH</span><span class='pill badge-neutral'>HTF_ALIGNED</span><span class='pill badge-neutral'>DXY_RISING_BEARISH</span><span class='pill badge-neutral'>SQUEEZE_ON</span><span class='pill badge-neutral'>ML_CONFIDENCE_BOOST</span><span class='pill badge-neutral'>FG_EXTREME_FEAR</span></div>
       <div id='signal-dna-card' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:.9rem;margin-bottom:1rem;'>
         <div class='mini' style='margin-bottom:6px;font-weight:700;letter-spacing:.04em;'>Signal DNA</div>
         <div id='toxic-warning' class='mini' style='padding:6px 10px;border-radius:8px;margin-bottom:.5rem;font-weight:700;transition:all .3s;display:none;'>—</div>
@@ -227,7 +227,7 @@
       <div id='radarCard' style='background:rgba(255,255,255,.03);border:1px solid #ff4d4d;border-radius:12px;padding:1rem;margin-bottom:1rem;'>
         <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;'><span class='mini'>Confluence Radar</span><span id='radarScore' class='pill' style='border:1px solid #ff4d4d;color:#ff4d4d;'>0/15 WEAK</span></div>
         <div style='height:6px;background:rgba(255,255,255,.08);border-radius:4px;margin:.5rem 0 .8rem;overflow:hidden;'><div id='radarBar' style='height:100%;width:0%;background:#ff4d4d;transition:width 0.4s ease;'></div></div>
-        <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'><div class='mini' title='Squeeze=NONE'>⚫ <span style='color:var(--text-muted)'>Squeeze</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Squeeze=NONE)</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Trend (HTF)</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Momentum</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>ML Model</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Funding</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>DXY Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>Gold Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Fear & Greed</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Order Book</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>OI / Basis</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Structure</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Levels</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>AVWAP</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>VP Status</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title='No auto R:R computed'>⚫ <span style='color:var(--text-muted)'>Auto R:R</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No auto R:R computed)</span></div></div>
+        <div id='radarGrid' style='display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;'><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Squeeze</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Trend (HTF)</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title='Needs: SENTIMENT_BULL or FLOW_TAKER_BULLISH or VOLUME_IMPULSE_BULL'>⚫ <span style='color:var(--text-muted)'>Momentum</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Needs: SENTIMENT_BULL or FLOW_TAKER_BULLISH or VOLUME_IMPULSE_BULL)</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>ML Model</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>Funding</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>DXY Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>Gold Macro</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Fear & Greed</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>Order Book</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🔴</span> <span style='color:#ff4d4d'>OI / Basis</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title='Trend=neutral, no BOS/CHoCH'>⚫ <span style='color:var(--text-muted)'>Structure</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(Trend=neutral, no BOS/CHoCH)</span></div><div class='mini' title='PDH=$74,062 PDL=$67,420 — not near'>⚫ <span style='color:var(--text-muted)'>Levels</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(PDH=$74,062 PDL=$67,420 — not near)</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>AVWAP</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title=''><span class='pulse-dot'>🟢</span> <span style='color:var(--accent)'>VP Status</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>()</span></div><div class='mini' title='No auto R:R computed'>⚫ <span style='color:var(--text-muted)'>Auto R:R</span> <span class='mini' style='opacity:0.5; font-size:0.7em;'>(No auto R:R computed)</span></div></div>
         <div style='margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.4rem;font-size:.7rem;font-family:JetBrains Mono,monospace;color:var(--text-muted);'>Net: <span id='radarNet' style='color:var(--accent);font-weight:700;'>+0</span> &nbsp;🟢 0 &nbsp;🔴 0 &nbsp;⚫ 15</div>
       </div>
       <div id='rubricCard' style='background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:.9rem;margin-bottom:1rem;'>
@@ -302,13 +302,13 @@
         <td>
             <div class="pill-wrap">
                 <span class="pill badge-good">LONG</span>
-                <span class="pill badge-good">A+</span>
+                <span class="pill badge-warn">B</span>
                 <span class="pill badge-neutral">100/100</span>
-                <span class='pill badge-secondary' style='background:var(--secondary);'>🔮 HTF_REVERSAL</span>
+                
             </div>
             
-            <div class="mini">Regime: range · Session: us</div>
-            <div class="mini">Entry: $68,639 · Stop: $68,368 · TP1: $68,535 · R:R 5.48</div>
+            <div class="mini">Regime: trend · Session: europe</div>
+            <div class="mini">Entry: $73,417 · Stop: $73,009 · TP1: $73,751 · R:R 1.36</div>
             <div class="mini">Blockers: None</div>
         </td>
         
@@ -316,12 +316,12 @@
             <div class="pill-wrap">
                 <span class="pill badge-bad">SHORT</span>
                 <span class="pill badge-warn">B</span>
-                <span class="pill badge-neutral">30/100</span>
-                <span class='pill badge-secondary' style='background:var(--secondary);'>🔮 HTF_REVERSAL</span>
+                <span class="pill badge-neutral">91/100</span>
+                
             </div>
             
-            <div class="mini">Regime: vol_chop · Session: us</div>
-            <div class="mini">Entry: $68,067 · Stop: $68,888 · TP1: $68,383 · R:R 9.79</div>
+            <div class="mini">Regime: range · Session: europe</div>
+            <div class="mini">Entry: $73,417 · Stop: $73,999 · TP1: $73,029 · R:R 1.33</div>
             <div class="mini">Blockers: None</div>
         </td>
         
@@ -333,8 +333,8 @@
                 
             </div>
             
-            <div class="mini">Regime: range · Session: us</div>
-            <div class="mini">Entry: $68,700 · Stop: $67,147 · TP1: $69,735 · R:R 1.33</div>
+            <div class="mini">Regime: trend · Session: europe</div>
+            <div class="mini">Entry: $73,417 · Stop: $72,065 · TP1: $74,523 · R:R 1.36</div>
             <div class="mini">Blockers: None</div>
         </td>
         </tr>
@@ -342,10 +342,10 @@
                     <td><strong>Execution Decision</strong></td>
                     <td colspan="3">
                         <span class="pill badge-warn">WAIT</span>
-                        <span class='pill badge-bad' style='margin-left:12px;'>Setup Quality: 51/100</span>
+                        <span class='pill badge-bad' style='margin-left:12px;'>Setup Quality: 45/100</span>
                         
-                        <span class='mini' style='margin-left:8px;'>Daily risk budget cap: $202.28</span>
-                        <span class="mini" style="margin-left:8px;">• 2/3 aligned (1h, 5m = LONG). Waiting on 15m to flip. • Setup quality 51/100 below execution threshold (65).</span>
+                        <span class='mini' style='margin-left:8px;'>Daily risk budget cap: $204.89</span>
+                        <span class="mini" style="margin-left:8px;">• 2/3 aligned (1h, 5m = LONG). Waiting on 15m to flip. • Setup quality 45/100 below execution threshold (65).</span>
                     </td>
                 </tr>
             </tbody>
@@ -361,8 +361,8 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Virtual Balance</div>
-                <div class="stat-value" style="color: var(--accent)">$10,114.00</div>
-                <div class="stat-sub">+1.14% from start</div>
+                <div class="stat-value" style="color: var(--accent)">$10,244.45</div>
+                <div class="stat-sub">+2.44% from start</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Max Drawdown</div>
@@ -370,7 +370,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-label">Open / Closed</div>
-                <div class="stat-value">3 / 26</div>
+                <div class="stat-value">3 / 30</div>
             </div>
         </div>
         <div class="chart-container">
@@ -381,8 +381,8 @@
                 <stop offset="100%" style="stop-color:var(--accent);stop-opacity:0" />
             </linearGradient>
         </defs>
-        <polyline points="0.0,96.3627155390218 30.76923076923077,128.89323071913884 61.53846153846154,96.68619083903343 92.3076923076923,52.07944060508879 123.07692307692308,96.68619083903343 153.84615384615387,59.82479450934534 184.6153846153846,104.43154474328999 215.3846153846154,74.74534694668927 246.15384615384616,91.21226197120376 276.9230769230769,46.550772448580034 307.69230769230774,16.666666666666544 338.46153846153845,33.92882516090623 369.2307692307692,50.41847042191202 400.0,67.97285116431331 430.7692307692308,85.23943846737234 461.5384615384615,100.7378903143967 492.3076923076923,70.46659333061768 523.0769230769231,87.60765454068033 553.8461538461538,104.79872386223997 584.6153846153845,120.98305152982654 615.3846153846155,138.50717466046524 646.1538461538462,183.33333333333346 676.9230769230769,153.53497626871464 707.6923076923076,109.49671388906621 738.4615384615385,126.60368076426273 769.2307692307693,82.12503576081804 800.0,45.50946702785933" fill="none" stroke="var(--accent)" stroke-width="3" />
-        <path d="M0,200 L0.0,96.3627155390218 L30.76923076923077,128.89323071913884 L61.53846153846154,96.68619083903343 L92.3076923076923,52.07944060508879 L123.07692307692308,96.68619083903343 L153.84615384615387,59.82479450934534 L184.6153846153846,104.43154474328999 L215.3846153846154,74.74534694668927 L246.15384615384616,91.21226197120376 L276.9230769230769,46.550772448580034 L307.69230769230774,16.666666666666544 L338.46153846153845,33.92882516090623 L369.2307692307692,50.41847042191202 L400.0,67.97285116431331 L430.7692307692308,85.23943846737234 L461.5384615384615,100.7378903143967 L492.3076923076923,70.46659333061768 L523.0769230769231,87.60765454068033 L553.8461538461538,104.79872386223997 L584.6153846153845,120.98305152982654 L615.3846153846155,138.50717466046524 L646.1538461538462,183.33333333333346 L676.9230769230769,153.53497626871464 L707.6923076923076,109.49671388906621 L738.4615384615385,126.60368076426273 L769.2307692307693,82.12503576081804 L800.0,45.50946702785933 L800,200 Z" fill="url(#grad)" />
+        <polyline points="0.0,112.29645481163891 26.666666666666668,138.8671095189951 53.333333333333336,112.56066675096353 80.0,76.12624351724087 106.66666666666667,112.56066675096353 133.33333333333331,82.4525842787318 160.0,118.88700751245447 186.66666666666666,94.63956762838318 213.33333333333334,108.08960710021968 240.0,71.61047326998894 266.66666666666663,47.20138378668878 293.3333333333333,61.300971521912885 320.0,74.76957686219268 346.6666666666667,89.10784930347559 373.3333333333333,103.21105445297216 400.0,115.87006124231343 426.6666666666667,91.14471720006972 453.3333333333333,105.14539367901484 480.0,119.18691636822736 506.66666666666663,132.40614083316888 533.3333333333333,146.7196991083846 560.0,183.33333333333317 586.6666666666666,158.9942826903717 613.3333333333334,123.02419561604263 640.0,136.9970241253448 666.6666666666667,100.66723618027265 693.3333333333334,70.75994364801176 720.0,41.035571692953 746.6666666666666,16.666666666666828 773.3333333333334,53.5190971314195 800.0,23.2260470978498" fill="none" stroke="var(--accent)" stroke-width="3" />
+        <path d="M0,200 L0.0,112.29645481163891 L26.666666666666668,138.8671095189951 L53.333333333333336,112.56066675096353 L80.0,76.12624351724087 L106.66666666666667,112.56066675096353 L133.33333333333331,82.4525842787318 L160.0,118.88700751245447 L186.66666666666666,94.63956762838318 L213.33333333333334,108.08960710021968 L240.0,71.61047326998894 L266.66666666666663,47.20138378668878 L293.3333333333333,61.300971521912885 L320.0,74.76957686219268 L346.6666666666667,89.10784930347559 L373.3333333333333,103.21105445297216 L400.0,115.87006124231343 L426.6666666666667,91.14471720006972 L453.3333333333333,105.14539367901484 L480.0,119.18691636822736 L506.66666666666663,132.40614083316888 L533.3333333333333,146.7196991083846 L560.0,183.33333333333317 L586.6666666666666,158.9942826903717 L613.3333333333334,123.02419561604263 L640.0,136.9970241253448 L666.6666666666667,100.66723618027265 L693.3333333333334,70.75994364801176 L720.0,41.035571692953 L746.6666666666666,16.666666666666828 L773.3333333333334,53.5190971314195 L800.0,23.2260470978498 L800,200 Z" fill="url(#grad)" />
     </svg>
     </div>
         
@@ -397,7 +397,7 @@
                 <tr><th>TF</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Median R</th><th>Gross R</th><th>Max Losing Streak</th></tr>
             </thead>
             <tbody>
-                <tr><td>5m</td><td>6</td><td>83.3%</td><td><span class='pill badge-warn'>0.06R</span></td><td>-0.36R</td><td>0.34R</td><td>1</td></tr><tr><td>15m</td><td>14</td><td>85.7%</td><td><span class='pill badge-bad'>-0.01R</span></td><td>-0.37R</td><td>-0.14R</td><td>2</td></tr><tr><td>1h</td><td>6</td><td>33.3%</td><td><span class='pill badge-warn'>0.22R</span></td><td>0.67R</td><td>1.34R</td><td>2</td></tr>
+                <tr><td>5m</td><td>9</td><td>77.8%</td><td><span class='pill badge-warn'>0.11R</span></td><td>-0.35R</td><td>0.98R</td><td>1</td></tr><tr><td>15m</td><td>14</td><td>85.7%</td><td><span class='pill badge-bad'>-0.01R</span></td><td>-0.37R</td><td>-0.14R</td><td>2</td></tr><tr><td>1h</td><td>7</td><td>42.9%</td><td><span class='pill badge-warn'>0.29R</span></td><td>0.67R</td><td>2.01R</td><td>2</td></tr>
             </tbody>
         </table>
         <div style="margin-top:1rem;margin-bottom:0.5rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -409,7 +409,7 @@
                 <tr><th>TF</th><th>Regime</th><th>Session</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Median R</th><th>Max Losing Streak</th></tr>
             </thead>
             <tbody>
-                <tr><td>5m</td><td>trend</td><td>unknown</td><td>1</td><td>100.0%</td><td><span class='pill badge-neutral'>0.82R</span></td><td>0.82R</td><td>0</td></tr><tr><td>5m</td><td>vol_chop</td><td>unknown</td><td>5</td><td>80.0%</td><td><span class='pill badge-neutral'>-0.10R</span></td><td>-0.37R</td><td>1</td></tr><tr><td>15m</td><td>chop</td><td>unknown</td><td>1</td><td>100.0%</td><td><span class='pill badge-neutral'>0.73R</span></td><td>0.73R</td><td>0</td></tr><tr><td>15m</td><td>range</td><td>unknown</td><td>2</td><td>100.0%</td><td><span class='pill badge-neutral'>0.67R</span></td><td>0.67R</td><td>0</td></tr><tr><td>15m</td><td>trend</td><td>unknown</td><td>4</td><td>50.0%</td><td><span class='pill badge-neutral'>0.11R</span></td><td>0.22R</td><td>2</td></tr><tr><td>15m</td><td>vol_chop</td><td>unknown</td><td>7</td><td>100.0%</td><td><span class='pill badge-neutral'>-0.38R</span></td><td>-0.38R</td><td>0</td></tr><tr><td>1h</td><td>range</td><td>unknown</td><td>6</td><td>33.3%</td><td><span class='pill badge-neutral'>0.22R</span></td><td>0.67R</td><td>2</td></tr>
+                <tr><td>5m</td><td>trend</td><td>unknown</td><td>4</td><td>75.0%</td><td><span class='pill badge-neutral'>0.36R</span></td><td>0.82R</td><td>1</td></tr><tr><td>5m</td><td>vol_chop</td><td>unknown</td><td>5</td><td>80.0%</td><td><span class='pill badge-neutral'>-0.10R</span></td><td>-0.37R</td><td>1</td></tr><tr><td>15m</td><td>chop</td><td>unknown</td><td>1</td><td>100.0%</td><td><span class='pill badge-neutral'>0.73R</span></td><td>0.73R</td><td>0</td></tr><tr><td>15m</td><td>range</td><td>unknown</td><td>2</td><td>100.0%</td><td><span class='pill badge-neutral'>0.67R</span></td><td>0.67R</td><td>0</td></tr><tr><td>15m</td><td>trend</td><td>unknown</td><td>4</td><td>50.0%</td><td><span class='pill badge-neutral'>0.11R</span></td><td>0.22R</td><td>2</td></tr><tr><td>15m</td><td>vol_chop</td><td>unknown</td><td>7</td><td>100.0%</td><td><span class='pill badge-neutral'>-0.38R</span></td><td>-0.38R</td><td>0</td></tr><tr><td>1h</td><td>range</td><td>unknown</td><td>7</td><td>42.9%</td><td><span class='pill badge-neutral'>0.29R</span></td><td>0.67R</td><td>2</td></tr>
             </tbody>
         </table>
     </section>
@@ -423,7 +423,7 @@
         </div>
         <table class="matrix-table">
             <thead><tr><th>Confidence Bin</th><th>Trades</th><th>Realized Win Rate</th><th>Avg R</th></tr></thead>
-            <tbody><tr><td>0-20</td><td>0</td><td><span class='pill badge-bad'>0.0%</span></td><td>0.00R</td></tr><tr><td>21-40</td><td>0</td><td><span class='pill badge-bad'>0.0%</span></td><td>0.00R</td></tr><tr><td>41-60</td><td>5</td><td><span class='pill badge-good'>60.0%</span></td><td>0.22R</td></tr><tr><td>61-80</td><td>7</td><td><span class='pill badge-good'>71.4%</span></td><td>-0.25R</td></tr><tr><td>81-100</td><td>14</td><td><span class='pill badge-good'>78.6%</span></td><td>0.15R</td></tr></tbody>
+            <tbody><tr><td>0-20</td><td>0</td><td><span class='pill badge-bad'>0.0%</span></td><td>0.00R</td></tr><tr><td>21-40</td><td>0</td><td><span class='pill badge-bad'>0.0%</span></td><td>0.00R</td></tr><tr><td>41-60</td><td>5</td><td><span class='pill badge-good'>60.0%</span></td><td>0.22R</td></tr><tr><td>61-80</td><td>8</td><td><span class='pill badge-good'>62.5%</span></td><td>-0.34R</td></tr><tr><td>81-100</td><td>17</td><td><span class='pill badge-good'>82.4%</span></td><td>0.26R</td></tr></tbody>
         </table>
     </section>
     
@@ -437,7 +437,7 @@
                 <tr><th>TF</th><th>Direction</th><th>Age</th><th>Time Used</th><th>Planned R:R</th><th>Blockers</th><th>Management Priority</th></tr>
             </thead>
             <tbody>
-                <tr><td>5m</td><td>SHORT</td><td>2.5h</td><td>61%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Aging setup</span></td></tr><tr><td>5m</td><td>SHORT</td><td>2.3h</td><td>56%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>SHORT</td><td>2.3h</td><td>56%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>SHORT</td><td>2.2h</td><td>54%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>SHORT</td><td>2.2h</td><td>54%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>LONG</td><td>2.1h</td><td>52%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>LONG</td><td>2.1h</td><td>52%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>LONG</td><td>2.0h</td><td>50%</td><td>8.46</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>LONG</td><td>2.0h</td><td>50%</td><td>8.46</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>LONG</td><td>5m</td><td>2%</td><td>5.66</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr>
+                <tr><td>5m</td><td>LONG</td><td>5m</td><td>2%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>5m</td><td>LONG</td><td>0m</td><td>0%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>15m</td><td>SHORT</td><td>15m</td><td>2%</td><td>1.33</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>15m</td><td>SHORT</td><td>10m</td><td>1%</td><td>1.33</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>15m</td><td>SHORT</td><td>5m</td><td>1%</td><td>1.33</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>15m</td><td>SHORT</td><td>0m</td><td>0%</td><td>1.33</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>1h</td><td>LONG</td><td>19.2h</td><td>40%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>1h</td><td>LONG</td><td>19.1h</td><td>40%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>1h</td><td>LONG</td><td>19.0h</td><td>40%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr><tr><td>1h</td><td>LONG</td><td>18.9h</td><td>39%</td><td>1.36</td><td>None</td><td><span class='pill badge-good'>Fresh setup</span></td></tr>
             </tbody>
         </table>
     </section>
@@ -451,93 +451,93 @@
             </thead>
             <tbody>
         <tr>
-            <td>5m</td>
-            <td><span class="pill badge-good">LONG</span><span class='mini' style='display:block;opacity:0.6;font-size:0.7em;'>HTF_REVERSAL</span></td>
-            <td>100</td>
-            <td><span class="pill badge-good">A+</span></td>
-            <td>24</td>
-            <td>2s</td>
-            <td><span class="pill badge-warn">OPEN</span></td>
-        </tr>
-        <tr>
-            <td>5m</td>
-            <td><span class="pill badge-good">LONG</span><span class='mini' style='display:block;opacity:0.6;font-size:0.7em;'>HTF_REVERSAL</span></td>
-            <td>100</td>
-            <td><span class="pill badge-good">A+</span></td>
-            <td>25</td>
-            <td>3s</td>
-            <td><span class="pill badge-warn">OPEN</span></td>
-        </tr>
-        <tr>
-            <td>5m</td>
-            <td><span class="pill badge-good">LONG</span><span class='mini' style='display:block;opacity:0.6;font-size:0.7em;'>HTF_REVERSAL</span></td>
-            <td>100</td>
-            <td><span class="pill badge-good">A+</span></td>
-            <td>24</td>
-            <td>5m</td>
-            <td><span class="pill badge-warn">OPEN</span></td>
-        </tr>
-        <tr>
             <td>1h</td>
             <td><span class="pill badge-good">LONG</span></td>
             <td>100</td>
             <td><span class="pill badge-warn">B</span></td>
-            <td>20</td>
+            <td>18</td>
+            <td>1s</td>
+            <td><span class="pill badge-warn">OPEN</span></td>
+        </tr>
+        <tr>
             <td>15m</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>91</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>21</td>
+            <td>1s</td>
             <td><span class="pill badge-warn">OPEN</span></td>
         </tr>
         <tr>
-            <td>1h</td>
+            <td>5m</td>
             <td><span class="pill badge-good">LONG</span></td>
             <td>100</td>
             <td><span class="pill badge-warn">B</span></td>
             <td>20</td>
+            <td>1s</td>
+            <td><span class="pill badge-warn">OPEN</span></td>
+        </tr>
+        <tr>
             <td>15m</td>
-            <td><span class="pill badge-warn">OPEN</span></td>
-        </tr>
-        <tr>
-            <td>1h</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>100</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>20</td>
-            <td>20m</td>
-            <td><span class="pill badge-warn">OPEN</span></td>
-        </tr>
-        <tr>
-            <td>1h</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>100</td>
-            <td><span class="pill badge-warn">B</span></td>
-            <td>20</td>
-            <td>20m</td>
-            <td><span class="pill badge-warn">OPEN</span></td>
-        </tr>
-        <tr>
-            <td>1h</td>
-            <td><span class="pill badge-good">LONG</span></td>
-            <td>100</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>70</td>
             <td><span class="pill badge-warn">B</span></td>
             <td>19</td>
-            <td>25m</td>
+            <td>5m</td>
             <td><span class="pill badge-warn">OPEN</span></td>
         </tr>
         <tr>
-            <td>1h</td>
+            <td>5m</td>
             <td><span class="pill badge-good">LONG</span></td>
             <td>100</td>
             <td><span class="pill badge-warn">B</span></td>
-            <td>23</td>
-            <td>25m</td>
+            <td>16</td>
+            <td>5m</td>
             <td><span class="pill badge-warn">OPEN</span></td>
         </tr>
         <tr>
+            <td>15m</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>91</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>21</td>
+            <td>10m</td>
+            <td><span class="pill badge-warn">OPEN</span></td>
+        </tr>
+        <tr>
+            <td>15m</td>
+            <td><span class="pill badge-bad">SHORT</span></td>
+            <td>77</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>21</td>
+            <td>15m</td>
+            <td><span class="pill badge-warn">OPEN</span></td>
+        </tr>
+        <tr>
+            <td>15m</td>
+            <td><span class="pill badge-good">LONG</span><span class='mini' style='display:block;opacity:0.6;font-size:0.7em;'>HTF_REVERSAL</span></td>
+            <td>67</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>23</td>
+            <td>20m</td>
+            <td><span class="pill badge-bad">LOSS</span></td>
+        </tr>
+        <tr>
             <td>1h</td>
-            <td><span class="pill badge-good">LONG</span></td>
+            <td><span class="pill badge-good">LONG</span><span class='mini' style='display:block;opacity:0.6;font-size:0.7em;'>HTF_REVERSAL</span></td>
             <td>100</td>
             <td><span class="pill badge-warn">B</span></td>
             <td>20</td>
             <td>30m</td>
+            <td><span class="pill badge-warn">OPEN</span></td>
+        </tr>
+        <tr>
+            <td>1h</td>
+            <td><span class="pill badge-good">LONG</span><span class='mini' style='display:block;opacity:0.6;font-size:0.7em;'>HTF_REVERSAL</span></td>
+            <td>100</td>
+            <td><span class="pill badge-warn">B</span></td>
+            <td>20</td>
+            <td>34m</td>
             <td><span class="pill badge-warn">OPEN</span></td>
         </tr></tbody>
         </table>
@@ -553,10 +553,10 @@
                     <span class="symbol">BTC</span>
                     <span class="timeframe">5m</span>
                 </div>
-                <div class="tier" style="color: var(--accent)">A+</div>
+                <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 14:00</p>
-                    <p>TP1 Hit: ✅</p>
+                    <p>Last Signal: 06:00</p>
+                    <p>TP1 Hit: ❌</p>
                 </div>
             </div>
             
@@ -567,8 +567,8 @@
                 </div>
                 <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 11:45</p>
-                    <p>TP1 Hit: ✅</p>
+                    <p>Last Signal: 06:00</p>
+                    <p>TP1 Hit: ❌</p>
                 </div>
             </div>
             
@@ -579,7 +579,7 @@
                 </div>
                 <div class="tier" style="color: var(--secondary)">B</div>
                 <div class="meta">
-                    <p>Last Signal: 13:00</p>
+                    <p>Last Signal: 06:00</p>
                     <p>TP1 Hit: ❌</p>
                 </div>
             </div>
@@ -589,27 +589,27 @@
         <h2>Intelligence Report</h2>
         <pre># PID-129 BTC Alerts Performance Scorecard
 
-**Generated:** 2026-03-03 19:05:31 UTC
+**Generated:** 2026-03-05 11:00:29 UTC
 
 ## Signal Summary (Last 7 Days)
 
-- **Total Alerts:** 278
-- **Directional Split:** 177 LONG / 101 SHORT
-- **High Confidence (>=70):** 173
+- **Total Alerts:** 333
+- **Directional Split:** 228 LONG / 105 SHORT
+- **High Confidence (>=70):** 215
 
 ## Trading Performance (Paper)
 
-- **Resolved Trades:** 228
-- **Win Rate:** 52.2%
-- **Total P&L (R):** 7.88R
-- **Average R per Trade:** 0.03R
-- **Outcomes:** {'WIN_TP2': 55, 'LOSS': 106, 'WIN_TP1': 64, 'TIMEOUT': 3}
+- **Resolved Trades:** 309
+- **Win Rate:** 57.6%
+- **Total P&L (R):** 61.89R
+- **Average R per Trade:** 0.20R
+- **Outcomes:** {'WIN_TP2': 101, 'LOSS': 121, 'WIN_TP1': 77, 'TIMEOUT': 10}
 
 ## Strategy Breakdown
 
-- **TREND_CONTINUATION**: 223 alerts
+- **TREND_CONTINUATION**: 259 alerts
+- **MEAN_REVERSION**: 34 alerts
 - **NONE**: 25 alerts
-- **MEAN_REVERSION**: 15 alerts
 - **ENGULFING_BEARISH**: 8 alerts
 - **VOLATILITY_EXPANSION**: 5 alerts
 - **UNKNOWN**: 1 alerts
@@ -619,20 +619,20 @@
 
 | Time | Direction | Strategy | Confidence | Outcome |
 |:---|:---|:---|:---|:---|
-| 2026-03-03 18:35 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 18:40 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 18:40 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 18:45 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 18:45 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 18:50 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 18:50 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 19:00 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 19:05 | LONG | TREND_CONTINUATION | 100 | PENDING |
-| 2026-03-03 19:05 | LONG | TREND_CONTINUATION | 100 | PENDING |
+| 2026-03-05 10:26 | LONG | TREND_CONTINUATION | 100 | PENDING |
+| 2026-03-05 10:30 | LONG | TREND_CONTINUATION | 100 | PENDING |
+| 2026-03-05 10:40 | LONG | TREND_CONTINUATION | 67 | LOSS |
+| 2026-03-05 10:45 | SHORT | MEAN_REVERSION | 77 | PENDING |
+| 2026-03-05 10:50 | SHORT | MEAN_REVERSION | 91 | PENDING |
+| 2026-03-05 10:55 | LONG | TREND_CONTINUATION | 100 | PENDING |
+| 2026-03-05 10:55 | SHORT | MEAN_REVERSION | 70 | PENDING |
+| 2026-03-05 11:00 | LONG | TREND_CONTINUATION | 100 | PENDING |
+| 2026-03-05 11:00 | SHORT | MEAN_REVERSION | 91 | PENDING |
+| 2026-03-05 11:00 | LONG | TREND_CONTINUATION | 100 | PENDING |
 
 ## System Health (Audit Log - Last 24h)
 
-- **Cycles Completed:** 474
+- **Cycles Completed:** 77
 - **Peak Confidence Seen:** 100
 - **Status:** Bot Active & Scanning
 </pre>
@@ -645,7 +645,7 @@
       <div style="display:flex;gap:.5rem;margin-top:1rem;"><button id="cancelExec" class="pill badge-neutral" style="border:0;cursor:pointer;">Cancel</button><button id="confirmExec" class="pill badge-good" style="border:0;cursor:pointer;" disabled>Confirm</button></div>
     </dialog>
     <script>
-      let state = {livePrice:0,spread:0,inTrade:true,entryPrice:68639.3,tp1Price:68535.01,stopPrice:68368.14,direction:"LONG"};
+      let state = {livePrice:0,spread:0,inTrade:true,entryPrice:73417.0,tp1Price:74522.92,stopPrice:72065.32,direction:"LONG"};
       const els = {badge:document.getElementById('connection-badge'),sync:document.getElementById('sync-label'),mid:document.getElementById('live-mid'),spread:document.getElementById('live-spread'),confluence:document.getElementById('live-confluence'),radar:document.getElementById('live-radar'),balance:document.getElementById('live-balance'),winrate:document.getElementById('live-winrate'),pf:document.getElementById('live-pf'),kelly:document.getElementById('live-kelly'),gate:document.getElementById('live-gate'),cbanner:document.getElementById('circuit-breaker-banner'),creason:document.getElementById('circuit-breaker-reason'),execBtn:document.getElementById('executeBtn')};
       function fmtMoney(n,d=0) { return Number.isFinite(n) ? '$' + n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}) : '--'; }
       function deriveConfluence(alerts) { const t=['5m','15m','1h'],m=Object.create(null); for (const a of (alerts||[])) if (a.symbol==='BTC' && t.includes(a.timeframe)) m[a.timeframe]=a; const p=t.map(tf=>m[tf]).filter(Boolean); if (p.length<3) return 'Partial'; const d=p.map(x=>String(x.direction||'NEUTRAL').toUpperCase()); return d.every(x=>x===d[0]&&x!=='NEUTRAL') ? d[0] + ' aligned' : 'Mixed'; }

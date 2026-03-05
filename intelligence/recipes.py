@@ -39,7 +39,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional
 
-from utils import Candle, atr as calc_atr
+from utils import Candle, atr as calc_atr, rsi as calc_rsi, donchian_break
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +157,22 @@ def _bb_width_percentile(candles: List[Candle], period: int = 20, lookback: int 
     if not widths:
         return 50.0
 
+    current_width = widths[-1]
+    below = sum(1 for w in widths if w < current_width)
+    return (below / len(widths)) * 100.0
+
+
+def _donchian_width_percentile(candles: List[Candle], period: int = 20, lookback: int = 100) -> float:
+    """Return Donchian channel width percentile."""
+    if len(candles) < period + lookback:
+        return 50.0
+    widths = []
+    for i in range(len(candles) - lookback, len(candles)):
+        window = candles[i - period: i]
+        if not window: continue
+        w = max(c.high for c in window) - min(c.low for c in window)
+        widths.append(w)
+    if not widths: return 50.0
     current_width = widths[-1]
     below = sum(1 for w in widths if w < current_width)
     return (below / len(widths)) * 100.0
@@ -428,6 +444,215 @@ def _recipe_vol_expansion(
     )
 
 
+def _recipe_range_breakout(
+    candles: List[Candle],
+    atr_val: float,
+    account_size: float,
+) -> Optional[RecipeSignal]:
+    """
+    RANGE_BREAKOUT: Low-volatility range breakout with volume confirmation.
+    """
+    if len(candles) < 40: return None
+    
+    # Donchian width percentile (squeeze check)
+    width_pct = _donchian_width_percentile(candles, 20, 100)
+    if width_pct > 25.0:
+        return None
+        
+    # Volume confirmation
+    vol_avg = sum(c.volume for c in candles[-21:-1]) / 20
+    if candles[-1].volume <= 1.5 * vol_avg:
+        return None
+        
+    # Breakout check
+    bull_break, bear_break = donchian_break(candles, 20)
+    if not (bull_break or bear_break):
+        return None
+        
+    direction = "LONG" if bull_break else "SHORT"
+    last = candles[-1]
+    price = last.close
+    
+    # Range extreme
+    window = candles[-21:-1]
+    high_20 = max(c.high for c in window)
+    low_20 = min(c.low for c in window)
+    width = high_20 - low_20
+    
+    pattern_extreme = low_20 if direction == "LONG" else high_20
+    opposite_liq = high_20 + width if direction == "LONG" else low_20 - width
+    
+    plan = _five_questions(direction, price, pattern_extreme, opposite_liq, atr_val, account_size, abs(last.high - last.low))
+    
+    # Phase 30: TP1 = 1:1, TP2 = 2:1
+    r = abs(plan["exec_px"] - plan["invalidation"])
+    if direction == "LONG":
+        plan["targets"]["tp1"] = round(plan["exec_px"] + r, 2)
+        plan["targets"]["tp2"] = round(plan["exec_px"] + 2 * r, 2)
+    else:
+        plan["targets"]["tp1"] = round(plan["exec_px"] - r, 2)
+        plan["targets"]["tp2"] = round(plan["exec_px"] - 2 * r, 2)
+
+    return RecipeSignal(
+        recipe="RANGE_BREAKOUT",
+        direction=direction,
+        entry_zone=plan["entry_zone"],
+        exec_px=plan["exec_px"],
+        invalidation=plan["invalidation"],
+        risk_size=plan["risk_size"],
+        targets=plan["targets"],
+        trigger_codes=["RANGE_BREAKOUT"],
+        confidence_factors=[f"Width percentile: {width_pct:.1f}", "Volume confirmed (1.5x)"],
+        raw_score=6.0
+    )
+
+
+def _recipe_momentum_divergence(
+    candles: List[Candle],
+    struct: Dict[str, Any],
+    atr_val: float,
+    account_size: float,
+) -> Optional[RecipeSignal]:
+    """
+    MOMENTUM_DIVERGENCE: Price extreme + RSI divergence + BOS confirmation.
+    """
+    if len(candles) < 30: return None
+    
+    last = candles[-1]
+    prev_10 = candles[-11:-1]
+    
+    # 1. Price new high/low (10 bars)
+    is_high = last.high > max(c.high for c in prev_10)
+    is_low = last.low < min(c.low for c in prev_10)
+    if not (is_high or is_low):
+        return None
+        
+    # 2. RSI Divergence
+    # Bullish: Price new low, RSI NOT new low (or rising)
+    # Bearish: Price new high, RSI NOT new high (or falling)
+    rsi_vals = [calc_rsi([c.close for c in candles[:i+1]], 14) for i in range(len(candles)-20, len(candles))]
+    rsi_vals = [r for r in rsi_vals if r is not None]
+    if len(rsi_vals) < 10: return None
+    
+    curr_rsi = rsi_vals[-1]
+    prev_rsi_max = max(rsi_vals[:-1])
+    prev_rsi_min = min(rsi_vals[:-1])
+    
+    div_bull = is_low and curr_rsi > prev_rsi_min
+    div_bear = is_high and curr_rsi < prev_rsi_max
+    
+    if not (div_bull or div_bear):
+        return None
+        
+    # 3. BOS Confirmation
+    event = struct.get("last_event", "")
+    if div_bull and event != "BOS_BULL": return None
+    if div_bear and event != "BOS_BEAR": return None
+    
+    direction = "LONG" if div_bull else "SHORT"
+    price = last.close
+    
+    # Entry: Limit at retest of divergence swing (1% buffer)
+    pattern_extreme = last.low if direction == "LONG" else last.high
+    retrace_px = price * (1.01 if direction == "SHORT" else 0.99)
+    
+    # Use structure for TP
+    opposite_liq = struct.get("last_pivot_high" if direction == "LONG" else "last_pivot_low", price + (2 * atr_val if direction == "LONG" else -2 * atr_val))
+    
+    plan = _five_questions(direction, price, pattern_extreme, opposite_liq, atr_val, account_size)
+    plan["entry_zone"] = f"LIMIT@{retrace_px:,.0f}"
+    plan["exec_px"] = round(retrace_px, 2)
+    
+    # TP2: 2x ATR
+    if direction == "LONG":
+        plan["targets"]["tp2"] = round(price + 2 * atr_val, 2)
+    else:
+        plan["targets"]["tp2"] = round(price - 2 * atr_val, 2)
+
+    return RecipeSignal(
+        recipe="MOMENTUM_DIVERGENCE",
+        direction=direction,
+        entry_zone=plan["entry_zone"],
+        exec_px=plan["exec_px"],
+        invalidation=plan["invalidation"],
+        risk_size=plan["risk_size"],
+        targets=plan["targets"],
+        trigger_codes=["MOM_DIVERGENCE"],
+        confidence_factors=["Price extreme (10-bar)", "RSI Divergence", f"BOS {event}"],
+        raw_score=7.0
+    )
+
+
+def _recipe_funding_flush(
+    candles: List[Candle],
+    context: Dict[str, Any],
+    struct: Dict[str, Any],
+    atr_val: float,
+    account_size: float,
+) -> Optional[RecipeSignal]:
+    """
+    FUNDING_FLUSH: Extreme funding + Taker ratio flip + Structure alignment.
+    """
+    deriv = context.get("derivatives", {})
+    flows = context.get("flows", {})
+    
+    funding = deriv.get("funding_rate", 0)
+    taker_ratio = flows.get("taker_ratio", 1.0)
+    
+    # 1. Extreme funding
+    long_flush = funding > 0.0005  # 0.05%
+    short_flush = funding < -0.0003 # -0.03%
+    
+    if not (long_flush or short_flush):
+        return None
+        
+    # 2. Taker ratio flip (fade the crowd)
+    # If longs paying heavy (funding > 0.05), we want shorts entering (taker_ratio < 1.0)
+    # If shorts paying (funding < -0.03), we want longs entering (taker_ratio > 1.0)
+    if long_flush and taker_ratio >= 1.0: return None
+    if short_flush and taker_ratio <= 1.0: return None
+    
+    # 3. Structure alignment
+    direction = "SHORT" if long_flush else "LONG"
+    struct_trend = struct.get("trend", "").upper()
+    if direction not in struct_trend:
+        # Allow if CHoCH just happened
+        if "CHOCH" not in struct.get("last_event", ""):
+            return None
+            
+    last = candles[-1]
+    price = last.close
+    
+    # Invalidation: 1.5x ATR
+    invalidation = price + (1.5 * atr_val if direction == "SHORT" else -1.5 * atr_val)
+    
+    # TP1: nearest structure (1:1), TP2: 2x ATR
+    tp1 = price + (abs(price - invalidation)) * (1 if direction == "LONG" else -1)
+    tp2 = price + (2 * atr_val) * (1 if direction == "LONG" else -1)
+    
+    plan = {
+        "direction": direction,
+        "entry_zone": "MARKET",
+        "exec_px": price,
+        "invalidation": round(invalidation, 2),
+        "risk_size": round((account_size * 0.01) / abs(price - invalidation), 4),
+        "targets": {"tp1": round(tp1, 2), "tp2": round(tp2, 2)}
+    }
+
+    return RecipeSignal(
+        recipe="FUNDING_FLUSH",
+        direction=direction,
+        entry_zone=plan["entry_zone"],
+        exec_px=plan["exec_px"],
+        invalidation=plan["invalidation"],
+        risk_size=plan["risk_size"],
+        targets=plan["targets"],
+        trigger_codes=["FUNDING_FLUSH"],
+        confidence_factors=[f"Funding: {funding*100:.3f}%", f"Taker Ratio: {taker_ratio:.2f}"],
+        raw_score=5.0
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
@@ -465,52 +690,57 @@ def detect_recipes(
     squeeze: Dict[str, Any],
     atr_val: Optional[float] = None,
     account_size: float = 10_000.0,
+    context: Dict[str, Any] = None,
 ) -> List[RecipeSignal]:
     """
-    Run all three recipe detectors and return every qualifying RecipeSignal.
-
-    Parameters
-    ──────────
-    candles      : 5m candle list (minimum 40 required for reliable output).
-    struct       : Output of intelligence.structure.detect_structure()
-    sweeps       : Output of intelligence.sweeps.detect_equal_levels()
-    avwap        : Output of intelligence.anchored_vwap.compute_anchored_vwap()
-    squeeze      : Output of intelligence.squeeze.detect_squeeze()
-    atr_val      : Pre-computed 14-bar ATR.  Auto-computed from candles if None.
-    account_size : Notional account size in USD for risk_size calculation.
-
-    Returns
-    ───────
-    List[RecipeSignal] — empty if no recipe qualifies.  Multiple can fire
-    simultaneously (e.g. HTF_REVERSAL + VOL_EXPANSION on a sweep bar).
+    Run all recipe detectors and return every qualifying RecipeSignal.
     """
     if len(candles) < 40:
         return []
 
+    context = context or {}
     if atr_val is None or atr_val <= 0:
         atr_val = calc_atr(candles, 14) or (candles[-1].close * 0.01)
 
     results: List[RecipeSignal] = []
 
+    # Original Recipes
     try:
         sig = _recipe_htf_reversal(candles, struct, sweeps, avwap, atr_val, account_size)
-        if sig:
-            results.append(sig)
+        if sig: results.append(sig)
     except Exception as exc:
-        logger.warning("recipes.HTF_REVERSAL error: %s", exc, exc_info=True)
+        logger.warning("recipes.HTF_REVERSAL error: %s", exc)
 
     try:
         sig = _recipe_bos_continuation(candles, struct, sweeps, atr_val, account_size)
-        if sig:
-            results.append(sig)
+        if sig: results.append(sig)
     except Exception as exc:
-        logger.warning("recipes.BOS_CONTINUATION error: %s", exc, exc_info=True)
+        logger.warning("recipes.BOS_CONTINUATION error: %s", exc)
 
     try:
         sig = _recipe_vol_expansion(candles, squeeze, sweeps, struct, atr_val, account_size)
-        if sig:
-            results.append(sig)
+        if sig: results.append(sig)
     except Exception as exc:
-        logger.warning("recipes.VOL_EXPANSION error: %s", exc, exc_info=True)
+        logger.warning("recipes.VOL_EXPANSION error: %s", exc)
+
+    # Phase 30: New Recipes
+    try:
+        sig = _recipe_range_breakout(candles, atr_val, account_size)
+        if sig: results.append(sig)
+    except Exception as exc:
+        logger.warning("recipes.RANGE_BREAKOUT error: %s", exc)
+
+    try:
+        sig = _recipe_momentum_divergence(candles, struct, atr_val, account_size)
+        if sig: results.append(sig)
+    except Exception as exc:
+        logger.warning("recipes.MOMENTUM_DIVERGENCE error: %s", exc)
+
+    if context:
+        try:
+            sig = _recipe_funding_flush(candles, context, struct, atr_val, account_size)
+            if sig: results.append(sig)
+        except Exception as exc:
+            logger.warning("recipes.FUNDING_FLUSH error: %s", exc)
 
     return results

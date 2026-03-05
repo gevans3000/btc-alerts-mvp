@@ -45,6 +45,37 @@ SESSION_WEIGHTS = {
 
 CONFLUENCE_RULES = {"A+": 5, "B": 3}
 
+CONFLUENCE_WEIGHTS = {
+    "structure": 2.0,
+    "location": 1.5,
+    "anchors": 1.5,
+    "derivatives": 1.0,
+    "momentum": 1.0,
+    "volatility": 1.0,
+}
+
+CONFLUENCE_THRESHOLDS = {
+    "A+": 6.0,
+    "B": 4.0,
+    "C": 2.5,
+}
+
+HTF_CASCADE_WEIGHTS = {
+    "4h": 3,
+    "1h": 2,
+    "15m": 1,
+    "counter_aligned": -2,
+}
+
+DIRECTIONAL_SEASON = {
+    "funding_threshold_long": 0.0003,  # Longs paying > 0.03%
+    "funding_threshold_short": -0.0001,  # Shorts paying < -0.01%
+    "funding_relax_pts": 5,
+    "funding_tighten_pts": 3,
+    "crowding_ratio_threshold": 1.5,
+    "crowding_tighten_pts": 4,
+}
+
 TP_MULTIPLIERS = {
     "trend": {"tp1": 1.8, "tp2": 3.0, "inv": 1.1},
     "range": {"tp1": 1.2, "tp2": 2.4, "inv": 0.9},
