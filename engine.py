@@ -57,7 +57,8 @@ def _tier_and_action(score: int, blockers: List[str], timeframe: str, rubric_sco
         return "NO-TRADE", "SKIP"
     
     # Seasoned thresholds
-    trade_threshold = cfg.get("trade_long" if score > 0 else "trade_short", 40) + threshold_adj
+    conf_floor = CONFLUENCE_RULES.get("CONFIDENCE_FLOOR_FOR_TRADE", 45)
+    trade_threshold = max(conf_floor, cfg.get("trade_long" if score > 0 else "trade_short", 40) + threshold_adj)
     watch_threshold = cfg.get("watch_long" if score > 0 else "watch_short", 25) + threshold_adj
 
     tier = "NO-TRADE"
@@ -445,6 +446,11 @@ def compute_score(
         threshold_adj += DIRECTIONAL_SEASON["crowding_tighten_pts"]
 
     total_score = sum(breakdown.values()) * SCORE_MULTIPLIER
+    # Cap raw confidence (Phase 29: Calibration Fix)
+    raw_conf = abs(total_score)
+    capped_conf = min(raw_conf, CONFLUENCE_RULES.get("CONFIDENCE_CAP", 85))
+    total_score = capped_conf if total_score >= 0 else -capped_conf # Preserve direction
+
     direction = "LONG" if total_score > 0 else "SHORT" if total_score < 0 else "NEUTRAL"
 
     try:

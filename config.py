@@ -43,7 +43,12 @@ SESSION_WEIGHTS = {
     "unknown": {"BREAKOUT": 1.0, "MEAN_REVERSION": 1.0, "TREND_CONTINUATION": 1.0, "VOLATILITY_EXPANSION": 1.0},
 }
 
-CONFLUENCE_RULES = {"A+": 5, "B": 3}
+CONFLUENCE_RULES = {
+    "A+": 5,
+    "B": 3,
+    "CONFIDENCE_FLOOR_FOR_TRADE": 45,   # alerts below this confidence → NO-TRADE
+    "CONFIDENCE_CAP": 85,               # cap raw confidence to prevent overconfidence
+}
 
 CONFLUENCE_WEIGHTS = {
     "structure": 2.0,

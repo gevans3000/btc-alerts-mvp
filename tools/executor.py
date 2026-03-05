@@ -83,6 +83,35 @@ def _log_execution(record: dict) -> None:
         f.write(json.dumps(record) + "\n")
 
 
+def _check_circuit_breaker(portfolio: dict) -> bool:
+    """Return True if trading is allowed, False if breaker tripped."""
+    from datetime import date
+    DAILY_LOSS_LIMIT_R = -3.0  # halt after losing 3R in one day
+
+    today = date.today().isoformat()
+    # In paper_portfolio.json, closed trades have 'exit_at'
+    today_trades = [
+        t for t in portfolio.get("closed_trades", [])
+        if t.get("exit_at", "").startswith(today)
+    ]
+    # In paper_portfolio.json, the field is 'r_multiple'
+    daily_r = sum(t.get("r_multiple", 0) for t in today_trades)
+    if daily_r <= DAILY_LOSS_LIMIT_R:
+        print(f"CIRCUIT BREAKER: Daily R = {daily_r:.2f}, limit = {DAILY_LOSS_LIMIT_R}. Halting.")
+        return False
+    return True
+
+
+def _check_position_cap(portfolio: dict) -> bool:
+    """Return True if under cap, False if max positions reached."""
+    MAX_OPEN_POSITIONS = 3
+    open_count = len(portfolio.get("positions", [])) # 'positions' are open trades in this codebase
+    if open_count >= MAX_OPEN_POSITIONS:
+        print(f"POSITION CAP: {open_count} open, max = {MAX_OPEN_POSITIONS}. Skipping.")
+        return False
+    return True
+
+
 def execute_trade(alert: dict, mode: str = "PAPER") -> dict:
     """
     Takes a full alert dict from engine.py output.
@@ -103,6 +132,13 @@ def execute_trade(alert: dict, mode: str = "PAPER") -> dict:
         return {"status": "REJECTED", "reason": "operator off", "order_id": "", "fill_price": 0.0}
     
     portfolio = _load_portfolio()
+
+    # Phase 30: Circuit Breakers
+    if not _check_circuit_breaker(portfolio):
+        return {"status": "REJECTED", "reason": "circuit breaker tripped", "order_id": "", "fill_price": 0.0}
+    
+    if not _check_position_cap(portfolio):
+        return {"status": "REJECTED", "reason": "max positions reached", "order_id": "", "fill_price": 0.0}
     kelly_pct = portfolio.get("kelly_pct", 0.10)
     
     base_usdt = 100
